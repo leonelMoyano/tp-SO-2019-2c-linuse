@@ -8,7 +8,7 @@ RM := rm -rf
 
 # All of the sources participating in the build are defined here
 -include sources.mk
--include biblioteca/subdir.mk
+-include biblioNOC/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -23,19 +23,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: libbibliotecaNOCE.so
+all: libbiblioNOC.so
 
 # Tool invocations
-libbibliotecaNOCE.so: $(OBJS) $(USER_OBJS)
+libbiblioNOC.so: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -shared -o "libbibliotecaNOCE.so" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -shared -o "libbiblioNOC.so" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(LIBRARIES)$(OBJS)$(C_DEPS) libbibliotecaNOCE.so
+	-$(RM) $(LIBRARIES)$(OBJS)$(C_DEPS) libbiblioNOC.so
 	-@echo ' '
 
 .PHONY: all clean dependents

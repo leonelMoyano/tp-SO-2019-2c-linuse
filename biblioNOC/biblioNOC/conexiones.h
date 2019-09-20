@@ -1,5 +1,5 @@
-#ifndef BIBLIOTECA_SOCKETS_H_
-#define BIBLIOTECA_SOCKETS_H_
+#ifndef BIBLIONOC_SOCKETS_H_
+#define BIBLIONOC_SOCKETS_H_
 
 #include "estructurasAdministrativas.h"
 #include <commons/log.h>

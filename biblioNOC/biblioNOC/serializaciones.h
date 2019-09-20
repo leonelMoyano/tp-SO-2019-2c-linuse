@@ -1,5 +1,5 @@
-#ifndef BIBLIOTECA_SERIALIZACION_H_
-#define BIBLIOTECA_SERIALIZACION_H_
+#ifndef BIBLIONOC_SERIALIZACION_H_
+#define BIBLIONOC_SERIALIZACION_H_
 
 #include "estructurasAdministrativas.h"
 #include <commons/string.h>
@@ -42,4 +42,4 @@ bool 				deserializarBool					(t_stream* buffer);
 /*----------------------------------------Funciones auxiliares----------------------------------------*/
 void *	abrirArchivo	(char * rutaArchivo, size_t * tamArc, FILE ** archivo);
 
-#endif /* BIBLIOTECA_SERIALIZACION_H_ */
+#endif /* BIBLIONOC_SERIALIZACION_H_ */

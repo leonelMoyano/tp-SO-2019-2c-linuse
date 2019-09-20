@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <biblioteca/paquetes.h>
+#include <biblioNOC/paquetes.h>
 
 int main(void) {
 	return prueba();

@@ -3,6 +3,7 @@
 	<name>libMUSE</name>
 	<comment></comment>
 	<projects>
+		<project>biblioNOC</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

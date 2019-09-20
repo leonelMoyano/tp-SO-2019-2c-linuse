@@ -1,5 +1,5 @@
-#ifndef BIBLIOTECA_ESTRUCTURAS_H_
-#define BIBLIOTECA_ESTRUCTURAS_H_
+#ifndef BIBLIONOC_ESTRUCTURAS_H_
+#define BIBLIONOC_ESTRUCTURAS_H_
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -128,4 +128,4 @@ typedef struct{
 }t_conexionGossiping;
 
 
-#endif /* BIBLIOTECA_ESTRUCTURAS_H_ */
+#endif /* BIBLIONOC_ESTRUCTURAS_H_ */
