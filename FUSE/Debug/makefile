@@ -23,22 +23,22 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: FUSE
+all: SAC-cli
 
 dependents:
 	-cd /home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug && $(MAKE) all
 
 # Tool invocations
-FUSE: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug/libbiblioNOC.so
+SAC-cli: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug/libbiblioNOC.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: Cross GCC Linker'
-	gcc -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug" -o "FUSE" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug" -o "SAC-cli" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) FUSE
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) SAC-cli
 	-@echo ' '
 
 .PHONY: all clean dependents
