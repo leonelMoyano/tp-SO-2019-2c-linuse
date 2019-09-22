@@ -4,6 +4,7 @@
     #include <stdint.h>
     #include <stddef.h>
 
+	int pruebaReferenciaMUSE(void);
     /**
      * Inicializa la biblioteca de MUSE.
      * @param id El Process (o Thread) ID para identificar el caller en MUSE.
