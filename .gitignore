@@ -1,3 +1,12 @@
+# Carpetas Debug de los proyectos
+biblioNOC/Debug
+FUSE/Debug
+libMUSE/Debug
+MUSE/Debug
+SACFSInit/Debug
+SACServer/Debug
+SUSE/Debug
+
 # Prerequisites
 *.d
 
