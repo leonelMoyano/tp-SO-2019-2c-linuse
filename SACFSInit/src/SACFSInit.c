@@ -41,14 +41,10 @@ void rutinaCreacionArchivo(char* path, int cantidadBloques){
 	// Creo el archivo
 	FILE *file_pointer = fopen(path, "wb");
 
-	/* Creo que no tengo que hacer esto ?
-	// Inicializo el archivo en 0
-	int cantidadBytesTotales = cantidadBloques * BLOCK_SIZE;
-	for (int i = 0; i < cantidadBytesTotales; i++) {
-		fputc(0, file_pointer);
-	}
-	*/
 	subrutinaEscribirHeader(file_pointer, cantidadBloques);
+	subrutinaEscribirBitmap(file_pointer, cantidadBloques);
+	subrutinaEscribirNodos(file_pointer, cantidadBloques);
+	subrutinaEscribirDatos(file_pointer, cantidadBloques);
 
 	// Close the file
 	fclose(file_pointer);
@@ -79,7 +75,33 @@ void subrutinaEscribirHeader(FILE* file_pointer, int cantidadBloques) {
 
 void subrutinaEscribirBitmap(FILE* file_pointer, int cantidadBloques){
 	int cantidadBloquesBitmap = cantidadBloquesBitmap(cantidadBloques);
-	// TODO implementar
+	int bitmapSize = cantidadBloquesBitmap * BLOCK_SIZE;
+	char* bitmapMem = malloc(bitmapSize);
+
+	// inicializo el bitmap entero en 0
+	memset(bitmapMem, 0, bitmapSize);
+	t_bitarray* bitmap = bitarray_create_with_mode(bitmapMem, bitmapSize, MSB_FIRST);
+
+	// seteo 1s en los bits del header y el bitmap
+	int bloquesReservados = cantidadBloques - cantidadBloquesDatos(cantidadBloques);
+	for(int i = 0; i < bloquesReservados; i++){
+		bitarray_set_bit(bitmap, i);
+	}
+
+	// vuelco el bitmap al archivo
+	fwrite(bitmapMem, bitmapSize, 1, file_pointer);
+
+	bitarray_destroy(bitmap);
+}
+
+void subrutinaEscribirNodos(FILE* file_pointer, int cantidadBloques){
+	// Por cada bloque de nodo
+	fwrite('\0', 1, CANTIDAD_BLOQUES_NODOS * BLOCK_SIZE, file_pointer);
+}
+
+void subrutinaEscribirDatos(FILE* file_pointer, int cantidadBloques){
+	// Por cada bloque de datos
+	fwrite('\0', 1, cantidadBloquesDatos(cantidadBloques) * BLOCK_SIZE, file_pointer);
 }
 
 void rutinaPrintArchivo(char* path){
@@ -96,6 +118,6 @@ int cantidadBloquesBitmap(int cantidadBloquesTotales){
 /*
  * Devuelve cantidad de bloques reservado para datos
  */
-int cantidadBloquesDatos(int cantidadBloquesTotales, int cantidadBloquesBitmap){
-	return cantidadBloquesTotales - CANTIDAD_BLOQUES_NODOS - CANTIDAD_BLOQUES_HEADER - cantidadBloquesBitmap;
+int cantidadBloquesDatos(int cantidadBloquesTotales){
+	return cantidadBloquesTotales - CANTIDAD_BLOQUES_NODOS - CANTIDAD_BLOQUES_HEADER - cantidadBloquesBitmap(cantidadBloquesTotales);
 }
