@@ -17,29 +17,20 @@
 #include <signal.h>
 #include "estructuras.h"
 
-
-typedef struct{
-	char* puertoConexion;
-	char* ipFileSystem;
-	char* puertoFileSystem;
-	char** ipSeeds;
-	char** puertosSeeds;
-	int tamanioMemoria;
-	int retardoMemoria;
-	int retardoFileSystem;
-	int retardoJournal;
-	int retardoGossiping;
-	int numeroMemoria;
-	int logDebug;
-}t_configuraciones;
-
+#define RUTACONFIG "csdasd"
+#define RUTASWAP "ASDAS"
 
 t_log* g_logger;
 t_log* g_loggerDebug;
-t_configuraciones* g_configuracion;
+t_configuracion * g_configuracion;
+t_config* g_config;
 t_list* g_diccionarioConexiones; //de programas
 t_list* g_tabla_segmentos;
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
+t_bitarray * g_bitarray_swap; // DUDA ---probablemente, ver si manejar asi o con una lista
+char * disco_swap;
+t_list * paginasEnSwap;
+int maxPaginasEnSwap;
 void * g_granMalloc;
 
 /*------------------------Funciones-------------------------*/

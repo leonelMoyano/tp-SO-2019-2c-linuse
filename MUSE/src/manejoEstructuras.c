@@ -21,7 +21,7 @@ t_list* crearTablaSegmentos() {
 
 t_segmento* crearSegmento( char* nombreDeTabla ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
-	segmentoNuevo->nombreTabla = strdup( nombreDeTabla );
+	//segmentoNuevo->nombreTabla = strdup( nombreDeTabla );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	return segmentoNuevo;
 }
@@ -68,8 +68,8 @@ t_segmento* buscarSegmento(t_list* segmentos, char* nombre) {
 	bool existeNombreSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
 
-		if (nombre != NULL)
-			return string_equals_ignore_case(segmentoBuscar->nombreTabla, nombre);
+		//if (nombre != NULL)
+			//return string_equals_ignore_case(segmentoBuscar->nombreTabla, nombre);
 		return false;
 
 	}
@@ -113,35 +113,42 @@ int buscarMarcoVacio(){
 }
 
 
-int ClockModificado(t_list* tablaDeSegmentos) {  //REVISAR ALGORITMO
-	// Busca en TODAS las paginas primero las que esten sin midifcar ni uso --TODO refactorizar
+int ClockModificado(t_list* tablaDeSegmentos) {
+	//Manejar un indice global por segmento para saber donde quedo el ciclo
 	// Libera y devuelve el numero de marco liberado
 	int indiceDeMarco = -1;
-	uint64_t tiempoMenosReciente = 0;
 	t_pagina* aux = NULL;
-	t_pagina* paginaMenosRecientementeUsada = NULL;
+	t_pagina* paginaVictima = NULL;
 
 	for (int i = 0; i < list_size(tablaDeSegmentos); i++) {
 		t_segmento* segmento   = list_get( tablaDeSegmentos, i );
 		t_list* tablaDePaginas = segmento->tablaPaginas;
-		for (int j = 0; j < list_size(tablaDePaginas); j++) {
+		for (int j = segmento->punteroReemplazo; j < list_size(tablaDePaginas); j++) {
 			aux = list_get(tablaDePaginas, j);
-			if ( aux->flagPresencia == false && aux->flagModificado == false ) {
-				 aux->flagPresencia = true;
+			if ( aux->flagPresencia == true) {
+				 aux->flagPresencia = false;
+			}
+			else if (aux->flagModificado == true ) {
+				 aux->flagModificado = false;
+			}
+			else{
+				paginaVictima = aux;
+				//actualizo puntero donde quedo el clock en estructura
+				segmento->punteroReemplazo = j;
 			}
 		}
 	}
 	// Libero el marco, destruyo pagina y devuelvo indice
-	if( paginaMenosRecientementeUsada != NULL ){
-		indiceDeMarco = paginaMenosRecientementeUsada->nroMarco;
+	if( paginaVictima != NULL ){
+		indiceDeMarco = paginaVictima->nroMarco;
 		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco );
-		// destruirPagina( paginaMenosRecientementeUsada );
+		destruirPagina( paginaVictima );
 	}
 	return indiceDeMarco;
 }
 
 void destruirSegmento( t_segmento* segmento ){
-	free( segmento->nombreTabla );
+	//free( segmento->nombreTabla );
 	list_destroy_and_destroy_elements( segmento->tablaPaginas, (void*) destruirPagina );
 	free( segmento );
 }
