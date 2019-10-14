@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <commons/bitarray.h>
 #define BLOCK_SIZE 4096 // en bytes
 #define CANTIDAD_BLOQUES_NODOS 1024 // cantidad de entradas posibles para la tabla de nodos (1 bloque = 1 entrada)
@@ -16,6 +17,15 @@
 	                  "    path del archivo\n"
 #define FS_NOMBRE "SAC"
 #define FS_VERSION 1
+
+void rutinaCreacionArchivo(char*, int);
+void subrutinaEscribirHeader(FILE*, int);
+void subrutinaEscribirBitmap(FILE*, int);
+void subrutinaEscribirNodos(FILE*, int);
+void subrutinaEscribirDatos(FILE*, int);
+void rutinaPrintArchivo(char*);
+int cantidadBloquesBitmap(int);
+int cantidadBloquesDatos(int);
 
 int main(int argc, char *argv[]) {
 	/*
@@ -54,7 +64,7 @@ void subrutinaEscribirHeader(FILE* file_pointer, int cantidadBloques) {
 	char* name = FS_NOMBRE;
 	int version = FS_VERSION;
 	int bloqueInicioBitmap = CANTIDAD_BLOQUES_HEADER; // Porque el bitmap es lo que sigue despues del header
-	int cantidadBloquesBitmap = cantidadBloquesBitmap(cantidadBloques);
+	int cantBloquesBitmap = cantidadBloquesBitmap(cantidadBloques);
 	int cantidadBytesRelleno = BLOCK_SIZE - strlen(name) - 1 - sizeof(int) * 3;
 
 	/*
@@ -65,17 +75,18 @@ void subrutinaEscribirHeader(FILE* file_pointer, int cantidadBloques) {
 	 *     tamanio de bitmap ( en bloques ): numero
 	 *     relleno: 0s
 	 */
+	char zero = 0;
 	fwrite(name, strlen(name), 1, file_pointer);
-	fwrite('\0', 1, 1, file_pointer);
+	fwrite(&zero, sizeof(char), 1, file_pointer);
 	fwrite(&version, sizeof(int), 1, file_pointer);
 	fwrite(&bloqueInicioBitmap, sizeof(int), 1, file_pointer);
-	fwrite(&cantidadBloquesBitmap, sizeof(int), 1, file_pointer);
-	fwrite('\0', 1, cantidadBytesRelleno, file_pointer);
+	fwrite(&cantBloquesBitmap, sizeof(int), 1, file_pointer);
+	fwrite(&zero, sizeof(char), cantidadBytesRelleno, file_pointer);
 }
 
 void subrutinaEscribirBitmap(FILE* file_pointer, int cantidadBloques){
-	int cantidadBloquesBitmap = cantidadBloquesBitmap(cantidadBloques);
-	int bitmapSize = cantidadBloquesBitmap * BLOCK_SIZE;
+	int cantBloquesBitmap = cantidadBloquesBitmap(cantidadBloques);
+	int bitmapSize = cantBloquesBitmap * BLOCK_SIZE;
 	char* bitmapMem = malloc(bitmapSize);
 
 	// inicializo el bitmap entero en 0
@@ -96,12 +107,14 @@ void subrutinaEscribirBitmap(FILE* file_pointer, int cantidadBloques){
 
 void subrutinaEscribirNodos(FILE* file_pointer, int cantidadBloques){
 	// Por cada bloque de nodo
-	fwrite('\0', 1, CANTIDAD_BLOQUES_NODOS * BLOCK_SIZE, file_pointer);
+	char zero = 0;
+	fwrite(&zero, sizeof(zero), CANTIDAD_BLOQUES_NODOS * BLOCK_SIZE, file_pointer);
 }
 
 void subrutinaEscribirDatos(FILE* file_pointer, int cantidadBloques){
 	// Por cada bloque de datos
-	fwrite('\0', 1, cantidadBloquesDatos(cantidadBloques) * BLOCK_SIZE, file_pointer);
+	char zero = 0;
+	fwrite(&zero, sizeof(char), cantidadBloquesDatos(cantidadBloques) * BLOCK_SIZE, file_pointer);
 }
 
 void rutinaPrintArchivo(char* path){
