@@ -1,4 +1,5 @@
 #include <hilolay/alumnos.h>
+#include <hilolay/internal.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
@@ -38,15 +39,16 @@ int suse_signal(int tid, char *sem_name){
 	return 0;
 }
 
-static struct hilolay_operations hiloops = {
-		.suse_create = &suse_create,
-		.suse_schedule_next = &suse_schedule_next,
-		.suse_join = &suse_join,
+struct hilolay_operations operaciones = {
 		.suse_close = &suse_close,
-		.suse_wait = &suse_wait,
-		.suse_signal = &suse_signal
-};
+		.suse_create = &suse_create,
+		.suse_join = &suse_join,
+		.suse_schedule_next = &suse_schedule_next,
+		.suse_signal = &suse_signal,
+		.suse_wait = &suse_wait};
 
 void hilolay_init(void){
-	init_internal(&hiloops);
+	printf("\n\nMacri gato\n\n");
+	init_internal(&operaciones);
 }
+

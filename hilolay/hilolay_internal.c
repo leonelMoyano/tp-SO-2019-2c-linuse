@@ -22,11 +22,12 @@ void init_internal(struct hilolay_operations* ops){
 	/* Initializes main as a thread */
 	/* TODO: Abstract*/
     current_ult = &ults[0];
+    printf("\n\nCristina Chorra!\n\n");
     current_ult->context = malloc(sizeof(ucontext_t));
     set_tcb(current_ult, MAIN_THREAD_ID, RUNNING);
 
     /* Call function on clients code */
-    main_ops->suse_create(current_ult->id);
+	main_ops->suse_create(current_ult->id);
 }
 
 void* wrap(void *(*start_routine)(void *), void *arg, int tid){
