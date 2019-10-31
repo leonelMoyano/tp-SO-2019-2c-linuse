@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <hilolay/hilolay.h>
+#include <hilolay/alumnos.h>
 
 void recursiva(int cant) {
     if(cant > 0) recursiva(cant - 1);

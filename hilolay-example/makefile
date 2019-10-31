@@ -7,7 +7,7 @@ CC := gcc
 NAME := hilolayex
 BUILD=bin
 
-all: clean $(NAME).so 
+all: clean example
 
 clean:
 	$(RM) *.o
@@ -15,14 +15,6 @@ clean:
 	$(RM) -r bin/
 	mkdir -p bin
 
-$(NAME).o:
-	$(CC) -c -Wall $(CFLAGS) -fpic src/example_alumnos.c -o $(BUILD)/$(NAME).o -lhilolay
 
-$(NAME).so: $(NAME).o
-	$(CC) -shared -o $(BUILD)/lib$(NAME).so $(BUILD)/$(NAME).o -lhilolay
-	
 example:
-	$(CC) -L./$(BUILD)/ -Wall $(CFLAGS) -o $(BUILD)/example src/example_program.c -l$(NAME) -lhilolay
-	
-test: clean all example
-	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):./$(BUILD) ./$(BUILD)/example
+	$(CC) -L./$(BUILD)/ -Wall $(CFLAGS) -o $(BUILD)/example src/example_program.c -lhilolay

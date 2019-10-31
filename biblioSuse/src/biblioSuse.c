@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include "biblioSuse.h"
 
 /* Lib implementation: It'll only schedule the last thread that was created */
 int max_tid = 0;
@@ -51,4 +52,3 @@ void hilolay_init(void){
 	printf("\n\nMacri gato\n\n");
 	init_internal(&operaciones);
 }
-

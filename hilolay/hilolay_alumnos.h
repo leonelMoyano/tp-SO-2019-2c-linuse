@@ -1,6 +1,8 @@
 #ifndef hilolay_alumnos_h__
 	#define hilolay_alumnos_h__
 
+#include "biblioSuse.h"
+
 	/**
 	 * TODO: Interface for alumnos (what they should implement in orde to make this work)
 	 */
