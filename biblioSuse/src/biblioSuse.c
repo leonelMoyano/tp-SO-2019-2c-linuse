@@ -1,5 +1,3 @@
-#include <hilolay/alumnos.h>
-#include <hilolay/internal.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
@@ -10,6 +8,7 @@ int max_tid = 0;
 
 int suse_create(int tid){
 	if (tid > max_tid) max_tid = tid;
+	printf("Se pidio crear el hilo %d...\n", tid);
 	return 0;
 }
 
@@ -20,12 +19,12 @@ int suse_schedule_next(void){
 }
 
 int suse_join(int tid){
-	// Not supported
+	printf("Joineando el hilo: %d...\n", tid);
 	return 0;
 }
 
 int suse_close(int tid){
-	printf("Closed thread %i\n", tid);
+	printf("Haciendo close del hilo: %i\n", tid);
 	max_tid--;
 	return 0;
 }

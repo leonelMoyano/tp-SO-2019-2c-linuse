@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>SUSE</name>
+	<name>pruebaSuse</name>
 	<comment></comment>
 	<projects>
-		<project>bibliotecaNOCE</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

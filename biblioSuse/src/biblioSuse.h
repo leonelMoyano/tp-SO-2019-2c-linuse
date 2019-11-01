@@ -8,6 +8,10 @@
 #ifndef BIBLIOSUSE_H_
 #define BIBLIOSUSE_H_
 
+#include <hilolay/hilolay.h>
+#include <hilolay/alumnos.h>
+#include <hilolay/internal.h>
+
 
 int suse_create(int tid);
 int suse_schedule_next(void);
