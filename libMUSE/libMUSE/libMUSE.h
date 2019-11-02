@@ -3,6 +3,7 @@
 
     #include <stdint.h>
     #include <stddef.h>
+	#include <biblioteca/conexiones.h>
 
 	int pruebaReferenciaMUSE(void);
     /**

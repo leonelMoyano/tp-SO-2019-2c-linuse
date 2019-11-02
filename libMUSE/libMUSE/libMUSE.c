@@ -7,6 +7,21 @@ int main(void) {
 	return prueba();
 }
 
+int muse_init(int id, char* ip, int puerto){
+
+
+	int socket = conectarCliente(ip,puerto,id);
+	//necesito proceso id, e hilo id?
+
+	return socket;
+
+}
+
+void muse_close(){
+
+	//limpiar estructuras, liberar memoria
+}
+
 uint32_t muse_alloc(uint32_t tam){
 
 	uint32_t aux = malloc(tam);

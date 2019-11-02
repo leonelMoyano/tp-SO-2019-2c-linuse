@@ -22,23 +22,29 @@
 
 t_log* g_logger;
 t_log* g_loggerDebug;
+int g_cantidadRegistrosPosibles;
 t_configuracion * g_configuracion;
 t_config* g_config;
 t_list* g_diccionarioConexiones; //de programas
-t_list* g_tabla_segmentos;
+
+t_list* g_tabla_segmentos;//la dejo por las dudas, pero se utilizaran una lista de segmentos por programa
+
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
+t_list * listaHeaps; //esto no seria mas preciso??
+
 t_bitarray * g_bitarray_swap; // DUDA ---probablemente, ver si manejar asi o con una lista
 char * disco_swap;
 t_list * paginasEnSwap;
 int maxPaginasEnSwap;
+
 void * g_granMalloc;
+
+t_list* programas;
 
 /*------------------------Funciones-------------------------*/
 void			reservarEspacioMemoriaPrincipal	();
 void            destruirGlobales                ();
 void 			armarConfigMemoria				();
-
-
 
 #endif
 
