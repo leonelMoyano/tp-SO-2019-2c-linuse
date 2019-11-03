@@ -3,6 +3,20 @@
 
 #include <commons/collections/list.h>
 #include <stdbool.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <semaphore.h>
+
 
 typedef struct{
 	int programaId;
@@ -22,7 +36,6 @@ typedef struct{
 	int tamanioDireccionado;
 	t_list* tablaPaginas;
 	pthread_t tid; //o id de programa
-	int punteroReemplazo;
 	int tipoSegmento;
 }t_segmento;
 
@@ -38,11 +51,15 @@ typedef struct{
 }t_mmapSegmento;
 
 typedef struct{
+	int indiceBitArray;
+	uint32_t espacioLibre;
+}t_sizeFreeFrame;
+
+typedef struct{
 	char* pathArchivo;
 	t_list* tablaPaginas;
 	pthread_t tid; //o id de programa
 	sem_t semaforo;
-	int punteroReemplazo;
 }t_segmento_compartido;
 
 
@@ -56,8 +73,18 @@ typedef struct{
 typedef struct{
 	int nroMarco;
 	bool flagModificado;
-	long flagPresencia; //para facilitar clock modificado
-	t_registro * registro;
+	long flagPresencia;
 }t_pagina;
+
+typedef enum  {
+	MUSE_ALLOC = 723,
+	MUSE_FREE,
+	MUSE_GET,
+	MUSE_COPY,
+	MUSE_MAP,
+	MUSE_SYNC,
+	MUSE_UNMAP,
+}t_cod_operaciones_MUSE;
+
 
 #endif

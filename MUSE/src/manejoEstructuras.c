@@ -31,17 +31,18 @@ t_pagina* crearPagina( t_registro* registro, int numeroDeMarco ){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
 	pagina->flagPresencia  = true;
 	pagina->flagModificado  = true;
-	pagina->registro        = registro;
 	pagina->nroMarco        = numeroDeMarco;
 	return pagina;
 }
 
-t_registro* crearRegistroYAgregarEnSegmento( uint16_t key, char* valor, t_segmento * segmento ){
+t_registro* crearRegistroYAgregarEnSegmento( int cantidadDeBytes, int programaId ){
 	// Recorro tabla de marcos buscando marco vacio
-	int numeroDeMarco = buscarMarcoVacio();
+	t_programa* programa = buscarPrograma(programas,programaId);
+
+	int numeroDeMarco = buscarMarcoConEspacioLibre();
 	if( numeroDeMarco == -1 ){
 		log_debug( g_loggerDebug, "Todos los marcos ocupados hago Clock modificado" );
-		numeroDeMarco = ClockModificado( g_tabla_segmentos );
+		numeroDeMarco = ClockModificado( programa->segmentos_programa );
 		if( numeroDeMarco == -1 ){
 			log_debug( g_loggerDebug, "Todos las paginas modificadas, seg fault?" );
 		}
@@ -79,6 +80,24 @@ t_segmento* buscarSegmento(t_list* segmentos,int direccionVirtual) {
 	return segmentoBuscado;
 }
 
+t_sizeFreeFrame* buscarFramePorIndice(t_list* frames, int indice) {
+
+	bool existeFrame(void* frame){
+		t_sizeFreeFrame* frameBuscar = (t_sizeFreeFrame*) frame;
+
+		if (indice != NULL) return frameBuscar->indiceBitArray == indice;
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	t_sizeFreeFrame* frameBuscado = list_find(frames,existeFrame);
+	//sem_post(&g_mutex_tablas);
+	return frameBuscado;
+}
+
+
+
 t_programa* buscarPrograma(t_list* programas, int Id) {
 
 	bool existeIdPrograma(void* programa){
@@ -98,7 +117,7 @@ t_programa* buscarPrograma(t_list* programas, int Id) {
 
 t_segmento* buscarDireccionEnPrograma(int direccionVirtual, int programaId) {
 	t_programa * programa = buscarPrograma( programas , programaId);
-	t_segmento * segmento = buscarSegmento(direccionVirtual);
+	t_segmento * segmento = buscarSegmento(programa->segmentos_programa,  direccionVirtual);
 
 	/*if ( segmento == NULL ) {
 		segmento = crearSegmento( nombre );
@@ -116,23 +135,11 @@ int desplazamientoPaginaSegmento(int direccionVirtual, int baseLogica){
 	return (direccionVirtual - baseLogica) - (nroPagina * g_configuracion->tamanioPagina);
 }
 
-//TODO este no servira
-t_pagina* buscarPaginaClave( t_list * tablaPaginas, uint16_t clave) {
-	bool existeKey(void* pagina){
-		t_pagina* paginaBuscar = (t_pagina*) pagina;
-
-		return paginaBuscar->registro->clave == clave;
-	}
-
-	//sem_wait(&g_mutex_tablas);
-	t_pagina* paginaBuscada = list_find(tablaPaginas,existeKey);
-	//sem_post(&g_mutex_tablas);
-	return paginaBuscada;
-}
-
-int buscarMarcoVacio(){
-
-		//if( bitarray_test_bit(g_bitarray_marcos, i) == false ) return i;
+int buscarMarcoConEspacioLibre(int cantidadBytesNecesarios){
+		int i = 0;
+		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
+			return i;
+		}
 
 	return -1;
 }
@@ -147,27 +154,55 @@ int ClockModificado(t_segmento* segmento) {
 	t_pagina* paginaVictima = NULL;
 
 	t_list* tablaDePaginas = segmento->tablaPaginas;
-		for (int j = segmento->punteroReemplazo; j < list_size(tablaDePaginas); j++) {
+	if (punteroClock ==  list_size(tablaDePaginas)) punteroClock = 0;
+
+		for (int j = punteroClock; j < list_size(tablaDePaginas); j++) {
+			punteroClock = j;
 			aux = list_get(tablaDePaginas, j);
-			if ( aux->flagPresencia == true) {
-				 aux->flagPresencia = false;
-			}
-			else if (aux->flagModificado == true ) {
+			if ( aux->flagPresencia == true && aux->flagModificado == true) {
 				 aux->flagModificado = false;
+			}
+			else if (aux->flagPresencia == true && aux->flagModificado == false ) {
+				 aux->flagPresencia = false;
 			}
 			else{
 				paginaVictima = aux;
-				//actualizo puntero donde quedo el clock en estructura
-				segmento->punteroReemplazo = j;
+				//if( aux->flagModificado == false) Escribir en disco
 			}
 		}
 	// Libero el marco, destruyo pagina y devuelvo indice
 	if( paginaVictima != NULL ){
 		indiceDeMarco = paginaVictima->nroMarco;
+		//Enviar victima a disco de swap
 		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco );
 		destruirPagina( paginaVictima );
+		return indiceDeMarco;
 	}
-	return indiceDeMarco;
+	else return ClockModificado(segmento);
+}
+
+int framesNecesariosPorCantidadMemoria(int cantidadBytes){
+
+	return cantidadBytes / g_configuracion->tamanioPagina;
+}
+
+int bytesNecesariosUltimoFrame(int cantidadBytes){
+
+	int framesCompletos = framesNecesariosPorCantidadMemoria(cantidadBytes) - 1;
+	return cantidadBytes - (framesCompletos * g_configuracion->tamanioPagina);
+}
+
+void agregarFrameLibre(int bytesConsumidos, int nroFrame){
+	t_sizeFreeFrame* frameLibre = malloc( sizeof( t_sizeFreeFrame ) );
+	frameLibre->indiceBitArray = nroFrame;
+	frameLibre->espacioLibre =  g_configuracion->tamanioPagina - bytesConsumidos - sizeof(t_sizeFreeFrame);
+}
+
+int verificarEspacioLibreUltimaPagina(int indiceFrame){
+	t_sizeFreeFrame* frame = buscarFramePorIndice(framesLibres,indiceFrame);
+
+	if(frame == NULL) return 0;
+	return frame->espacioLibre;
 }
 
 void destruirSegmento( t_segmento* segmento ){
