@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>SAC-cli</name>
+	<name>hilolay-example</name>
 	<comment></comment>
 	<projects>
-		<project>biblioNOC</project>
+		<project>hilolay</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

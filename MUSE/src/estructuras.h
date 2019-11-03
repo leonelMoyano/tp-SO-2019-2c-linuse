@@ -5,16 +5,37 @@
 #include <stdbool.h>
 
 typedef struct{
+	int programaId;
+	int socket;
+	t_list* segmentos_programa;
+}t_programa;
+
+typedef struct{
+	int programaId;
+	int tamanioDireccionado;
+	t_list* lista_segmentos;
+}t_segmentos_programa;
+
+
+typedef struct{
+	int baseLogica;
+	int tamanioDireccionado;
+	t_list* tablaPaginas;
+	pthread_t tid; //o id de programa
+	int punteroReemplazo;
+	int tipoSegmento;
+}t_segmento;
+
+
+typedef struct{
 	uint32_t t_size;
 	bool isFree;
 }t_heapSegmento;
 
 typedef struct{
-	int puertoConexion;
-	int tamanioMemoria;
-	int tamanioSwap;
-	int tamanioPagina;
-}t_configuracion;
+	uint32_t t_size;
+	bool isFree;
+}t_mmapSegmento;
 
 typedef struct{
 	char* pathArchivo;
@@ -24,11 +45,13 @@ typedef struct{
 	int punteroReemplazo;
 }t_segmento_compartido;
 
+
 typedef struct{
-	t_list* tablaPaginas;
-	pthread_t tid; //o id de programa
-	int punteroReemplazo;
-}t_segmento;
+	int puertoConexion;
+	int tamanioMemoria;
+	int tamanioSwap;
+	int tamanioPagina;
+}t_configuracion;
 
 typedef struct{
 	int nroMarco;

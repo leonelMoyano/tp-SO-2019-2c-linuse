@@ -19,7 +19,7 @@ t_list* crearTablaSegmentos() {
 }
 
 
-t_segmento* crearSegmento( char* nombreDeTabla ){
+t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	//segmentoNuevo->nombreTabla = strdup( nombreDeTabla );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
@@ -63,35 +63,60 @@ void agregarRegistroEnSegmento(t_segmento * segmento, t_registro* registro, int 
 	list_add( segmento->tablaPaginas, paginaNuevo );
 }
 
-t_segmento* buscarSegmento(t_list* segmentos, char* nombre) {
+t_segmento* buscarSegmento(t_list* segmentos,int direccionVirtual) {
 
-	bool existeNombreSegmento(void* segmento){
+	bool existeDireccionSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
 
-		//if (nombre != NULL)
-			//return string_equals_ignore_case(segmentoBuscar->nombreTabla, nombre);
+		if (direccionVirtual != NULL) return segmentoBuscar->baseLogica < direccionVirtual   && direccionVirtual  < (  (segmentoBuscar->baseLogica + segmentoBuscar->tamanioDireccionado) );
 		return false;
 
 	}
 
 	//sem_wait(&g_mutex_tablas);
-	t_segmento* segmentoBuscado = list_find(segmentos,existeNombreSegmento);
+	t_segmento* segmentoBuscado = list_find(segmentos,existeDireccionSegmento);
 	//sem_post(&g_mutex_tablas);
 	return segmentoBuscado;
 }
 
+t_programa* buscarPrograma(t_list* programas, int Id) {
 
-t_segmento* buscarOCrearSegmento(t_list* tablas, char* nombre) {
-	t_segmento * segmento = buscarSegmento( g_tabla_segmentos, nombre);
+	bool existeIdPrograma(void* programa){
+		t_programa* programaBuscar = (t_programa*) programa;
 
-	if ( segmento == NULL ) {
-		segmento = crearSegmento( nombre );
-		agregarTablaSegmento( g_tabla_segmentos, segmento );
+		if (Id != NULL) return programaBuscar->programaId == Id;
+		return false;
+
 	}
-	return segmento;
+
+	//sem_wait(&g_mutex_tablas);
+	t_programa* programaBuscado = list_find(programas,existeIdPrograma);
+	//sem_post(&g_mutex_tablas);
+	return programaBuscado;
 }
 
 
+t_segmento* buscarDireccionEnPrograma(int direccionVirtual, int programaId) {
+	t_programa * programa = buscarPrograma( programas , programaId);
+	t_segmento * segmento = buscarSegmento(direccionVirtual);
+
+	/*if ( segmento == NULL ) {
+		segmento = crearSegmento( nombre );
+		agregarTablaSegmento( g_tabla_segmentos, segmento );
+	}*/
+	return segmento;
+}
+
+int nroPaginaSegmento(int direccionVirtual, int baseLogica){
+	return (direccionVirtual - baseLogica) / g_configuracion->tamanioPagina ;
+}
+
+int desplazamientoPaginaSegmento(int direccionVirtual, int baseLogica){
+	int nroPagina = nroPaginaSegmento(direccionVirtual,baseLogica);
+	return (direccionVirtual - baseLogica) - (nroPagina * g_configuracion->tamanioPagina);
+}
+
+//TODO este no servira
 t_pagina* buscarPaginaClave( t_list * tablaPaginas, uint16_t clave) {
 	bool existeKey(void* pagina){
 		t_pagina* paginaBuscar = (t_pagina*) pagina;
@@ -113,16 +138,15 @@ int buscarMarcoVacio(){
 }
 
 
-int ClockModificado(t_list* tablaDeSegmentos) {
+int ClockModificado(t_segmento* segmento) {
+
 	//Manejar un indice global por segmento para saber donde quedo el ciclo
 	// Libera y devuelve el numero de marco liberado
 	int indiceDeMarco = -1;
 	t_pagina* aux = NULL;
 	t_pagina* paginaVictima = NULL;
 
-	for (int i = 0; i < list_size(tablaDeSegmentos); i++) {
-		t_segmento* segmento   = list_get( tablaDeSegmentos, i );
-		t_list* tablaDePaginas = segmento->tablaPaginas;
+	t_list* tablaDePaginas = segmento->tablaPaginas;
 		for (int j = segmento->punteroReemplazo; j < list_size(tablaDePaginas); j++) {
 			aux = list_get(tablaDePaginas, j);
 			if ( aux->flagPresencia == true) {
@@ -137,7 +161,6 @@ int ClockModificado(t_list* tablaDeSegmentos) {
 				segmento->punteroReemplazo = j;
 			}
 		}
-	}
 	// Libero el marco, destruyo pagina y devuelvo indice
 	if( paginaVictima != NULL ){
 		indiceDeMarco = paginaVictima->nroMarco;

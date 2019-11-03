@@ -13,6 +13,8 @@ int main(void) {
 
 	//armarConfigMemoria(); va a romper por ruta configurada;
 
+	iniciarServer(g_configuracion->puertoConexion, gestionarSolicitudes(),g_logger);
+
 	return prueba();
 
 }
@@ -40,10 +42,10 @@ void reservarEspacioMemoriaPrincipal(){
 	log_debug( g_loggerDebug, "Reservando memoria (bytes) %d", g_configuracion->tamanioMemoria );
 	g_granMalloc = malloc( g_configuracion->tamanioMemoria );
 
-	//g_cantidadRegistrosPosibles = ( int )( g_configuracion->tamanioMemoria / g_tamanioRegistro );//DUDA EL TP TENDRA BLOQUES DE TAMAÑOFIJO??
-	//char * data = malloc( g_cantidadRegistrosPosibles );
-	//memset(data, 0, g_cantidadRegistrosPosibles); // Inicializo todos los marcos en 0 ( libres
-	//g_bitarray_marcos = bitarray_create_with_mode(data, g_cantidadRegistrosPosibles, MSB_FIRST);
+	g_cantidadRegistrosPosibles = ( int )( g_configuracion->tamanioMemoria /  g_configuracion->tamanioPagina );
+	char * data = malloc( g_cantidadRegistrosPosibles );
+	memset(data, 0, g_cantidadRegistrosPosibles); // Inicializo todos los marcos en 0 ( libres
+	g_bitarray_marcos = bitarray_create_with_mode(data, g_cantidadRegistrosPosibles, MSB_FIRST);
 
 	maxPaginasEnSwap =  ( int )( g_configuracion->tamanioSwap / g_configuracion->tamanioPagina );
 	char * data = malloc( maxPaginasEnSwap );
