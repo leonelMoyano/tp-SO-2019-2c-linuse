@@ -43,7 +43,10 @@ int main(int argc, char *argv[]) {
 	if (strcmp(argv[1], "-f") == 0) {
 		rutinaPrintArchivo(argv[2]);
 	}
-	rutinaCreacionArchivo(argv[1], atoi(argv[2]));
+	else{
+		rutinaCreacionArchivo(argv[1], atoi(argv[2]));
+	}
+
 	return 0;
 }
 
@@ -75,13 +78,21 @@ void subrutinaEscribirHeader(FILE* file_pointer, int cantidadBloques) {
 	 *     tamanio de bitmap ( en bloques ): numero
 	 *     relleno: 0s
 	 */
-	char zero = 0;
+	// char zero = 0;
 	fwrite(name, strlen(name), 1, file_pointer);
-	fwrite(&zero, sizeof(char), 1, file_pointer);
+	fputc(0, file_pointer);
+	// fwrite(&zero, sizeof(char), 1, file_pointer);
+
 	fwrite(&version, sizeof(int), 1, file_pointer);
+
 	fwrite(&bloqueInicioBitmap, sizeof(int), 1, file_pointer);
+
 	fwrite(&cantBloquesBitmap, sizeof(int), 1, file_pointer);
-	fwrite(&zero, sizeof(char), cantidadBytesRelleno, file_pointer);
+
+	for( int i = 0; i < cantidadBytesRelleno; i++){
+		fputc( 0, file_pointer );
+	}
+	// fwrite(&zero, sizeof(char), cantidadBytesRelleno, file_pointer);
 }
 
 void subrutinaEscribirBitmap(FILE* file_pointer, int cantidadBloques){
@@ -107,14 +118,29 @@ void subrutinaEscribirBitmap(FILE* file_pointer, int cantidadBloques){
 
 void subrutinaEscribirNodos(FILE* file_pointer, int cantidadBloques){
 	// Por cada bloque de nodo
-	char zero = 0;
-	fwrite(&zero, sizeof(zero), CANTIDAD_BLOQUES_NODOS * BLOCK_SIZE, file_pointer);
+	/* Manera A de hacerlo
+	 char zero = 0;
+	 fwrite(&zero, sizeof(zero), CANTIDAD_BLOQUES_NODOS * BLOCK_SIZE, file_pointer);
+	 */
+	for (int i = 0; i < CANTIDAD_BLOQUES_NODOS; i++) {
+		for (int j = 0; j < BLOCK_SIZE; j++) {
+			fputc(0, file_pointer);
+		}
+	}
 }
 
 void subrutinaEscribirDatos(FILE* file_pointer, int cantidadBloques){
 	// Por cada bloque de datos
+	/*
 	char zero = 0;
 	fwrite(&zero, sizeof(char), cantidadBloquesDatos(cantidadBloques) * BLOCK_SIZE, file_pointer);
+	*/
+	int cantidadBloqDatos = cantidadBloquesDatos(cantidadBloques);
+	for (int i = 0; i < cantidadBloqDatos; i++) {
+		for (int j = 0; j < BLOCK_SIZE; j++) {
+			fputc(0, file_pointer);
+		}
+	}
 }
 
 void rutinaPrintArchivo(char* path){
