@@ -23,19 +23,20 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: SUSE
+all: hilolay-example
+
 
 # Tool invocations
-SUSE: $(OBJS) $(USER_OBJS)
+hilolay-example: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc  -o "SUSE" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/hilolay/bin" -o "hilolay-example" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) SUSE
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) hilolay-example
 	-@echo ' '
 
 .PHONY: all clean dependents
