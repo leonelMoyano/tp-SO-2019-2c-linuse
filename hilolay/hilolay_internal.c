@@ -22,7 +22,7 @@ void init_internal(struct hilolay_operations* ops){
 	/* Initializes main as a thread */
 	/* TODO: Abstract*/
     current_ult = &ults[0];
-    printf("\n\nCristina Chorra!\n\n");
+    printf("\n\nInit_Internal!\n\n");
     current_ult->context = malloc(sizeof(ucontext_t));
     set_tcb(current_ult, MAIN_THREAD_ID, RUNNING);
 
