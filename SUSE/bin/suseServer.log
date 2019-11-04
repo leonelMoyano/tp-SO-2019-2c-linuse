@@ -1,0 +1,162 @@
+[INFO] 05:16:18:245 SUSE-Server/(12680:12680): Iniciando SuseServer
+[INFO] 05:16:18:248 SUSE-Server/(12680:12680): Socket servidor creado 4
+[INFO] 05:16:18:251 SUSE-Server/(12680:12680): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:16:29:635 SUSE-Server/(12680:12680): Se conecto un cliente Hilolay! 5
+[INFO] 05:16:29:637 SUSE-Server/(12680:12680): Se Inicio un Proceso
+[INFO] 05:16:29:637 SUSE-Server/(12680:12680): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:16:29:642 SUSE-Server/(12680:12680): Se conecto un cliente Hilolay! 7
+[INFO] 05:16:29:643 SUSE-Server/(12680:12680): Proximo hilo a ejecutar
+[INFO] 05:16:29:643 SUSE-Server/(12680:12680): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:17:44:485 SUSE-Server/(12727:12727): Iniciando SuseServer
+[INFO] 05:17:44:488 SUSE-Server/(12727:12727): Socket servidor creado 4
+[INFO] 05:17:44:490 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:17:49:881 SUSE-Server/(12727:12727): Se conecto un cliente Hilolay! 5
+[INFO] 05:17:49:883 SUSE-Server/(12727:12727): Se Inicio un Proceso
+[INFO] 05:17:49:883 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:07:428 SUSE-Server/(12727:12727): Se conecto un cliente Hilolay! 7
+[INFO] 05:19:07:431 SUSE-Server/(12727:12727): Se creo un nuevo hilo
+[INFO] 05:19:07:431 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:07:433 SUSE-Server/(12727:12727): Se conecto un cliente Hilolay! 8
+[INFO] 05:19:07:434 SUSE-Server/(12727:12727): Se Inicio un Proceso
+[INFO] 05:19:07:434 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:07:437 SUSE-Server/(12727:12727): Se conecto un cliente Hilolay! 9
+[INFO] 05:19:07:438 SUSE-Server/(12727:12727): Se creo un nuevo hilo
+[INFO] 05:19:07:439 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:07:441 SUSE-Server/(12727:12727): Se conecto un cliente Hilolay! 10
+[INFO] 05:19:07:443 SUSE-Server/(12727:12727): Se creo un nuevo hilo
+[INFO] 05:19:07:443 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:07:445 SUSE-Server/(12727:12727): Se conecto un cliente Hilolay! 11
+[INFO] 05:19:07:447 SUSE-Server/(12727:12727): Se creo un nuevo hilo
+[INFO] 05:19:07:447 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:07:449 SUSE-Server/(12727:12727): Se conecto un cliente Hilolay! 12
+[INFO] 05:19:07:451 SUSE-Server/(12727:12727): Se creo un nuevo hilo
+[INFO] 05:19:07:451 SUSE-Server/(12727:12727): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:23:496 SUSE-Server/(12763:12763): Iniciando SuseServer
+[INFO] 05:19:23:498 SUSE-Server/(12763:12763): Socket servidor creado 4
+[INFO] 05:19:23:500 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:27:856 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 5
+[INFO] 05:19:27:858 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:19:27:858 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:27:861 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 7
+[INFO] 05:19:27:863 SUSE-Server/(12763:12763): Se Inicio un Proceso
+[INFO] 05:19:27:863 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:27:865 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 8
+[INFO] 05:19:27:866 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:19:27:867 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:27:869 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 9
+[INFO] 05:19:27:871 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:19:27:871 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:27:872 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 10
+[INFO] 05:19:27:874 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:19:27:874 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:19:27:876 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 11
+[INFO] 05:19:27:878 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:19:27:878 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:08:645 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 12
+[INFO] 05:22:08:651 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:22:08:651 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:08:653 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 13
+[INFO] 05:22:08:655 SUSE-Server/(12763:12763): Se Inicio un Proceso
+[INFO] 05:22:08:655 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:08:657 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 14
+[INFO] 05:22:08:660 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:22:08:660 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:08:662 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 15
+[INFO] 05:22:08:666 SUSE-Server/(12763:12763): Se creo un nuevo hilo
+[INFO] 05:22:08:667 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:08:669 SUSE-Server/(12763:12763): Se conecto un cliente Hilolay! 16
+[INFO] 05:22:08:671 SUSE-Server/(12763:12763): Esperando se cierra el hilo: 16
+[INFO] 05:22:08:671 SUSE-Server/(12763:12763): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:30:360 SUSE-Server/(12810:12810): Iniciando SuseServer
+[INFO] 05:22:30:362 SUSE-Server/(12810:12810): Socket servidor creado 4
+[INFO] 05:22:30:364 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:35:219 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 5
+[INFO] 05:22:35:221 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:22:35:222 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:35:225 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 7
+[INFO] 05:22:35:227 SUSE-Server/(12810:12810): Se Inicio un Proceso
+[INFO] 05:22:35:227 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:35:236 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 8
+[INFO] 05:22:35:239 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:22:35:243 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:35:244 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 9
+[INFO] 05:22:35:244 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:22:35:247 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:22:35:248 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 10
+[INFO] 05:22:35:252 SUSE-Server/(12810:12810): Esperando se cierra el hilo: 10
+[INFO] 05:22:35:253 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:24:32:929 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 11
+[INFO] 05:24:32:936 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:24:32:937 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:24:32:941 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 12
+[INFO] 05:24:32:942 SUSE-Server/(12810:12810): Se Inicio un Proceso
+[INFO] 05:24:32:943 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:24:32:947 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 13
+[INFO] 05:24:32:949 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:24:32:949 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:24:32:951 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 14
+[INFO] 05:24:32:953 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:24:32:953 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:24:32:956 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 15
+[INFO] 05:24:32:958 SUSE-Server/(12810:12810): Esperando se cierra el hilo: 15
+[INFO] 05:24:32:958 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:24:33:243 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 16
+[INFO] 05:24:33:251 SUSE-Server/(12810:12810): Esperando se cierra el hilo: 16
+[INFO] 05:24:33:251 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:08:430 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 17
+[INFO] 05:26:08:433 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:26:08:433 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:08:436 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 18
+[INFO] 05:26:08:437 SUSE-Server/(12810:12810): Se Inicio un Proceso
+[INFO] 05:26:08:438 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:08:440 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 19
+[INFO] 05:26:08:442 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:26:08:442 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:08:445 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 20
+[INFO] 05:26:08:446 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:26:08:446 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:08:448 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 21
+[INFO] 05:26:08:450 SUSE-Server/(12810:12810): Esperando se cierra el hilo: 21
+[INFO] 05:26:08:450 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:08:729 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 22
+[INFO] 05:26:08:731 SUSE-Server/(12810:12810): Esperando se cierra el hilo: 22
+[INFO] 05:26:08:731 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:56:817 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 23
+[INFO] 05:26:56:820 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:26:56:820 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:56:822 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 24
+[INFO] 05:26:56:825 SUSE-Server/(12810:12810): Se Inicio un Proceso
+[INFO] 05:26:56:825 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:56:826 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 25
+[INFO] 05:26:56:828 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:26:56:828 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:56:830 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 26
+[INFO] 05:26:56:831 SUSE-Server/(12810:12810): Se creo un nuevo hilo
+[INFO] 05:26:56:831 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:56:833 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 27
+[INFO] 05:26:56:836 SUSE-Server/(12810:12810): Esperando se cierra el hilo: 27
+[INFO] 05:26:56:836 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:26:57:115 SUSE-Server/(12810:12810): Se conecto un cliente Hilolay! 28
+[INFO] 05:26:57:123 SUSE-Server/(12810:12810): Esperando se cierra el hilo: 28
+[INFO] 05:26:57:124 SUSE-Server/(12810:12810): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:27:12:851 SUSE-Server/(12898:12898): Iniciando SuseServer
+[INFO] 05:27:12:866 SUSE-Server/(12898:12898): Socket servidor creado 4
+[INFO] 05:27:12:866 SUSE-Server/(12898:12898): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:27:15:495 SUSE-Server/(12898:12898): Se conecto un cliente Hilolay! 5
+[INFO] 05:27:15:497 SUSE-Server/(12898:12898): Se creo un nuevo hilo
+[INFO] 05:27:15:497 SUSE-Server/(12898:12898): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:27:15:505 SUSE-Server/(12898:12898): Se conecto un cliente Hilolay! 7
+[INFO] 05:27:15:507 SUSE-Server/(12898:12898): Se Inicio un Proceso
+[INFO] 05:27:15:507 SUSE-Server/(12898:12898): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:27:15:510 SUSE-Server/(12898:12898): Se conecto un cliente Hilolay! 8
+[INFO] 05:27:15:510 SUSE-Server/(12898:12898): Se creo un nuevo hilo
+[INFO] 05:27:15:510 SUSE-Server/(12898:12898): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:27:15:512 SUSE-Server/(12898:12898): Se conecto un cliente Hilolay! 9
+[INFO] 05:27:15:514 SUSE-Server/(12898:12898): Se creo un nuevo hilo
+[INFO] 05:27:15:514 SUSE-Server/(12898:12898): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:27:15:517 SUSE-Server/(12898:12898): Se conecto un cliente Hilolay! 10
+[INFO] 05:27:15:518 SUSE-Server/(12898:12898): Esperando se cierra el hilo: 10
+[INFO] 05:27:15:519 SUSE-Server/(12898:12898): Sin conexiones. Esperando clientes Hilolay
+[INFO] 05:27:15:799 SUSE-Server/(12898:12898): Se conecto un cliente Hilolay! 11
+[INFO] 05:27:15:801 SUSE-Server/(12898:12898): Esperando se cierra el hilo: 11
+[INFO] 05:27:15:802 SUSE-Server/(12898:12898): Sin conexiones. Esperando clientes Hilolay
