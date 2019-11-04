@@ -16,6 +16,8 @@
 #include <stdarg.h>
 #include <signal.h>
 #include "estructuras.h"
+#include "operaciones.h"
+#include "util.h"
 
 #define RUTACONFIG "csdasd"
 #define RUTASWAP "ASDAS"
@@ -23,7 +25,7 @@
 
 t_log* g_logger;
 t_log* g_loggerDebug;
-int g_cantidadRegistrosPosibles;
+int g_cantidadFrames;
 t_configuracion * g_configuracion;
 t_config* g_config;
 t_list* g_diccionarioConexiones; //de programas
@@ -31,6 +33,7 @@ int punteroClock;
 
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
 t_list* framesLibres;
+t_list* tablasDePaginas;
 
 t_bitarray * g_bitarray_swap;
 char * disco_swap;

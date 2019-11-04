@@ -9,6 +9,7 @@ t_list* crearDiccionarioConexiones() {
 
 t_list* crearTablaPaginas() {
 	t_list* aux = list_create();
+	list_add(tablasDePaginas,aux);
 	return aux;
 }
 
@@ -27,15 +28,15 @@ t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
 }
 
 
-t_pagina* crearPagina( t_registro* registro, int numeroDeMarco ){
+t_pagina* crearPagina(int nroFrame ){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
 	pagina->flagPresencia  = true;
 	pagina->flagModificado  = true;
-	pagina->nroMarco        = numeroDeMarco;
+	pagina->nroFrame        = nroFrame;
 	return pagina;
 }
 
-t_registro* crearRegistroYAgregarEnSegmento( int cantidadDeBytes, int programaId ){
+void crearRegistroYAgregarEnSegmento( int cantidadDeBytes, int programaId ){
 	// Recorro tabla de marcos buscando marco vacio
 	t_programa* programa = buscarPrograma(programas,programaId);
 
@@ -47,9 +48,7 @@ t_registro* crearRegistroYAgregarEnSegmento( int cantidadDeBytes, int programaId
 			log_debug( g_loggerDebug, "Todos las paginas modificadas, seg fault?" );
 		}
 	}
-	t_registro* registro;
-	//agregarRegistroEnSegmento( segmento, registro, numeroDeMarco );
-	return registro;
+	//guardarbytesEnMemoria( segmento, unosBYtes, numeroDeMarco );
 }
 
 
@@ -58,8 +57,8 @@ void agregarTablaSegmento(t_list * lista, t_segmento* tabla) {
 }
 
 
-void agregarRegistroEnSegmento(t_segmento * segmento, t_registro* registro, int numeroDeMarco) {
-	t_pagina * paginaNuevo = crearPagina( registro, numeroDeMarco );
+void agregarRegistroEnSegmento(t_segmento * segmento, int numeroDeMarco) {
+	t_pagina * paginaNuevo = crearPagina( numeroDeMarco );
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
 }
@@ -69,7 +68,7 @@ t_segmento* buscarSegmento(t_list* segmentos,int direccionVirtual) {
 	bool existeDireccionSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
 
-		if (direccionVirtual != NULL) return segmentoBuscar->baseLogica < direccionVirtual   && direccionVirtual  < (  (segmentoBuscar->baseLogica + segmentoBuscar->tamanioDireccionado) );
+		if (direccionVirtual != NULL) return segmentoBuscar->baseLogica < direccionVirtual   && direccionVirtual  < (  (segmentoBuscar->baseLogica + segmentoBuscar->limiteLogico) );
 		return false;
 
 	}
@@ -78,6 +77,23 @@ t_segmento* buscarSegmento(t_list* segmentos,int direccionVirtual) {
 	t_segmento* segmentoBuscado = list_find(segmentos,existeDireccionSegmento);
 	//sem_post(&g_mutex_tablas);
 	return segmentoBuscado;
+}
+
+t_pagina* buscarFrameEnTablasDePaginas(t_list* tablasPaginas, int nroFrame) {
+
+
+	bool existeFrame(void* frame){
+		t_pagina* frameBuscar = (t_pagina*) frame;
+
+		if (nroFrame != NULL) return frameBuscar->nroFrame == nroFrame;
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	t_pagina* frameBuscado = list_find(tablasPaginas,existeFrame);
+	//sem_post(&g_mutex_tablas);
+	return frameBuscado;
 }
 
 t_sizeFreeFrame* buscarFramePorIndice(t_list* frames, int indice) {
@@ -145,20 +161,17 @@ int buscarMarcoConEspacioLibre(int cantidadBytesNecesarios){
 }
 
 
-int ClockModificado(t_segmento* segmento) {
+int ClockModificado() {
 
-	//Manejar un indice global por segmento para saber donde quedo el ciclo
-	// Libera y devuelve el numero de marco liberado
+	// Libera y devuelve el numero de frame liberado
 	int indiceDeMarco = -1;
 	t_pagina* aux = NULL;
 	t_pagina* paginaVictima = NULL;
 
-	t_list* tablaDePaginas = segmento->tablaPaginas;
-	if (punteroClock ==  list_size(tablaDePaginas)) punteroClock = 0;
-
-		for (int j = punteroClock; j < list_size(tablaDePaginas); j++) {
+	if (punteroClock ==  g_cantidadFrames) punteroClock = 0;
+		for (int j = punteroClock; j < g_cantidadFrames; j++) {
 			punteroClock = j;
-			aux = list_get(tablaDePaginas, j);
+			aux = buscarFrameEnTablasDePaginas(tablasDePaginas,j);
 			if ( aux->flagPresencia == true && aux->flagModificado == true) {
 				 aux->flagModificado = false;
 			}
@@ -167,18 +180,18 @@ int ClockModificado(t_segmento* segmento) {
 			}
 			else{
 				paginaVictima = aux;
-				//if( aux->flagModificado == false) Escribir en disco
+				//if( aux->flagModificado == true) Escribir en disco
 			}
 		}
-	// Libero el marco, destruyo pagina y devuelvo indice
+	// Libero el frame, destruyo pagina y devuelvo indice
 	if( paginaVictima != NULL ){
-		indiceDeMarco = paginaVictima->nroMarco;
+		indiceDeMarco = paginaVictima->nroFrame;
 		//Enviar victima a disco de swap
 		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco );
 		destruirPagina( paginaVictima );
 		return indiceDeMarco;
 	}
-	else return ClockModificado(segmento);
+	else return ClockModificado();
 }
 
 int framesNecesariosPorCantidadMemoria(int cantidadBytes){

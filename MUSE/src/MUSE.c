@@ -1,7 +1,3 @@
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <biblioteca/paquetes.h>
 #include "MUSE.h"
 
 int main(void) {
@@ -31,8 +27,10 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 		procesarHandshake(paquete, cliente_fd);
 		break;
     */
-	case MUSE_ALLOC:
-
+	case MUSE_ALLOC: ;
+		uint32_t tamanio  = deserializarUINT32(paquete->buffer);
+		uint32_t direccionLogica = procesarAlloc(tamanio);
+		enviarRespuestaAlloc(cliente_fd,direccionLogica);
 		break;
 
 	case MUSE_FREE: ;
@@ -90,10 +88,10 @@ void reservarEspacioMemoriaPrincipal(){
 	log_debug( g_loggerDebug, "Reservando memoria (bytes) %d", g_configuracion->tamanioMemoria );
 	g_granMalloc = malloc( g_configuracion->tamanioMemoria );
 
-	g_cantidadRegistrosPosibles = ( int )( g_configuracion->tamanioMemoria /  g_configuracion->tamanioPagina );
-	char * data = malloc( g_cantidadRegistrosPosibles );
-	memset(data, 0, g_cantidadRegistrosPosibles); // Inicializo todos los marcos en 0 ( libres
-	g_bitarray_marcos = bitarray_create_with_mode(data, g_cantidadRegistrosPosibles, MSB_FIRST);
+	g_cantidadFrames = ( int )( g_configuracion->tamanioMemoria /  g_configuracion->tamanioPagina );
+	char * data = malloc( g_cantidadFrames );
+	memset(data, 0, g_cantidadFrames); // Inicializo todos los marcos en 0 ( libres
+	g_bitarray_marcos = bitarray_create_with_mode(data, g_cantidadFrames, MSB_FIRST);
 
 	maxPaginasEnSwap =  ( int )( g_configuracion->tamanioSwap / g_configuracion->tamanioPagina );
 	char * dataSwap = malloc( maxPaginasEnSwap );

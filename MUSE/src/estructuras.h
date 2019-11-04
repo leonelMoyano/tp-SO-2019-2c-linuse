@@ -22,20 +22,20 @@ typedef struct{
 	int programaId;
 	int socket;
 	t_list* segmentos_programa;
+	pthread_t tid;
 }t_programa;
 
 typedef struct{
 	int programaId;
-	int tamanioDireccionado;
+	int limiteLogico;
 	t_list* lista_segmentos;
 }t_segmentos_programa;
 
 
 typedef struct{
 	int baseLogica;
-	int tamanioDireccionado;
+	int limiteLogico;
 	t_list* tablaPaginas;
-	pthread_t tid; //o id de programa
 	int tipoSegmento;
 }t_segmento;
 
@@ -71,7 +71,7 @@ typedef struct{
 }t_configuracion;
 
 typedef struct{
-	int nroMarco;
+	int nroFrame;
 	bool flagModificado;
 	long flagPresencia;
 }t_pagina;
