@@ -16,6 +16,9 @@
 #include <stdio.h>
 #include <commons/temporal.h>
 #include "biblioNOC/paquetes.h"
+#include "sac.h"
+
+ptrGBloque* g_first_block;
 
 
 /*
@@ -130,6 +133,12 @@ static struct fuse_opt fuse_options[] = {
 		FUSE_OPT_END,
 };
 
+long fileSize(char *fname) {
+    struct stat stat_buf;
+    int rc = stat(fname, &stat_buf);
+    return rc == 0 ? stat_buf.st_size : -1;
+}
+
 // Dentro de los argumentos que recibe nuestro programa obligatoriamente
 // debe estar el path al directorio donde vamos a montar nuestro FS
 int main(int argc, char *argv[]) {
@@ -145,12 +154,29 @@ int main(int argc, char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	// Si se paso el parametro --welcome-msg
-	// el campo welcome_msg deberia tener el
-	// valor pasado
 	if( runtime_options.disk != NULL ){
 		printf("Mounting disk path: %s\n", runtime_options.disk);
+	} else {
+		perror("falta parametro --disk %s");
+		exit(1);
 	}
+
+	int fd = open( (char*)runtime_options.disk, O_RDWR );
+
+	long filesize = fileSize( (char*)runtime_options.disk );
+	g_first_block = mmap( NULL, filesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0 );
+
+	GHeader* header = (	GHeader*) g_first_block;
+
+	char* name = calloc(4, 1);
+	memcpy(name, header->sac, 3);
+	printf("Nombre: %s\n", name);
+	printf("Version: %ui\n", header->version);
+	printf("Tamanio bitmap %ui\n", header->size_bitmap);
+	printf("Tamanio archivo %ld\n", filesize);
+	printf("Cantidad de bloques %ld\n", filesize / GBLOCKSIZE);
+
+	GFile* node_table = header + header->blk_bitmap + header->size_bitmap;
 
 	// Esta es la funcion principal de FUSE, es la que se encarga
 	// de realizar el montaje, comuniscarse con el kernel, delegar todx
