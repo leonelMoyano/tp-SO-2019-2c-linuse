@@ -16,23 +16,26 @@
 #include <stdarg.h>
 #include <signal.h>
 #include "estructuras.h"
+#include "operaciones.h"
+#include "util.h"
 
 #define RUTACONFIG "csdasd"
 #define RUTASWAP "ASDAS"
+#define LIBMUSE 400
 
 t_log* g_logger;
 t_log* g_loggerDebug;
-int g_cantidadRegistrosPosibles;
+int g_cantidadFrames;
 t_configuracion * g_configuracion;
 t_config* g_config;
 t_list* g_diccionarioConexiones; //de programas
-
-t_list* g_tabla_segmentos;//la dejo por las dudas, pero se utilizaran una lista de segmentos por programa
+int punteroClock;
 
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
-t_list * listaHeaps; //esto no seria mas preciso??
+t_list* framesLibres;
+t_list* tablasDePaginas;
 
-t_bitarray * g_bitarray_swap; // DUDA ---probablemente, ver si manejar asi o con una lista
+t_bitarray * g_bitarray_swap;
 char * disco_swap;
 t_list * paginasEnSwap;
 int maxPaginasEnSwap;
@@ -45,6 +48,7 @@ t_list* programas;
 void			reservarEspacioMemoriaPrincipal	();
 void            destruirGlobales                ();
 void 			armarConfigMemoria				();
+t_paquete* 		procesarPaqueteLibMuse			(t_paquete* paquete, int cliente_fd);
 
 #endif
 

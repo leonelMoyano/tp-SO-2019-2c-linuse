@@ -1,11 +1,8 @@
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <biblioteca/paquetes.h>
 #include "MUSE.h"
 
 int main(void) {
 
+	punteroClock = 0;
 	g_logger = log_create("MUSE.log", "MUSE", true, LOG_LEVEL_TRACE);
 	g_loggerDebug = log_create("MUSE.log", "MUSE", false, LOG_LEVEL_DEBUG);
 
@@ -13,11 +10,61 @@ int main(void) {
 
 	//armarConfigMemoria(); va a romper por ruta configurada;
 
-	iniciarServer(g_configuracion->puertoConexion, gestionarSolicitudes(),g_logger);
+	iniciarServer(g_configuracion->puertoConexion, procesarPaqueteLibMuse(NULL, LIBMUSE),g_logger);
 
 	return prueba();
 
 }
+
+t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
+
+	log_debug( g_loggerDebug, "Proceso codigo op %d", paquete->codigoOperacion );
+
+	switch (paquete->codigoOperacion) {
+
+	/* nunca entra por aca porque el handshake lo recibo cuando entro a "attendConnection"
+	case HANDSHAKE:
+		procesarHandshake(paquete, cliente_fd);
+		break;
+    */
+	case MUSE_ALLOC: ;
+		uint32_t tamanio  = deserializarUINT32(paquete->buffer);
+		uint32_t direccionLogica = procesarAlloc(tamanio);
+		enviarRespuestaAlloc(cliente_fd,direccionLogica);
+		break;
+
+	case MUSE_FREE: ;
+
+		break;
+
+	case MUSE_GET: ;
+
+		break;
+
+	case MUSE_COPY: ;
+
+		break;
+
+	case MUSE_MAP: ;
+
+		break;
+
+	case MUSE_SYNC:
+		break;
+
+	case MUSE_UNMAP:
+
+		break;
+
+	default:
+		log_warning( g_logger, "Codigo no reconocido: %d", paquete->codigoOperacion );
+		break;
+	}
+
+	destruirPaquete(paquete);
+	return NULL;
+}
+
 
 
 void armarConfigMemoria() {
@@ -36,20 +83,21 @@ void armarConfigMemoria() {
 }
 
 
-
 void reservarEspacioMemoriaPrincipal(){
 
 	log_debug( g_loggerDebug, "Reservando memoria (bytes) %d", g_configuracion->tamanioMemoria );
 	g_granMalloc = malloc( g_configuracion->tamanioMemoria );
 
-	g_cantidadRegistrosPosibles = ( int )( g_configuracion->tamanioMemoria /  g_configuracion->tamanioPagina );
-	char * data = malloc( g_cantidadRegistrosPosibles );
-	memset(data, 0, g_cantidadRegistrosPosibles); // Inicializo todos los marcos en 0 ( libres
-	g_bitarray_marcos = bitarray_create_with_mode(data, g_cantidadRegistrosPosibles, MSB_FIRST);
+	g_cantidadFrames = ( int )( g_configuracion->tamanioMemoria /  g_configuracion->tamanioPagina );
+	char * data = malloc( g_cantidadFrames );
+	memset(data, 0, g_cantidadFrames); // Inicializo todos los marcos en 0 ( libres
+	g_bitarray_marcos = bitarray_create_with_mode(data, g_cantidadFrames, MSB_FIRST);
 
 	maxPaginasEnSwap =  ( int )( g_configuracion->tamanioSwap / g_configuracion->tamanioPagina );
-	char * data = malloc( maxPaginasEnSwap );
+	char * dataSwap = malloc( maxPaginasEnSwap );
 	memset(data, 0, maxPaginasEnSwap); // Inicializo todos los marcos en 0 ( libres )
 	g_bitarray_swap = bitarray_create_with_mode(data, maxPaginasEnSwap, MSB_FIRST);
 
 }
+
+

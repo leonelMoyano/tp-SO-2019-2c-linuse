@@ -10,16 +10,16 @@
 t_list* 		     crearDiccionarioConexiones		 ();
 t_list*			     crearTablaPaginas				 ();
 t_list*              crearTablaSegmentos             ();
-t_segmento*          crearSegmento                   (char* nombreDeTabla);
-t_pagina*            crearPagina                     (t_registro* registro, int numeroDeMarco);
-t_registro*          crearRegistroYAgregarEnSegmento (uint16_t key, char* valor, t_segmento * segmento);
+t_segmento*          crearSegmento                   (int direccionBase, int tamanio, int tipoSegmento);
+t_pagina*            crearPagina                     (int numeroDeMarco);
+void		         crearRegistroYAgregarEnSegmento (int cantidadDeBytes, int programaId);
 void 			     agregarTablaSegmento			 (t_list * lista, t_segmento* tabla);
-void 			     agregarRegistroEnSegmento		 (t_segmento * segmento, t_registro * registro, int numeroDeMarco);
-t_segmento*	         buscarSegmento					 (t_list* tablas, char* nombre);
+void 			     agregarRegistroEnSegmento		 (t_segmento * segmento, int numeroDeMarco);
+t_segmento*	         buscarSegmento					 (t_list* segmentos,int direccionVirtual);
+t_programa* 		 buscarPrograma				     (t_list* programas, int Id);
 t_segmento*          buscarOCrearSegmento            (t_list* tablas, char* nombre);
-t_pagina*            buscarPaginaClave               (t_list * tablaPaginas, uint16_t clave);
 int                  buscarMarcoVacio                ();
-int                  ClockModificado                             (t_list* tablaDeSegmentos);
+int                  ClockModificado                 ();
 
 /**** Destuir estructuras ****/
 void       destruirSegmento             (t_segmento* segmento);
