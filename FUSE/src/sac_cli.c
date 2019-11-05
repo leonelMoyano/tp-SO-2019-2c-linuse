@@ -6,12 +6,35 @@
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdlib.h>
+#include <fcntl.h>
 
 // -- SAC-CLI imports
 #include <stdlib.h>
 #include <stdio.h>
 #include <commons/temporal.h>
 #include "biblioNOC/paquetes.h"
+
+
+/*
+ * Esta es una estructura auxiliar utilizada para almacenar parametros
+ * que nosotros le pasemos por linea de comando a la funcion principal
+ * de FUSE
+ */
+struct t_runtime_options {
+	char* disk;
+} runtime_options;
+
+/*
+ * Esta Macro sirve para definir nuestros propios parametros que queremos que
+ * FUSE interprete. Esta va a ser utilizada mas abajo para completar el campos
+ * welcome_msg de la variable runtime_options
+ */
+#define CUSTOM_FUSE_OPT_KEY(t, p, v) { t, offsetof(struct t_runtime_options, p), v }
+
+
 
 // TODO empece a seguir este tuto http://www.maastaar.net/fuse/linux/filesystem/c/2016/05/21/writing-a-simple-filesystem-using-fuse/
 // TODO tambien sacar cosas de aca https://github.com/sisoputnfrba/so-fuse_example/
@@ -38,13 +61,12 @@ static int do_getattr(const char *path, struct stat *st) {
 	if (strcmp(path, "/") == 0) {
 		st->st_mode = S_IFDIR | 0755;
 		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
-	} else {
+	} else if ( (strcmp(path, "/file349") == 0 )  || ( strcmp(path, "/file54") == 0 )){
 		st->st_mode = S_IFREG | 0644;
 		st->st_nlink = 1;
 		st->st_size = 1024;
 	}
-
-	return 0;
+	return -ENOENT;
 }
 
 static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
@@ -84,21 +106,52 @@ static struct fuse_operations operations = {
 		.read = do_read,
 };
 
-int main(int argc, char *argv[]) {
-	return fuse_main(argc, argv, &operations, NULL);
-}
+/** keys for FUSE_OPT_ options */
+enum {
+	KEY_VERSION,
+	KEY_HELP,
+};
 
 /*
-int main(void) {
-	int j = 3333;
-	int i = prueba();
-	while (j >= 3000) {
-		char* tiempo = temporal_get_string_time();
-		printf("\ncuenta rpaspdpdresiva : %d", j);
-		puts(tiempo);
-		free(tiempo);
-		j--;
+ * Esta estructura es utilizada para decirle a la biblioteca de FUSE que
+ * parametro puede recibir y donde tiene que guardar el valor de estos
+ */
+static struct fuse_opt fuse_options[] = {
+		// Este es un parametro definido por nosotros
+		CUSTOM_FUSE_OPT_KEY("--disk %s", disk, 0),
+
+		// Estos son parametros por defecto que ya tiene FUSE
+		FUSE_OPT_KEY("-V", KEY_VERSION),
+		FUSE_OPT_KEY("--version", KEY_VERSION),
+		FUSE_OPT_KEY("-h", KEY_HELP),
+		FUSE_OPT_KEY("--help", KEY_HELP),
+		FUSE_OPT_END,
+};
+
+// Dentro de los argumentos que recibe nuestro programa obligatoriamente
+// debe estar el path al directorio donde vamos a montar nuestro FS
+int main(int argc, char *argv[]) {
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+
+	// Limpio la estructura que va a contener los parametros
+	memset(&runtime_options, 0, sizeof(struct t_runtime_options));
+
+	// Esta funcion de FUSE lee los parametros recibidos y los intepreta
+	if (fuse_opt_parse(&args, &runtime_options, fuse_options, NULL) == -1){
+		/** error parsing options */
+		perror("Invalid arguments!");
+		return EXIT_FAILURE;
 	}
-	return i;
+
+	// Si se paso el parametro --welcome-msg
+	// el campo welcome_msg deberia tener el
+	// valor pasado
+	if( runtime_options.disk != NULL ){
+		printf("Mounting disk path: %s\n", runtime_options.disk);
+	}
+
+	// Esta es la funcion principal de FUSE, es la que se encarga
+	// de realizar el montaje, comuniscarse con el kernel, delegar todx
+	// en varios threads
+	return fuse_main(args.argc, args.argv, &operations, NULL);
 }
-*/
