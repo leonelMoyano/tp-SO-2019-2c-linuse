@@ -58,7 +58,7 @@ int find_by_name( const char *path){
 	GFile* currNode;
 	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
 		currNode = g_node_table + currNodeIndex;
-		if( strcmp( path + 1, currNode->fname ) == 0 ){ // path + 1 para omitir la barra
+		if( strcmp( path + 1, currNode->fname ) == 0 && currNode->state != 0){ // path + 1 para omitir la barra
 			return currNodeIndex;
 		}
 	}
@@ -117,6 +117,13 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 		}
 	}
 
+	/*
+	 * TODO cuando tenga una estructura de directorios y no todx tirado en /
+	 * voy a tener una llamada a una funcion que dado un path devuelve el id de directorio
+	 * cuando tenga ese id voy a hacer el for buscando todx lo que tenga estado != 0
+	 * y con el parent node en ese id
+	 */
+
 	return 0;
 }
 
@@ -131,12 +138,13 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 }
 
 static int do_mknod (const char *path, mode_t mode, dev_t device){
+	// TODO chequear condicion si ya existe el archivo
 	int currNode = 0;
 	while( g_node_table[currNode].state!=0 && currNode < g_node_count ) // Busco la proxima entrada disponible en la tabla de nodos
 		currNode++;
 
 	if (currNode >= g_node_count)
-		return EDQUOT; // No tengo nodos disponibles para crear otro archivo
+		return -EDQUOT; // No tengo nodos disponibles para crear otro archivo
 
 	GFile* nodeToSet = g_node_table + currNode;
 	// TODO pasar esto a log
@@ -145,16 +153,30 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 	nodeToSet->state = 1;
 	nodeToSet->file_size = 0;
 
-	msync( g_first_block, g_disk_size, MS_SYNC );
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
 	return 0;
+}
+
+static int do_unlink (const char *path){
+	int currNodeIndex = find_by_name(path);
+	if (currNodeIndex != -1) {
+		GFile* currNode = g_node_table + currNodeIndex;
+		currNode->state = 0;
+
+		msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+		return 0;
+	}
+
+	return -ENOENT;
 }
 
 static struct fuse_operations operations = {
 		.getattr = do_getattr,
 		.readdir = do_readdir,
 		.read = do_read,
-		.mknod= do_mknod,
+		.mknod = do_mknod,
+		.unlink = do_unlink,
 };
 
 /** keys for FUSE_OPT_ options */
