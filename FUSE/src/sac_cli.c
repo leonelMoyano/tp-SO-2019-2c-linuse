@@ -15,10 +15,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <commons/temporal.h>
+#include <commons/log.h>
 #include "biblioNOC/paquetes.h"
 #include "sac.h"
 
 ptrGBloque* g_first_block;
+long g_disk_size;
+GHeader* g_header;
+GFile* g_node_table;
+u_int32_t g_node_count;
 
 
 /*
@@ -80,35 +85,52 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 	filler(buffer, ".", NULL, 0); // Current Directory
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
-	if (strcmp(path, "/") == 0) { // If the user is trying to show the files/directories of the root directory show the following
-		filler(buffer, "file54", NULL, 0);
-		filler(buffer, "file349", NULL, 0);
+	int currNodeIndex = 0;
+	for(; currNodeIndex > GFILEBYTABLE; currNodeIndex++){
+		GFile* currNode = g_node_table + currNodeIndex;
+		if( currNode->state == 1 ){
+			filler(buffer, currNode->fname, NULL, 0); // TODO falta probar esto
+		}
 	}
 
 	return 0;
 }
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
-	char file54Text[] = "Hello World From File54!";
-	char file349Text[] = "Hello World From File349!";
-	char *selectedText = NULL;
+	char fileText[] = "Hello World From any file( always returning the same for testing purposes )!\n";
 
-	if (strcmp(path, "/file54") == 0)
-		selectedText = file54Text;
-	else if (strcmp(path, "/file349") == 0)
-		selectedText = file349Text;
-	else
-		return -1;
+	printf( "[read]: %s\n", path);
 
-	memcpy(buffer, selectedText + offset, size);
+	memcpy(buffer, fileText + offset, size);
 
-	return strlen(selectedText) - offset;
+	return strlen(fileText) - offset;
+}
+
+static int do_mknod (const char *path, mode_t mode, dev_t device){
+	int currNode = 0;
+	while( g_node_table[currNode].state!=0 && currNode < g_node_count )
+		currNode++;
+
+	if (currNode >= g_node_count)
+		return EDQUOT;
+
+	GFile* nodeToSet = g_node_table + currNode;
+	// TODO pasar esto a log
+	printf( "[mknod][%d]: %s\n", currNode, path);
+	strcpy((char*) nodeToSet->fname, path + 1); // TODO IMPORTATEN + 1 ES PARA SALTEARSE LA BARRA
+	nodeToSet->state = 1;
+	nodeToSet->file_size = 0;
+
+	msync( g_first_block, g_disk_size, MS_SYNC );
+
+	return 0;
 }
 
 static struct fuse_operations operations = {
 		.getattr = do_getattr,
 		.readdir = do_readdir,
 		.read = do_read,
+		.mknod= do_mknod,
 };
 
 /** keys for FUSE_OPT_ options */
@@ -142,6 +164,7 @@ long fileSize(char *fname) {
 // Dentro de los argumentos que recibe nuestro programa obligatoriamente
 // debe estar el path al directorio donde vamos a montar nuestro FS
 int main(int argc, char *argv[]) {
+	// TODO init logger
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
 	// Limpio la estructura que va a contener los parametros
@@ -163,20 +186,23 @@ int main(int argc, char *argv[]) {
 
 	int fd = open( (char*)runtime_options.disk, O_RDWR );
 
-	long filesize = fileSize( (char*)runtime_options.disk );
-	g_first_block = mmap( NULL, filesize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0 );
+	g_disk_size = fileSize( (char*)runtime_options.disk );
+	g_first_block = mmap( NULL, g_disk_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-	GHeader* header = (	GHeader*) g_first_block;
+	g_header = (GHeader*) g_first_block;
 
 	char* name = calloc(4, 1);
-	memcpy(name, header->sac, 3);
+	memcpy(name, g_header->sac, 3);
+	g_node_count = g_disk_size / GBLOCKSIZE;
+	// TODO pasar esto a logs
 	printf("Nombre: %s\n", name);
-	printf("Version: %ui\n", header->version);
-	printf("Tamanio bitmap %ui\n", header->size_bitmap);
-	printf("Tamanio archivo %ld\n", filesize);
-	printf("Cantidad de bloques %ld\n", filesize / GBLOCKSIZE);
+	printf("Version: %u\n", g_header->version);
+	printf("Tamanio bitmap %u\n", g_header->size_bitmap);
+	printf("Tamanio archivo %ld bytes\n", g_disk_size);
+	printf("Cantidad de bloques %d\n", g_node_count);
 
-	GFile* node_table = header + header->blk_bitmap + header->size_bitmap;
+
+	g_node_table = (GFile*) g_header + g_header->blk_bitmap + g_header->size_bitmap;
 
 	// Esta es la funcion principal de FUSE, es la que se encarga
 	// de realizar el montaje, comuniscarse con el kernel, delegar todx
