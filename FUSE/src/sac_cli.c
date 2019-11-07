@@ -138,8 +138,12 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 }
 
 static int do_mknod (const char *path, mode_t mode, dev_t device){
-	// TODO chequear condicion si ya existe el archivo
-	int currNode = 0;
+	int currNode = find_by_name(path);
+	if( currNode != -1 ){
+		return -EEXIST; // path already exists
+	}
+	currNode = 0;
+
 	while( g_node_table[currNode].state!=0 && currNode < g_node_count ) // Busco la proxima entrada disponible en la tabla de nodos
 		currNode++;
 
