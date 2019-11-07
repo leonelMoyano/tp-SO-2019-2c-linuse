@@ -47,6 +47,24 @@ struct t_runtime_options {
 // TODO empece a seguir este tuto http://www.maastaar.net/fuse/linux/filesystem/c/2016/05/21/writing-a-simple-filesystem-using-fuse/
 // TODO tambien sacar cosas de aca https://github.com/sisoputnfrba/so-fuse_example/
 
+
+/**
+* @NAME: find_by_name
+* @DESC: Devuelve el indice en la tabla de nodos para el archivo, -1 en caso de no encontrarlo
+*
+*/
+int find_by_name( const char *path){
+	// Por el momento asumo que todx esta en / asi que aca solo recorro la tabla de nodos y pregunto por el nombre
+	GFile* currNode;
+	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
+		currNode = g_node_table + currNodeIndex;
+		if( strcmp( path + 1, currNode->fname ) == 0 ){ // path + 1 para omitir la barra
+			return currNodeIndex;
+		}
+	}
+	return -1;
+}
+
 static int do_getattr(const char *path, struct stat *st) {
 	printf("[getattr] Called\n");
 	printf("\tAttributes of %s requested\n", path);
@@ -70,19 +88,15 @@ static int do_getattr(const char *path, struct stat *st) {
 		st->st_mode = S_IFDIR | 0755;
 		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
 		return 0;
-	} else { // Por el momento asumo que todx esta en / asi que aca solo recorro la tabla de nodos y pregunto por el nombre
+	}
 
-		// path aca es por ej "/testFoo"
-		int currNodeIndex = 0;
-		for(; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
-			GFile* currNode = g_node_table + currNodeIndex;
-			if( strcmp( path + 1, currNode->fname ) == 0 ){ // path + 1 para omitir la barra
-				st->st_mode = S_IFREG | 0644;
-				st->st_nlink = 1;
-				st->st_size = 1024;
-				return 0;
-			}
-		}
+	// path aca es por ej "/testFoo"
+	int currNodeIndex = find_by_name(path);
+	if (currNodeIndex != -1) {
+		st->st_mode = S_IFREG | 0644;
+		st->st_nlink = 1;
+		st->st_size = 1024;
+		return 0;
 	}
 
 	return -ENOENT;
@@ -98,6 +112,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 	for(; currNodeIndex < GFILEBYTABLE; currNodeIndex++){ // Por el momento asumo que todx existe en /
 		GFile* currNode = g_node_table + currNodeIndex;
 		if( currNode->state == 1 ){
+			// TODO logear algo aca ?
 			filler(buffer, currNode->fname, NULL, 0); // TODO falta probar esto
 		}
 	}
@@ -117,11 +132,11 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 
 static int do_mknod (const char *path, mode_t mode, dev_t device){
 	int currNode = 0;
-	while( g_node_table[currNode].state!=0 && currNode < g_node_count )
+	while( g_node_table[currNode].state!=0 && currNode < g_node_count ) // Busco la proxima entrada disponible en la tabla de nodos
 		currNode++;
 
 	if (currNode >= g_node_count)
-		return EDQUOT;
+		return EDQUOT; // No tengo nodos disponibles para crear otro archivo
 
 	GFile* nodeToSet = g_node_table + currNode;
 	// TODO pasar esto a log
