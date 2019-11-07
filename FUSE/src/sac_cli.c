@@ -86,7 +86,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
 	int currNodeIndex = 0;
-	for(; currNodeIndex > GFILEBYTABLE; currNodeIndex++){
+	for(; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
 		GFile* currNode = g_node_table + currNodeIndex;
 		if( currNode->state == 1 ){
 			filler(buffer, currNode->fname, NULL, 0); // TODO falta probar esto
