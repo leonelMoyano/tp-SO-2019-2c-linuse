@@ -13,8 +13,19 @@ t_list* crearTablaPaginas() {
 	return aux;
 }
 
+t_segmentos_programa* crearSegmentosPrograma() {
+	t_segmentos_programa* aux = malloc(sizeof(t_segmentos_programa));
+	aux->baseLogica = direccionamientoLogicoActual;
+	aux->lista_segmentos = crearTablaSegmentos();
+	return aux;
+}
 
 t_list* crearTablaSegmentos() {
+	t_list* aux = list_create();
+	return aux;
+}
+
+t_list* crearTablaProgramas() {
 	t_list* aux = list_create();
 	return aux;
 }
@@ -25,6 +36,15 @@ t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
 	//segmentoNuevo->nombreTabla = strdup( nombreDeTabla );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	return segmentoNuevo;
+}
+
+t_programa* crearPrograma(int socket){
+	t_programa* programaNuevo = malloc( sizeof( t_programa ) );
+	nroPrograma++;
+	programaNuevo->programaId = nroPrograma;
+	programaNuevo->segmentos_programa = crearSegmentosPrograma();
+	programaNuevo->socket = socket;
+	return programaNuevo;
 }
 
 
@@ -134,6 +154,7 @@ t_programa* buscarPrograma(t_list* programas, int Id) {
 t_segmento* buscarDireccionEnPrograma(int direccionVirtual, int programaId) {
 	t_programa * programa = buscarPrograma( programas , programaId);
 	t_segmento * segmento = buscarSegmento(programa->segmentos_programa,  direccionVirtual);
+    //Convendria agregar nro de segmento??
 
 	/*if ( segmento == NULL ) {
 		segmento = crearSegmento( nombre );
@@ -218,8 +239,20 @@ int verificarEspacioLibreUltimaPagina(int indiceFrame){
 	return frame->espacioLibre;
 }
 
+void destruirPrograma( t_programa* programa ){
+	//free( segmento->nombreTabla ); free resto de campos?
+	destruirSegmentoPrograma( programa->segmentos_programa);
+	free( programa );
+}
+
+void destruirSegmentoPrograma( t_segmentos_programa* segmentos ){
+	//free( segmento->nombreTabla ); free resto de campos?
+	list_destroy_and_destroy_elements( segmentos->lista_segmentos, (void*) destruirSegmento );
+	free( segmentos );
+}
+
 void destruirSegmento( t_segmento* segmento ){
-	//free( segmento->nombreTabla );
+	//free( segmento->nombreTabla ); free resto de campos?
 	list_destroy_and_destroy_elements( segmento->tablaPaginas, (void*) destruirPagina );
 	free( segmento );
 }
@@ -229,3 +262,20 @@ void destruirPagina( t_pagina* pagina ){
 	//destruirRegistro( pagina->registro );
 	free( pagina );
 }
+
+void leerDiscoSwap(int nroPagina){
+
+	//1 byte igual 1 caracter
+
+	int posicionBuscada = nroPagina * g_configuracion->tamanioPagina;
+
+	// Leo hasta que encuentra un salto de linea o fin de string
+		int i;
+		for (i = 0; disco_swap[i] != '\n' && disco_swap[i] != '\0'; ++i){
+
+		}
+}
+
+
+
+

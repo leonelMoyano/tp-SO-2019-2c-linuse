@@ -19,18 +19,18 @@
 
 
 typedef struct{
-	int programaId;
-	int socket;
-	t_list* segmentos_programa;
-	pthread_t tid;
-}t_programa;
-
-typedef struct{
-	int programaId;
+	int baseLogica;
 	int limiteLogico;
 	t_list* lista_segmentos;
 }t_segmentos_programa;
 
+
+typedef struct{
+	int programaId;
+	int socket;
+	t_segmentos_programa* segmentos_programa;
+	pthread_t tid;
+}t_programa;
 
 typedef struct{
 	int baseLogica;
@@ -77,7 +77,8 @@ typedef struct{
 }t_pagina;
 
 typedef enum  {
-	MUSE_ALLOC = 723,
+	MUSE_INIT = 723,
+	MUSE_ALLOC,
 	MUSE_FREE,
 	MUSE_GET,
 	MUSE_COPY,

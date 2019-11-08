@@ -12,6 +12,17 @@ int deserializarUINT32(t_stream* buffer) {
 	return *(uint32_t*) (buffer->data);
 }
 
+void enviarMuseInit(int server_socket) {
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+
+	unPaquete->codigoOperacion = MUSE_INIT;
+
+	serializarNumero(unPaquete, 0);
+
+	enviarPaquetes(server_socket, unPaquete);
+}
+
+
 
 void enviarAlloc(int server_socket, uint32_t * tamanio) {
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
