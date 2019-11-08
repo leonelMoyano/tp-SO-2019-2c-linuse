@@ -2,7 +2,6 @@
 
 uint32_t procesarAlloc(uint32_t tam){
 }
-
 void procesarFree(uint32_t dir){}
 
 int procesarGet(void* dst, uint32_t src, size_t n){}

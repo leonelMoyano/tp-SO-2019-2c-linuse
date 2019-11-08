@@ -23,13 +23,18 @@
 #define RUTASWAP "ASDAS"
 #define LIBMUSE 400
 
+int nroPrograma;
+int punteroClock;
+int direccionamientoLogicoActual;
+void* archivoSwap;
+
 t_log* g_logger;
 t_log* g_loggerDebug;
 int g_cantidadFrames;
 t_configuracion * g_configuracion;
 t_config* g_config;
 t_list* g_diccionarioConexiones; //de programas
-int punteroClock;
+
 
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
 t_list* framesLibres;

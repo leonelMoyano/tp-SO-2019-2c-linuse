@@ -9,7 +9,8 @@
 	int socketConexion;
 
 	typedef enum  {
-		MUSE_ALLOC = 723,
+		MUSE_INIT = 723,
+		MUSE_ALLOC,
 		MUSE_FREE,
 		MUSE_GET,
 		MUSE_COPY,
