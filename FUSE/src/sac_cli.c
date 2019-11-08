@@ -82,20 +82,22 @@ static int do_getattr(const char *path, struct stat *st) {
 	st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
 	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
 	st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
-	st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
 
 	if (strcmp(path, "/") == 0) {
 		st->st_mode = S_IFDIR | 0755;
 		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
+		st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
 		return 0;
 	}
 
 	// path aca es por ej "/testFoo"
 	int currNodeIndex = find_by_name(path);
 	if (currNodeIndex != -1) {
+		GFile* currNode = g_node_table + currNodeIndex;
 		st->st_mode = S_IFREG | 0644;
 		st->st_nlink = 1;
-		st->st_size = 1024;
+		st->st_mtime = currNode->m_date;
+		st->st_size = currNode->file_size;
 		return 0;
 	}
 
@@ -113,7 +115,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 		GFile* currNode = g_node_table + currNodeIndex;
 		if( currNode->state == 1 ){
 			// TODO logear algo aca ?
-			filler(buffer, currNode->fname, NULL, 0); // TODO falta probar esto
+			filler(buffer, currNode->fname, NULL, 0);
 		}
 	}
 
@@ -156,6 +158,9 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 	strcpy((char*) nodeToSet->fname, path + 1); // TODO IMPORTATEN + 1 ES PARA SALTEARSE LA BARRA
 	nodeToSet->state = 1;
 	nodeToSet->file_size = 0;
+	time_t now = time( NULL);
+	printf("sizeof time_t %u", sizeof(now));
+	nodeToSet->c_date = now;
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
@@ -175,12 +180,29 @@ static int do_unlink (const char *path){
 	return -ENOENT;
 }
 
+static int do_utimens( const char *path, const struct timespec tv[2]){
+	// donde tv[ 0 ] es last access time y tv[ 1 ] es last modified time
+	int currNodeIndex = find_by_name(path);
+	if( currNodeIndex == -1 ){
+		return -ENOENT;
+	}
+
+	GFile* currNode = g_node_table + currNodeIndex;
+	currNode->m_date = tv[0].tv_sec;
+	// solo existe last modified time en SAC asi que no tengo fecha de ultimo acceso que devolver
+
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+
+	return 0;
+}
+
 static struct fuse_operations operations = {
 		.getattr = do_getattr,
 		.readdir = do_readdir,
 		.read = do_read,
 		.mknod = do_mknod,
 		.unlink = do_unlink,
+		.utimens = do_utimens,
 };
 
 /** keys for FUSE_OPT_ options */
