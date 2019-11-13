@@ -16,15 +16,16 @@
 #include <stdio.h>
 #include <commons/temporal.h>
 #include <commons/log.h>
+#include <commons/bitarray.h>
 #include "biblioNOC/paquetes.h"
 #include "sac.h"
 
-ptrGBloque* g_first_block;
-long g_disk_size;
-GHeader* g_header;
-GFile* g_node_table;
-u_int32_t g_node_count;
-
+ptrGBloque* g_first_block; // Puntero al inicio del primer bloque dentro del archivo
+long g_disk_size; // Tamanio en bytes del archivo
+GHeader* g_header; // Puntero al header del FS
+GFile* g_node_table; // Puntero al primer nodo del FS
+u_int32_t g_node_count; // Cantidad de bloques en el archivo
+t_bitarray* g_bitmap; // Puntero al bitmap del FS
 
 /*
  * Esta es una estructura auxiliar utilizada para almacenar parametros
@@ -41,11 +42,6 @@ struct t_runtime_options {
  * welcome_msg de la variable runtime_options
  */
 #define CUSTOM_FUSE_OPT_KEY(t, p, v) { t, offsetof(struct t_runtime_options, p), v }
-
-
-
-// TODO empece a seguir este tuto http://www.maastaar.net/fuse/linux/filesystem/c/2016/05/21/writing-a-simple-filesystem-using-fuse/
-// TODO tambien sacar cosas de aca https://github.com/sisoputnfrba/so-fuse_example/
 
 
 /**
@@ -97,7 +93,8 @@ static int do_getattr(const char *path, struct stat *st) {
 		st->st_mode = S_IFREG | 0644;
 		st->st_nlink = 1;
 		st->st_mtime = currNode->m_date;
-		st->st_size = currNode->file_size;
+		// st->st_size = currNode->file_size; siemre va estar en 0 por ahora poruqeno podemos escribir
+		st->st_size = 4096;
 		return 0;
 	}
 
@@ -131,6 +128,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	char fileText[] = "Hello World From any file( always returning the same for testing purposes )!\n";
+	// TODO implementar funncion real
 
 	printf( "[read]: %s\n", path);
 
@@ -178,6 +176,29 @@ static int do_unlink (const char *path){
 	}
 
 	return -ENOENT;
+}
+
+static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
+	/*
+	 * TODO terminar de implementar
+	 *  tenemos que hacer algo parecido a
+	 *  pwrite() writes up to count bytes from the buffer starting at buf to the file descriptor fd at  offset  offset.   The  file
+       offset is not changed.
+	 */
+	int currNodeIndex = find_by_name( path );
+	if(currNodeIndex == -1){
+		return -ENOENT;
+	}
+
+	GFile* currNode = g_node_table + currNodeIndex;
+
+	/*
+	if( size + offset =< currNode->file_size ){
+		// no necesito reservar mas bloques porque esta sobreescribiendo sobre espacio para el archivo ya reservado
+	} else {
+		// (primero sobreescribo lo necesario si tengo que) despues tengo que reservar mas bloques
+	}
+	*/
 }
 
 static int do_utimens( const char *path, const struct timespec tv[2]){
@@ -273,6 +294,16 @@ int main(int argc, char *argv[]) {
 	printf("Tamanio archivo %ld bytes\n", g_disk_size);
 	printf("Cantidad de bloques %d\n", g_node_count);
 
+	g_bitmap = bitarray_create_with_mode(((char *) g_first_block)+ g_header->blk_bitmap * GBLOCKSIZE, g_header->size_bitmap * GBLOCKSIZE, MSB_FIRST);
+	int occupied = 0, free = 0;
+	for( int i  = 0; i < g_header->size_bitmap * GBLOCKSIZE && i < g_node_count; i++){
+		if( bitarray_test_bit(g_bitmap, i)){
+			occupied ++;
+		} else {
+			free ++ ;
+		}
+	}
+	printf( "%d libres con %d ocupados", free, occupied);
 
 	g_node_table = (GFile*) g_header + g_header->blk_bitmap + g_header->size_bitmap;
 

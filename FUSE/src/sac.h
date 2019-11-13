@@ -25,3 +25,6 @@ typedef struct sac_file_t { // un cuarto de bloque (256 bytes)
 	ptrGBloque blk_indirect[BLKINDIRECT];
 } GFile;
 
+typedef struct sac_ptr_ind_simple_t { // un cuarto de bloque (256 bytes)
+	ptrGBloque blk_direct[1024];
+} GPtrIndSimple;
