@@ -4,6 +4,7 @@
 #define GHEADERBLOCKS 1
 #define BLKINDIRECT 1000
 #define GBLOCKSIZE 4096
+#define PTRBYINDIRECT 1024
 
 typedef uint32_t ptrGBloque;
 
@@ -26,5 +27,9 @@ typedef struct sac_file_t { // un cuarto de bloque (256 bytes)
 } GFile;
 
 typedef struct sac_ptr_ind_simple_t { // un cuarto de bloque (256 bytes)
-	ptrGBloque blk_direct[1024];
+	ptrGBloque blk_direct[PTRBYINDIRECT];
 } GPtrIndSimple;
+
+typedef struct sac_data_block {
+	unsigned char bytes[GBLOCKSIZE];
+} GDataBlock;

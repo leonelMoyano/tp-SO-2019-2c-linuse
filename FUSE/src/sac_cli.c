@@ -178,6 +178,97 @@ static int do_unlink (const char *path){
 	return -ENOENT;
 }
 
+
+/**
+* @NAME: seek_offset
+* @DESC: Devuelve la direccion de memoria para un offset dentro de un archivo
+*
+*/
+uint32_t seek_offset( GFile* fileNode, off_t offset ){
+	int indirectBlockIndex = get_indirect_block_index(offset);
+	int dataBlockIndexInsideIndirectBlock = get_datablock_index_inside_indirect_block(offset);
+	int localBlockOffset = offset % GBLOCKSIZE;
+
+	GPtrIndSimple* indirectBlock = (GPtrIndSimple*)g_header + fileNode->blk_indirect[ indirectBlockIndex ];
+	GDataBlock* dataBlock = (GDataBlock*)g_header + indirectBlock->blk_direct[dataBlockIndexInsideIndirectBlock];
+	return dataBlock->bytes + localBlockOffset;
+}
+
+/**
+* @NAME: seek_datablock_init
+* @DESC: Devuelve la direccion de memoria para el comienzo de un bloque de datos
+*
+*/
+uint32_t seek_datablock_init( GFile *fileNode, int datablockIndex ){
+	int indirectBlockIndex = datablockIndex / PTRBYINDIRECT;
+	int datablockIndexInsideIndirBlock = indirectBlockIndex % PTRBYINDIRECT;
+
+	GPtrIndSimple* indirectBlock = fileNode->blk_indirect[ indirectBlockIndex ];
+	GDataBlock* datablock = indirectBlock->blk_direct[ datablockIndexInsideIndirBlock];
+	return datablock->bytes;
+}
+
+int get_datablock_index(off_t offset) {
+	return offset / GBLOCKSIZE;
+}
+
+int get_indirect_block_index(off_t offset) {
+	return get_datablock_index(offset) / PTRBYINDIRECT;
+}
+
+int get_datablock_index_inside_indirect_block(off_t offset) {
+	return get_datablock_index(offset) % PTRBYINDIRECT;
+}
+
+size_t min( size_t a, size_t b ){
+	return a < b ? a : b;
+}
+
+/**
+* @NAME: get_avail_block
+* @DESC: Devuelve el indice dentro de todx el archivo del primer bloque libre, 0 si no hay bloques libres
+*
+*/
+uint32_t get_avail_block(){
+	for( int i  = 0; i < g_node_count; i++){
+		if( !bitarray_test_bit(g_bitmap, i)){
+			return i;
+		}
+	}
+	return 0;
+}
+
+/**
+* @NAME: copy_file_contents
+* @DESC: Copia desde offset en el archivo todx el size. Si to_buffer == 0 copia desde el archivo al buffer ( para read )
+* , si to_buffer != 0 copia desde el buffer al archivo ( para write )
+*
+*/
+void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t offset, int to_buffer){
+	uint32_t filePointer = seek_offset( fileNode, offset ); // filePointer no es un buen nombre pero esto representa el puntero al offset dentro del archivo
+
+	int dataBlockIndex = get_datablock_index(offset);
+
+	size_t pendingSize = size;
+	size_t copySize;
+	size_t spaceLeftOnBlock = GBLOCKSIZE - (offset % GBLOCKSIZE);
+	while (pendingSize) {
+		copySize = min(min( GBLOCKSIZE, spaceLeftOnBlock), pendingSize);
+
+		if(to_buffer == 0)
+			memcpy((void*)filePointer, buffer + size - pendingSize, copySize);
+		else
+			memcpy(buffer + size - pendingSize, (void*)filePointer, copySize);
+
+		spaceLeftOnBlock = GBLOCKSIZE; // porque el proximo bloque lo voy a tener desde el principio
+		pendingSize -= copySize;
+		// muevo el filePointer a principio de proximo bloque ( offset 4096 es el byte 0 del block 1 )
+		// tal vez esto deberia estar dentro de un if(pendingSize) por si estaba apuntando al ultimo bloque ( 1000 * 1024 ) tal vez tenga comportamiento raro
+		filePointer = seek_offset(fileNode, dataBlockIndex * GBLOCKSIZE);
+		dataBlockIndex++;
+	}
+}
+
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	/*
 	 * TODO terminar de implementar
@@ -192,13 +283,69 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 
 	GFile* currNode = g_node_table + currNodeIndex;
 
-	/*
-	if( size + offset =< currNode->file_size ){
-		// no necesito reservar mas bloques porque esta sobreescribiendo sobre espacio para el archivo ya reservado
-	} else {
-		// (primero sobreescribo lo necesario si tengo que) despues tengo que reservar mas bloques
+	int currUsedBlocks = currNode->file_size / GBLOCKSIZE;
+	int neededBlocks = (size + offset) / GBLOCKSIZE;
+	if (size + offset > currNode->file_size || currNode->file_size == 0) {
+		// Lo que quiero escribir mas donde lo quiero escribir se pasa del tamanio actual
+		if( currUsedBlocks > neededBlocks ){
+			// Los bloques que ya tengo reservados no alcanzan
+			int bloquesFaltantes = neededBlocks - currUsedBlocks;
+
+			int nuevoDatablock;
+			int nuevoIndirect;
+			int proxDatablock = currNode->file_size == 0 ? 0 : currUsedBlocks % 1024 + 1;
+			int proxIndirect = currNode->file_size == 0 ? 0 : currUsedBlocks / 1024 + 1;
+
+			GPtrIndSimple * indirectBlock;
+			// tal vez valga la pena reescribir esto para no tener el proximo indice sino el actual y que sea menos confuso
+
+			for (int i = 0; i < bloquesFaltantes; i++) {
+				if( proxDatablock % 1024 == 0 ){
+					// necesito un bloque indirecto
+					nuevoIndirect = get_avail_block();
+					currNode->blk_indirect[proxIndirect] = nuevoIndirect;
+					bitarray_set_bit(g_bitmap, nuevoIndirect);
+					proxIndirect++;
+					proxDatablock = 0;
+				}
+				nuevoDatablock = get_avail_block();
+				indirectBlock = (GPtrIndSimple*) g_first_block + currNode->blk_indirect[proxIndirect - 1];
+				indirectBlock->blk_direct[ proxDatablock ] = nuevoDatablock;
+				bitarray_set_bit(g_bitmap, nuevoDatablock);
+				nuevoDatablock++;
+			}
+			// TODO semaforo para bitmap
+			/*
+			 * TODO preguntar si tengo bloques disponibles
+			 * sino return -EFBIG; o -EDQUOT no estoy seguro revisar man 2 write
+			 */
+			// TODO validar que si quiere reservar mas bloques que no se pase de 1000 * 1024 bloques ( lo maximo por archivo )
+		}
+		currNode->file_size = size + offset;
 	}
-	*/
+
+	uint32_t filePointer = seek_offset( currNode, offset ); // filePointer no es un buen nombre pero esto representa el puntero al offset dentro del archivo
+
+	int dataBlockIndex = get_datablock_index(offset);
+
+	size_t pendingSize = size;
+	size_t copySize;
+	size_t spaceLeftOnBlock = GBLOCKSIZE - (offset % GBLOCKSIZE);
+	while (pendingSize) {
+		copySize = min(min( GBLOCKSIZE, spaceLeftOnBlock), pendingSize);
+
+		memcpy((void*)filePointer, buffer + size - pendingSize, copySize);
+
+		spaceLeftOnBlock = GBLOCKSIZE; // porque el proximo bloque lo voy a tener desde el principio
+		pendingSize -= copySize;
+		// muevo el filePointer a principio de proximo bloque ( offset 4096 es el byte 0 del block 1 )
+		// tal vez esto deberia estar dentro de un if(pendingSize) por si estaba apuntando al ultimo bloque ( 1000 * 1024 ) tal vez tenga comportamiento raro
+		filePointer = seek_offset(currNode, dataBlockIndex * GBLOCKSIZE);
+		dataBlockIndex++;
+	}
+
+	return size;
+
 }
 
 static int do_utimens( const char *path, const struct timespec tv[2]){
@@ -210,7 +357,7 @@ static int do_utimens( const char *path, const struct timespec tv[2]){
 
 	GFile* currNode = g_node_table + currNodeIndex;
 	currNode->m_date = tv[0].tv_sec;
-	// solo existe last modified time en SAC asi que no tengo fecha de ultimo acceso que devolver
+	// solo existe last modified time en SAC asi que no tengo fecha de ultimo acceso que actualizar
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
@@ -296,7 +443,7 @@ int main(int argc, char *argv[]) {
 
 	g_bitmap = bitarray_create_with_mode(((char *) g_first_block)+ g_header->blk_bitmap * GBLOCKSIZE, g_header->size_bitmap * GBLOCKSIZE, MSB_FIRST);
 	int occupied = 0, free = 0;
-	for( int i  = 0; i < g_header->size_bitmap * GBLOCKSIZE && i < g_node_count; i++){
+	for( int i  = 0; i < g_node_count; i++){
 		if( bitarray_test_bit(g_bitmap, i)){
 			occupied ++;
 		} else {
