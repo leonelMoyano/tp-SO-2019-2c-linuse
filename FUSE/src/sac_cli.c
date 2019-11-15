@@ -19,6 +19,7 @@
 #include <commons/bitarray.h>
 #include "biblioNOC/paquetes.h"
 #include "sac.h"
+#include "fuse_utils.h"
 
 ptrGBloque* g_first_block; // Puntero al inicio del primer bloque dentro del archivo
 long g_disk_size; // Tamanio en bytes del archivo
@@ -49,7 +50,7 @@ struct t_runtime_options {
 * @DESC: Devuelve el indice en la tabla de nodos para el archivo, -1 en caso de no encontrarlo
 *
 */
-int find_by_name( const char *path){
+int find_by_name(const char *path){
 	// Por el momento asumo que todx esta en / asi que aca solo recorro la tabla de nodos y pregunto por el nombre
 	GFile* currNode;
 	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
@@ -127,14 +128,17 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 }
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
-	char fileText[] = "Hello World From any file( always returning the same for testing purposes )!\n";
-	// TODO implementar funncion real
-
 	printf( "[read]: %s\n", path);
+	int currNodeIndex = find_by_name( path );
+	if(currNodeIndex == -1){
+		return -ENOENT;
+	}
 
-	memcpy(buffer, fileText + offset, size);
+	GFile* currNode = g_node_table + currNodeIndex;
 
-	return strlen(fileText) - offset;
+	copy_file_contents(currNode, buffer, size, offset, 1);
+
+	return size;
 }
 
 static int do_mknod (const char *path, mode_t mode, dev_t device){
@@ -191,22 +195,9 @@ uint32_t seek_offset( GFile* fileNode, off_t offset ){
 
 	GPtrIndSimple* indirectBlock = (GPtrIndSimple*)g_header + fileNode->blk_indirect[ indirectBlockIndex ];
 	GDataBlock* dataBlock = (GDataBlock*)g_header + indirectBlock->blk_direct[dataBlockIndexInsideIndirectBlock];
-	return dataBlock->bytes + localBlockOffset;
+	return (uint32_t)(dataBlock->bytes + localBlockOffset);
 }
 
-/**
-* @NAME: seek_datablock_init
-* @DESC: Devuelve la direccion de memoria para el comienzo de un bloque de datos
-*
-*/
-uint32_t seek_datablock_init( GFile *fileNode, int datablockIndex ){
-	int indirectBlockIndex = datablockIndex / PTRBYINDIRECT;
-	int datablockIndexInsideIndirBlock = indirectBlockIndex % PTRBYINDIRECT;
-
-	GPtrIndSimple* indirectBlock = fileNode->blk_indirect[ indirectBlockIndex ];
-	GDataBlock* datablock = indirectBlock->blk_direct[ datablockIndexInsideIndirBlock];
-	return datablock->bytes;
-}
 
 int get_datablock_index(off_t offset) {
 	return offset / GBLOCKSIZE;
@@ -240,11 +231,11 @@ uint32_t get_avail_block(){
 
 /**
 * @NAME: copy_file_contents
-* @DESC: Copia desde offset en el archivo todx el size. Si to_buffer == 0 copia desde el archivo al buffer ( para read )
-* , si to_buffer != 0 copia desde el buffer al archivo ( para write )
+* @DESC: Copia desde offset en el archivo todx el size. Si read_mode == 1 copia desde el archivo al buffer ( para read )
+* , si read_mode != 1 copia desde el buffer al archivo ( para write )
 *
 */
-void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t offset, int to_buffer){
+void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t offset, int read_mode){
 	uint32_t filePointer = seek_offset( fileNode, offset ); // filePointer no es un buen nombre pero esto representa el puntero al offset dentro del archivo
 
 	int dataBlockIndex = get_datablock_index(offset);
@@ -252,13 +243,14 @@ void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t 
 	size_t pendingSize = size;
 	size_t copySize;
 	size_t spaceLeftOnBlock = GBLOCKSIZE - (offset % GBLOCKSIZE);
+
 	while (pendingSize) {
 		copySize = min(min( GBLOCKSIZE, spaceLeftOnBlock), pendingSize);
 
-		if(to_buffer == 0)
-			memcpy((void*)filePointer, buffer + size - pendingSize, copySize);
+		if(read_mode == 1)
+			memcpy((char *)(buffer + size - pendingSize), (void*)filePointer, copySize);
 		else
-			memcpy(buffer + size - pendingSize, (void*)filePointer, copySize);
+			memcpy((void*)filePointer, buffer + size - pendingSize, copySize);
 
 		spaceLeftOnBlock = GBLOCKSIZE; // porque el proximo bloque lo voy a tener desde el principio
 		pendingSize -= copySize;
@@ -270,12 +262,7 @@ void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t 
 }
 
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
-	/*
-	 * TODO terminar de implementar
-	 *  tenemos que hacer algo parecido a
-	 *  pwrite() writes up to count bytes from the buffer starting at buf to the file descriptor fd at  offset  offset.   The  file
-       offset is not changed.
-	 */
+	printf( "[write]: %s\n", path);
 	int currNodeIndex = find_by_name( path );
 	if(currNodeIndex == -1){
 		return -ENOENT;
@@ -324,25 +311,7 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 		currNode->file_size = size + offset;
 	}
 
-	uint32_t filePointer = seek_offset( currNode, offset ); // filePointer no es un buen nombre pero esto representa el puntero al offset dentro del archivo
-
-	int dataBlockIndex = get_datablock_index(offset);
-
-	size_t pendingSize = size;
-	size_t copySize;
-	size_t spaceLeftOnBlock = GBLOCKSIZE - (offset % GBLOCKSIZE);
-	while (pendingSize) {
-		copySize = min(min( GBLOCKSIZE, spaceLeftOnBlock), pendingSize);
-
-		memcpy((void*)filePointer, buffer + size - pendingSize, copySize);
-
-		spaceLeftOnBlock = GBLOCKSIZE; // porque el proximo bloque lo voy a tener desde el principio
-		pendingSize -= copySize;
-		// muevo el filePointer a principio de proximo bloque ( offset 4096 es el byte 0 del block 1 )
-		// tal vez esto deberia estar dentro de un if(pendingSize) por si estaba apuntando al ultimo bloque ( 1000 * 1024 ) tal vez tenga comportamiento raro
-		filePointer = seek_offset(currNode, dataBlockIndex * GBLOCKSIZE);
-		dataBlockIndex++;
-	}
+	copy_file_contents(currNode, buffer, size, offset, 0);
 
 	return size;
 
@@ -371,6 +340,7 @@ static struct fuse_operations operations = {
 		.mknod = do_mknod,
 		.unlink = do_unlink,
 		.utimens = do_utimens,
+		.write = do_write,
 };
 
 /** keys for FUSE_OPT_ options */
