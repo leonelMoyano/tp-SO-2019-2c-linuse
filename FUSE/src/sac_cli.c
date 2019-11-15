@@ -12,8 +12,6 @@
 #include <fcntl.h>
 
 // -- SAC-CLI imports
-#include <stdlib.h>
-#include <stdio.h>
 #include <commons/temporal.h>
 #include <commons/log.h>
 #include <commons/bitarray.h>
@@ -25,7 +23,7 @@ ptrGBloque* g_first_block; // Puntero al inicio del primer bloque dentro del arc
 long g_disk_size; // Tamanio en bytes del archivo
 GHeader* g_header; // Puntero al header del FS
 GFile* g_node_table; // Puntero al primer nodo del FS
-u_int32_t g_node_count; // Cantidad de bloques en el archivo
+u_int32_t g_block_count; // Cantidad de bloques en el archivo
 t_bitarray* g_bitmap; // Puntero al bitmap del FS
 
 /*
@@ -135,6 +133,7 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 
 	GFile* currNode = g_node_table + currNodeIndex;
 
+	// TODO aca el size puede venir con 4096 por ej aun cuando getattr da filesize en 0
 	copy_file_contents(currNode, buffer, size, offset, 1);
 
 	return size;
@@ -147,10 +146,10 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 	}
 	currNode = 0;
 
-	while( g_node_table[currNode].state!=0 && currNode < g_node_count ) // Busco la proxima entrada disponible en la tabla de nodos
+	while( g_node_table[currNode].state!=0 && currNode < GFILEBYTABLE ) // Busco la proxima entrada disponible en la tabla de nodos
 		currNode++;
 
-	if (currNode >= g_node_count)
+	if (currNode >= g_block_count)
 		return -EDQUOT; // No tengo nodos disponibles para crear otro archivo
 
 	GFile* nodeToSet = g_node_table + currNode;
@@ -220,7 +219,7 @@ size_t min( size_t a, size_t b ){
 *
 */
 uint32_t get_avail_block(){
-	for( int i  = 0; i < g_node_count; i++){
+	for( int i  = 0; i < g_block_count; i++){
 		if( !bitarray_test_bit(g_bitmap, i)){
 			return i;
 		}
@@ -402,17 +401,17 @@ int main(int argc, char *argv[]) {
 
 	char* name = calloc(4, 1);
 	memcpy(name, g_header->sac, 3);
-	g_node_count = g_disk_size / GBLOCKSIZE;
+	g_block_count = g_disk_size / GBLOCKSIZE;
 	// TODO pasar esto a logs
 	printf("Nombre: %s\n", name);
 	printf("Version: %u\n", g_header->version);
 	printf("Tamanio bitmap %u\n", g_header->size_bitmap);
 	printf("Tamanio archivo %ld bytes\n", g_disk_size);
-	printf("Cantidad de bloques %d\n", g_node_count);
+	printf("Cantidad de bloques %d\n", g_block_count);
 
 	g_bitmap = bitarray_create_with_mode(((char *) g_first_block)+ g_header->blk_bitmap * GBLOCKSIZE, g_header->size_bitmap * GBLOCKSIZE, MSB_FIRST);
 	int occupied = 0, free = 0;
-	for( int i  = 0; i < g_node_count; i++){
+	for( int i  = 0; i < g_block_count; i++){
 		if( bitarray_test_bit(g_bitmap, i)){
 			occupied ++;
 		} else {
