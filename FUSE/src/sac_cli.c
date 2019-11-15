@@ -94,8 +94,7 @@ static int do_getattr(const char *path, struct stat *st) {
 		st->st_mode = S_IFREG | 0644;
 		st->st_nlink = 1;
 		st->st_mtime = currNode->m_date;
-		// st->st_size = currNode->file_size; siemre va estar en 0 por ahora poruqeno podemos escribir
-		st->st_size = 4096;
+		st->st_size = currNode->file_size;
 		return 0;
 	}
 
