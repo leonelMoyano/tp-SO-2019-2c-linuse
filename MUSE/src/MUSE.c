@@ -23,7 +23,7 @@ int main(void) {
 
 t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 
-	//Deberia pasarle el socket aca
+	int socket = cliente_fd;
 
 	log_debug( g_loggerDebug, "Proceso codigo op %d", paquete->codigoOperacion );
 
@@ -35,14 +35,12 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 		break;
     */
 	case MUSE_INIT: ;
-		//Deberia pasarle el socket aca
-		int socket = cliente_fd;
 	    InicializarNuevoPrograma(socket);
 		break;
 
 	case MUSE_ALLOC: ;
 		uint32_t tamanio  = deserializarUINT32(paquete->buffer);
-		uint32_t direccionLogica = procesarAlloc(tamanio);
+		uint32_t direccionLogica = procesarAlloc(tamanio, socket);
 		enviarRespuestaAlloc(cliente_fd,direccionLogica);
 		break;
 

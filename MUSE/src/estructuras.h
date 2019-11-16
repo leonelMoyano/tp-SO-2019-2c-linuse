@@ -53,6 +53,7 @@ typedef struct{
 typedef struct{
 	int indiceBitArray;
 	uint32_t espacioLibre;
+	t_list* heapsSegmento;
 }t_sizeFreeFrame;
 
 typedef struct{

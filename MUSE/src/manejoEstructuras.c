@@ -134,12 +134,12 @@ t_sizeFreeFrame* buscarFramePorIndice(t_list* frames, int indice) {
 
 
 
-t_programa* buscarPrograma(t_list* programas, int Id) {
+t_programa* buscarPrograma(t_list* programas, int socket) {
 
 	bool existeIdPrograma(void* programa){
 		t_programa* programaBuscar = (t_programa*) programa;
 
-		if (Id != NULL) return programaBuscar->programaId == Id;
+		if (socket != NULL) return programaBuscar->socket == socket;
 		return false;
 
 	}
@@ -151,9 +151,8 @@ t_programa* buscarPrograma(t_list* programas, int Id) {
 }
 
 
-t_segmento* buscarDireccionEnPrograma(int direccionVirtual, int programaId) {
-	t_programa * programa = buscarPrograma( programas , programaId);
-	t_segmento * segmento = buscarSegmento(programa->segmentos_programa,  direccionVirtual);
+t_segmento* buscarDireccionEnPrograma(int direccionVirtual, t_segmentos_programa* segmentoPrograma) {
+	t_segmento * segmento = buscarSegmento(segmentoPrograma,  direccionVirtual);
     //Convendria agregar nro de segmento??
 
 	/*if ( segmento == NULL ) {
@@ -163,6 +162,11 @@ t_segmento* buscarDireccionEnPrograma(int direccionVirtual, int programaId) {
 	return segmento;
 }
 
+bool esSegmentoExtendible(t_segmentos_programa* segmentos, t_segmento* segmento){
+
+	return segmentos->limiteLogico > segmento->limiteLogico;
+}
+
 int nroPaginaSegmento(int direccionVirtual, int baseLogica){
 	return (direccionVirtual - baseLogica) / g_configuracion->tamanioPagina ;
 }
@@ -170,6 +174,15 @@ int nroPaginaSegmento(int direccionVirtual, int baseLogica){
 int desplazamientoPaginaSegmento(int direccionVirtual, int baseLogica){
 	int nroPagina = nroPaginaSegmento(direccionVirtual,baseLogica);
 	return (direccionVirtual - baseLogica) - (nroPagina * g_configuracion->tamanioPagina);
+}
+
+int buscarFrameLibre(){
+		int i = 0;
+		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
+			return i;
+		}
+
+	return -1;
 }
 
 int buscarMarcoConEspacioLibre(int cantidadBytesNecesarios){
