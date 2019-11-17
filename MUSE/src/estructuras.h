@@ -37,6 +37,7 @@ typedef struct{
 	int limiteLogico;
 	t_list* tablaPaginas;
 	int tipoSegmento;
+	t_list* heapsMetadata;
 }t_segmento;
 
 
@@ -73,8 +74,9 @@ typedef struct{
 
 typedef struct{
 	int nroFrame;
+	bool flagUso;
 	bool flagModificado;
-	long flagPresencia;
+	bool flagPresencia;
 }t_pagina;
 
 typedef enum  {

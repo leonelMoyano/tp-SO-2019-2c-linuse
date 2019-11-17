@@ -2,16 +2,28 @@
 
 uint32_t procesarAlloc(uint32_t tam, int socket){
 	t_programa * programa= buscarPrograma(programas,socket);
+	t_segmento * segmentoElegido;
 
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
-		t_segmento* nuevoSegmento = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1 );
+		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1 );
 	}
 	else
 	{
 		int cantSegmentos = list_size(programa->segmentos_programa->lista_segmentos);
-		t_segmento * ultimoSegmento =  list_get(programa->segmentos_programa->lista_segmentos, cantSegmentos -1);
+		segmentoElegido =  list_get(programa->segmentos_programa->lista_segmentos, cantSegmentos -1);
 	}
+
+	t_heapSegmento* metadata = malloc(sizeof(t_heapSegmento));
+	uint32_t direccion = malloc(tam);
+	metadata->isFree = false;
+	metadata->t_size = tam;
+
+	t_list* listaHeaps = segmentoElegido->heapsMetadata;
+
+	list_add(listaHeaps,metadata);
+
+	return direccion;
 
 }
 void procesarFree(uint32_t dir, int socket){
@@ -22,6 +34,10 @@ void procesarFree(uint32_t dir, int socket){
 
 	int nroPagina = nroPaginaSegmento(dir, segmento->baseLogica);
 	int offsetPagina = desplazamientoPaginaSegmento(dir, segmento->baseLogica);
+
+	//Buscar heap metadata a liberar
+
+	free(dir);
 
 }
 
@@ -43,12 +59,7 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 
 	if(dst + n > segmento->limiteLogico && !esExtendible){ return -1;}
 
-	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(n);
 
-	for(int i=0 ; cantPaginasAObtener > i;i++){
-		int indice = buscarFrameLibre();
-		//copiar parte de lo que tenga que copiar
-	}
 
 
 }

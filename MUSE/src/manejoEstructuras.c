@@ -9,7 +9,12 @@ t_list* crearDiccionarioConexiones() {
 
 t_list* crearTablaPaginas() {
 	t_list* aux = list_create();
-	list_add(tablasDePaginas,aux);
+	list_add(tablasDePaginas,aux);  //TODO: ver si reemplazar por TLB
+	return aux;
+}
+
+t_list* crearListaHeapsMetadata() {
+	t_list* aux = list_create();
 	return aux;
 }
 
@@ -33,8 +38,8 @@ t_list* crearTablaProgramas() {
 
 t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
-	//segmentoNuevo->nombreTabla = strdup( nombreDeTabla );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
+	segmentoNuevo->heapsMetadata = crearListaHeapsMetadata();
 	return segmentoNuevo;
 }
 
@@ -56,9 +61,15 @@ t_pagina* crearPagina(int nroFrame ){
 	return pagina;
 }
 
-void crearRegistroYAgregarEnSegmento( int cantidadDeBytes, int programaId ){
+void registrarYAgregarEnSegmento( int cantidadDeBytes, t_programa* programa, t_segmento* segmentoElegido ){
 	// Recorro tabla de marcos buscando marco vacio
-	t_programa* programa = buscarPrograma(programas,programaId);
+
+	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(cantidadDeBytes);
+
+		for(int i=0 ; cantPaginasAObtener > i;i++){
+			int indice = buscarFrameLibre();
+			agregarPaginaEnSegmento(segmentoElegido,indice);
+		}
 
 	int numeroDeMarco = buscarMarcoConEspacioLibre();
 	if( numeroDeMarco == -1 ){
@@ -77,7 +88,7 @@ void agregarTablaSegmento(t_list * lista, t_segmento* tabla) {
 }
 
 
-void agregarRegistroEnSegmento(t_segmento * segmento, int numeroDeMarco) {
+void agregarPaginaEnSegmento(t_segmento * segmento, int numeroDeMarco) {
 	t_pagina * paginaNuevo = crearPagina( numeroDeMarco );
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
@@ -239,12 +250,6 @@ int bytesNecesariosUltimoFrame(int cantidadBytes){
 	return cantidadBytes - (framesCompletos * g_configuracion->tamanioPagina);
 }
 
-void agregarFrameLibre(int bytesConsumidos, int nroFrame){
-	t_sizeFreeFrame* frameLibre = malloc( sizeof( t_sizeFreeFrame ) );
-	frameLibre->indiceBitArray = nroFrame;
-	frameLibre->espacioLibre =  g_configuracion->tamanioPagina - bytesConsumidos - sizeof(t_sizeFreeFrame);
-}
-
 int verificarEspacioLibreUltimaPagina(int indiceFrame){
 	t_sizeFreeFrame* frame = buscarFramePorIndice(framesLibres,indiceFrame);
 
@@ -254,11 +259,11 @@ int verificarEspacioLibreUltimaPagina(int indiceFrame){
 
 void destruirPrograma( t_programa* programa ){
 	//free( segmento->nombreTabla ); free resto de campos?
-	destruirSegmentoPrograma( programa->segmentos_programa);
+	destruirSegmentosPrograma( programa->segmentos_programa);
 	free( programa );
 }
 
-void destruirSegmentoPrograma( t_segmentos_programa* segmentos ){
+void destruirSegmentosPrograma( t_segmentos_programa* segmentos ){
 	//free( segmento->nombreTabla ); free resto de campos?
 	list_destroy_and_destroy_elements( segmentos->lista_segmentos, (void*) destruirSegmento );
 	free( segmentos );
