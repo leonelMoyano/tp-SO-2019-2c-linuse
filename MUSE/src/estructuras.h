@@ -37,7 +37,7 @@ typedef struct{
 	int limiteLogico;
 	t_list* tablaPaginas;
 	int tipoSegmento;
-	t_list* heapsMetadata;
+	t_list* heapsSegmento;
 }t_segmento;
 
 
@@ -52,10 +52,10 @@ typedef struct{
 }t_mmapSegmento;
 
 typedef struct{
-	int indiceBitArray;
+	int nroFrame;
 	uint32_t espacioLibre;
-	t_list* heapsSegmento;
-}t_sizeFreeFrame;
+	t_list* heapsFrame;
+}t_heapFrameMetadata;
 
 typedef struct{
 	char* pathArchivo;

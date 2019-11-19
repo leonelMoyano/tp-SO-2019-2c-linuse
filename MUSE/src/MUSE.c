@@ -146,6 +146,34 @@ void abrirArchivoSwap(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
 	//se lo seteo a disco swap??
 }
 
+void mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
+	// Abro el archivo
+	*archivo = fopen(rutaArchivo, "r");
+
+	if (*archivo == NULL) {
+		log_error(g_logger, "%s: No existe el archivo", rutaArchivo);
+		exit(EXIT_FAILURE);
+	}
+
+	// Copio informacion del archivo
+	struct stat statArch;
+	stat(rutaArchivo, &statArch);
+
+	// Tamaño del archivo que voy a leer
+	*tamArc = tamArc;
+
+	// Leo el total del archivo y lo asigno al buffer
+	void * dataArchivo = calloc( 1, *tamArc + 1 );
+	fread( dataArchivo, *tamArc, 1, *archivo );
+	log_debug(g_logger, "Mapeo archivo a MUSE: %s", rutaArchivo);
+
+	//Cierro el archivo ??
+	//fclose(*archivo);
+
+	// Hago trim para borrar saltos de linea vacios al final
+	string_trim( &( dataArchivo ) );
+}
+
 
 
 

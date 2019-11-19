@@ -38,7 +38,8 @@ t_list* g_diccionarioConexiones; //de programas
 
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
 t_list* framesLibres;
-t_list* tablasDePaginas;
+
+t_list* tablasDePaginas; // o TLB para hacer reemplazo global
 
 t_bitarray * g_bitarray_swap;
 char * disco_swap;

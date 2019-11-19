@@ -39,7 +39,6 @@ t_list* crearTablaProgramas() {
 t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
-	segmentoNuevo->heapsMetadata = crearListaHeapsMetadata();
 	return segmentoNuevo;
 }
 
@@ -59,27 +58,6 @@ t_pagina* crearPagina(int nroFrame ){
 	pagina->flagModificado  = true;
 	pagina->nroFrame        = nroFrame;
 	return pagina;
-}
-
-void registrarYAgregarEnSegmento( int cantidadDeBytes, t_programa* programa, t_segmento* segmentoElegido ){
-	// Recorro tabla de marcos buscando marco vacio
-
-	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(cantidadDeBytes);
-
-		for(int i=0 ; cantPaginasAObtener > i;i++){
-			int indice = buscarFrameLibre();
-			agregarPaginaEnSegmento(segmentoElegido,indice);
-		}
-
-	int numeroDeMarco = buscarMarcoConEspacioLibre();
-	if( numeroDeMarco == -1 ){
-		log_debug( g_loggerDebug, "Todos los marcos ocupados hago Clock modificado" );
-		numeroDeMarco = ClockModificado( programa->segmentos_programa );
-		if( numeroDeMarco == -1 ){
-			log_debug( g_loggerDebug, "Todos las paginas modificadas, seg fault?" );
-		}
-	}
-	//guardarbytesEnMemoria( segmento, unosBYtes, numeroDeMarco );
 }
 
 
@@ -127,18 +105,19 @@ t_pagina* buscarFrameEnTablasDePaginas(t_list* tablasPaginas, int nroFrame) {
 	return frameBuscado;
 }
 
-t_sizeFreeFrame* buscarFramePorIndice(t_list* frames, int indice) {
+
+t_heapFrameMetadata* buscarFramePorIndice(t_list* frames, int indice) {
 
 	bool existeFrame(void* frame){
-		t_sizeFreeFrame* frameBuscar = (t_sizeFreeFrame*) frame;
+		t_heapFrameMetadata* frameBuscar = (t_heapFrameMetadata*) frame;
 
-		if (indice != NULL) return frameBuscar->indiceBitArray == indice;
+		if (indice != NULL) return frameBuscar->nroFrame == indice;
 		return false;
 
 	}
 
 	//sem_wait(&g_mutex_tablas);
-	t_sizeFreeFrame* frameBuscado = list_find(frames,existeFrame);
+	t_heapFrameMetadata* frameBuscado = list_find(frames,existeFrame);
 	//sem_post(&g_mutex_tablas);
 	return frameBuscado;
 }
@@ -196,16 +175,6 @@ int buscarFrameLibre(){
 	return -1;
 }
 
-int buscarMarcoConEspacioLibre(int cantidadBytesNecesarios){
-		int i = 0;
-		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
-			return i;
-		}
-
-	return -1;
-}
-
-
 int ClockModificado() {
 
 	// Libera y devuelve el numero de frame liberado
@@ -250,8 +219,8 @@ int bytesNecesariosUltimoFrame(int cantidadBytes){
 	return cantidadBytes - (framesCompletos * g_configuracion->tamanioPagina);
 }
 
-int verificarEspacioLibreUltimaPagina(int indiceFrame){
-	t_sizeFreeFrame* frame = buscarFramePorIndice(framesLibres,indiceFrame);
+int verificarEspacioLibreUltimaPagina(int nroFrame){
+	t_heapFrameMetadata* frame = buscarFramePorIndice(framesLibres,nroFrame);
 
 	if(frame == NULL) return 0;
 	return frame->espacioLibre;

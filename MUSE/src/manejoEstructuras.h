@@ -19,6 +19,7 @@ void			registrarYAgregarEnSegmento		( int cantidadDeBytes, t_programa* programa,
 t_segmento*	    buscarSegmento					(t_list* segmentos,int direccionVirtual);
 t_programa* 	buscarPrograma				    (t_list* programas, int socket);
 int             buscarFrameLibre                ();
+t_heapSegmento* buscarHeapConEspacioLibre		(int cantidadBytesNecesarios, t_segmento* segmento);
 int             ClockModificado                 ();
 
 int 			verificarEspacioLibreUltimaPagina(int indiceFrame);
