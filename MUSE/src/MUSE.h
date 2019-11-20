@@ -7,9 +7,9 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include <commons/bitarray.h>
-#include <biblioteca/serializaciones.h>
-#include <biblioteca/conexiones.h>
-#include <biblioteca/estructurasAdministrativas.h>
+#include <biblioNOC/serializaciones.h>
+#include <biblioNOC/conexiones.h>
+#include <biblioNOC/estructurasAdministrativas.h>
 #include <biblioteca/paquetes.h>
 #include <pthread.h>
 #include <semaphore.h>

@@ -76,8 +76,9 @@ int procesarSync(uint32_t addr, size_t len, int socket){
 	t_programa * programa= buscarPrograma(programas,socket);
 }
 
-int procesarUnMap(uint32_t dir, int socket){
+uint32_t procesarUnMap(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(programas,socket);
+
 }
 
 

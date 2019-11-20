@@ -17,9 +17,10 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket);
 
 int procesarSync(uint32_t addr, size_t len, int socket);
 
-int procesarUnMap(uint32_t dir, int socket);
+uint32_t procesarUnMap(uint32_t dir, int socket);
 
 uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_programa* segmentos);
+
 uint32_t allocarEnPaginasNuevas(t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios );
 
 #endif

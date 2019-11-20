@@ -45,67 +45,50 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 		break;
 
 	case MUSE_FREE: ;
-		uint32_t direccionLogica = deserializarUINT32(paquete->buffer);
-		procesarFree(direccionLogica); //Libera una porcion de memoria reservada
+		uint32_t direccionLogicaFree = deserializarUINT32(paquete->buffer);
+		procesarFree(direccionLogicaFree,socket); //Libera una porcion de memoria reservada
 		break;
 
 	case MUSE_GET: ;
-		t_registromget registroGet = deserializarGet(paquete->buffer);
+		t_registromget* registroGet = deserializarGet(paquete->buffer);
 
-		void * dst_get = registroGet->dst;
-		uint32_t src_get = registroGet ->src;
-		size_t n_get = registroGet->n;
-
-		uint32_t operacionSatisfactoriaGet = procesarGet(dst_get,src_get,n_get);
+		uint32_t operacionSatisfactoriaGet = procesarGet(registroGet->dst,registroGet->src,registroGet->n,socket);
 
 		enviarRespuestaGet(cliente_fd, operacionSatisfactoriaGet);
 		break;
 
 	case MUSE_COPY: ;
-		t_registromcopy registroCopy = deserealizarCopy(paquete->buffer);
+		t_registromcopy* registroCopy = deserializarCopy(paquete->buffer);
 
-		void * src_copy = registroCopy->src;
-		uint32_t dst_copy = registroCopy->dst;
-		int n_copy = registroCopy->n;
-
-		uint32_t operacionSatisfactoriaCopy = procesarCopy(dst_copy,src_copy,n_copy);
+		uint32_t operacionSatisfactoriaCopy = procesarCopy( registroCopy->dst,registroCopy->src,registroCopy->n,socket);
 
 		enviarRespuestaCopy(cliente_fd, operacionSatisfactoriaCopy);
 		break;
 
 	case MUSE_MAP: ;
-		t_registromap registroMap = deserializarMap(paquete->buffer);
+		t_registromap* registroMap = deserealizarMap(paquete->buffer);
 
-		char * map_path = registroMap->path;
-		size_t map_length = registroMap->length;
-		int map_flags = registroMap->flags;
-
-		uint32_t pocision = procesarMap(map_path,map_length,map_flags);
+		uint32_t pocision = procesarMap(registroMap->path,registroMap->length,registroMap->flags,socket);
 
 		enviarRespuestaMap(cliente_fd, pocision);
 
 		break;
 
-	case MUSE_SYNC:
-		t_registrosync registroSync = deserealizarMsync(paquete->buffer);
+	case MUSE_SYNC: ;
+		t_registrosync* registroSync = deserealizarMsync(paquete->buffer);
 
-		uint32_t * addr = registroSync->addr;
-		size_t len = registroSync->len;
+		uint32_t resultadoSync =  procesarSync( registroSync->addr,registroSync->len,socket);
 
-		uint32_t operacionSatisfactoria =  procesarSync(addr,len);
-
-		enviarRespuestaMsync(cliente_fd,operacionSatisfactoria);
+		enviarRespuestaMsync(cliente_fd,resultadoSync);
 
 		break;
 
-	case MUSE_UNMAP:
-		t_registrounmap registroUnmap = deserealizacionUnmap(paquete->buffer);
+	case MUSE_UNMAP: ;
+		t_registrounmap* registroUnmap = deserealizarUnmap(paquete->buffer);
 
-		uint dir = registroUnmap->dir;
+		uint32_t resultadoUnMap =  procesarUnMap(registroUnmap->dir,socket);
 
-		uint32_t operacionSatisfactoria =  procesarUnmap(dir);
-
-		enviarRespuestaUnmap(cliente_fd,operacionSatisfactoria);
+		enviarRespuestaUnmap(cliente_fd,resultadoUnMap);
 
 		break;
 
