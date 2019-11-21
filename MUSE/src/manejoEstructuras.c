@@ -72,7 +72,7 @@ void agregarPaginaEnSegmento(t_segmento * segmento, int numeroDeMarco) {
 	list_add( segmento->tablaPaginas, paginaNuevo );
 }
 
-t_segmento* buscarSegmento(t_list* segmentos,int direccionVirtual) {
+t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 
 	bool existeDireccionSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
@@ -140,28 +140,16 @@ t_programa* buscarPrograma(t_list* programas, int socket) {
 	return programaBuscado;
 }
 
-
-t_segmento* buscarDireccionEnPrograma(int direccionVirtual, t_segmentos_programa* segmentoPrograma) {
-	t_segmento * segmento = buscarSegmento(segmentoPrograma,  direccionVirtual);
-    //Convendria agregar nro de segmento??
-
-	/*if ( segmento == NULL ) {
-		segmento = crearSegmento( nombre );
-		agregarTablaSegmento( g_tabla_segmentos, segmento );
-	}*/
-	return segmento;
-}
-
 bool esSegmentoExtendible(t_segmentos_programa* segmentos, t_segmento* segmento){
 
 	return segmentos->limiteLogico > segmento->limiteLogico;
 }
 
-int nroPaginaSegmento(int direccionVirtual, int baseLogica){
+int nroPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 	return (direccionVirtual - baseLogica) / g_configuracion->tamanioPagina ;
 }
 
-int desplazamientoPaginaSegmento(int direccionVirtual, int baseLogica){
+int desplazamientoPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 	int nroPagina = nroPaginaSegmento(direccionVirtual,baseLogica);
 	return (direccionVirtual - baseLogica) - (nroPagina * g_configuracion->tamanioPagina);
 }

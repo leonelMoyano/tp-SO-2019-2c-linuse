@@ -16,7 +16,7 @@ t_pagina*       crearPagina                     (int numeroDeMarco);
 void 			agregarTablaSegmento			(t_list * lista, t_segmento* tabla);
 void 			agregarPaginaEnSegmento		    (t_segmento * segmento, int numeroDeMarco);
 void			registrarYAgregarEnSegmento		( int cantidadDeBytes, t_programa* programa, t_segmento* segmentoElegido );
-t_segmento*	    buscarSegmento					(t_list* segmentos,int direccionVirtual);
+t_segmento*	    buscarSegmento					(t_list* segmentos,uint32_t direccionVirtual);
 t_programa* 	buscarPrograma				    (t_list* programas, int socket);
 int             buscarFrameLibre                ();
 t_heapSegmento* buscarHeapConEspacioLibre		(int cantidadBytesNecesarios, t_segmento* segmento);
@@ -25,8 +25,8 @@ int             ClockModificado                 ();
 int 			verificarEspacioLibreUltimaPagina(int indiceFrame);
 int				bytesNecesariosUltimoFrame		(int cantidadBytes);
 int				framesNecesariosPorCantidadMemoria(int cantidadBytes);
-int				desplazamientoPaginaSegmento	(int direccionVirtual, int baseLogica);
-int				nroPaginaSegmento				(int direccionVirtual, int baseLogica);
+int				desplazamientoPaginaSegmento	(uint32_t direccionVirtual, int baseLogica);
+int				nroPaginaSegmento				(uint32_t direccionVirtual, int baseLogica);
 bool			esSegmentoExtendible			(t_segmentos_programa* segmentos, t_segmento* segmento);
 
 /**** Destuir estructuras ****/

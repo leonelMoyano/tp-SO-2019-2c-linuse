@@ -16,7 +16,13 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 		if(direccionLogica == 0) //Si es direccion = 0 no encontro y hay que extender el ultimo segmento
 		{
 			int cantSegmentos = list_size(programa->segmentos_programa->lista_segmentos);
-			segmentoElegido =  list_get(programa->segmentos_programa->lista_segmentos, cantSegmentos -1);
+			t_segmento * ultimoSegmento =  list_get(programa->segmentos_programa->lista_segmentos, cantSegmentos -1);
+			if(ultimoSegmento->tipoSegmento == 2)//segmento mmap
+			{
+				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1 );
+			}
+			else segmentoElegido = ultimoSegmento;
+
 			direccionLogica = allocarEnPaginasNuevas(segmentoElegido,tam);
 		}
 	}
@@ -26,15 +32,16 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 }
 void procesarFree(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(programas,socket);
-	t_segmento* segmento = buscarDireccionEnPrograma(dir,programa->segmentos_programa);
-
-	//si es segmento mmap no debera liberar nada o error?
-
-
-	//int cantPaginasALiberar = framesNecesariosPorCantidadMemoria();
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dir);
 
 	int nroPagina = nroPaginaSegmento(dir, segmento->baseLogica);
 	int offsetPagina = desplazamientoPaginaSegmento(dir, segmento->baseLogica);
+
+	//si es segmento mmap no debera liberar nada o error?
+
+	//int cantPaginasALiberar = framesNecesariosPorCantidadMemoria();
+
+
 
 	//Buscar heap metadata a liberar
 
@@ -44,7 +51,7 @@ void procesarFree(uint32_t dir, int socket){
 
 int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 	t_programa * programa= buscarPrograma(programas,socket);
-	t_segmento* segmento = buscarDireccionEnPrograma(src,programa->segmentos_programa);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,src);
 
 	bool segmentoUnico = segmento->limiteLogico > src + n;
 
@@ -54,7 +61,7 @@ int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 
 int procesarCopy(uint32_t dst, void* src, int n, int socket){
 	t_programa * programa= buscarPrograma(programas,socket);
-	t_segmento* segmento = buscarDireccionEnPrograma(dst,programa->segmentos_programa);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dst);
 
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
 
