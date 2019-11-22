@@ -124,7 +124,7 @@ t_heapFrameMetadata* buscarFramePorIndice(t_list* frames, int indice) {
 
 
 
-t_programa* buscarPrograma(t_list* programas, int socket) {
+t_programa* buscarPrograma(int socket) {
 
 	bool existeIdPrograma(void* programa){
 		t_programa* programaBuscar = (t_programa*) programa;
@@ -234,7 +234,6 @@ void destruirSegmento( t_segmento* segmento ){
 
 
 void destruirPagina( t_pagina* pagina ){
-	//destruirRegistro( pagina->registro );
 	free( pagina );
 }
 
@@ -249,6 +248,10 @@ void leerDiscoSwap(int nroPagina){
 		for (i = 0; disco_swap[i] != '\n' && disco_swap[i] != '\0'; ++i){
 
 		}
+}
+
+t_segmento* ultimoSegmentoPrograma(t_programa* programa){
+	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);
 }
 
 

@@ -1,7 +1,7 @@
 #include "operaciones.h"
 
 uint32_t procesarAlloc(uint32_t tam, int socket){
-	t_programa * programa= buscarPrograma(programas,socket);
+	t_programa * programa = buscarPrograma(socket);
 	t_segmento * segmentoElegido;
 	uint32_t direccionLogica = 0;
 
@@ -15,8 +15,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 		direccionLogica = allocarEnHeapLibre(tam,programa->segmentos_programa);
 		if(direccionLogica == 0) //Si es direccion = 0 no encontro y hay que extender el ultimo segmento
 		{
-			int cantSegmentos = list_size(programa->segmentos_programa->lista_segmentos);
-			t_segmento * ultimoSegmento =  list_get(programa->segmentos_programa->lista_segmentos, cantSegmentos -1);
+			t_segmento * ultimoSegmento =  ultimoSegmentoPrograma(programa);
 			if(ultimoSegmento->tipoSegmento == 2)//segmento mmap
 			{
 				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1 );
@@ -27,11 +26,12 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 		}
 	}
 
+	ActualizarLogMetricas();
 	return direccionLogica;
 
 }
 void procesarFree(uint32_t dir, int socket){
-	t_programa * programa= buscarPrograma(programas,socket);
+	t_programa * programa= buscarPrograma(socket);
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dir);
 
 	int nroPagina = nroPaginaSegmento(dir, segmento->baseLogica);
@@ -50,7 +50,7 @@ void procesarFree(uint32_t dir, int socket){
 }
 
 int procesarGet(void* dst, uint32_t src, size_t n, int socket){
-	t_programa * programa= buscarPrograma(programas,socket);
+	t_programa * programa= buscarPrograma(socket);
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,src);
 
 	bool segmentoUnico = segmento->limiteLogico > src + n;
@@ -60,7 +60,7 @@ int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 }
 
 int procesarCopy(uint32_t dst, void* src, int n, int socket){
-	t_programa * programa= buscarPrograma(programas,socket);
+	t_programa * programa= buscarPrograma(socket);
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dst);
 
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
@@ -73,18 +73,18 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 }
 
 uint32_t procesarMap(char *path, size_t length, int flags, int socket){
-	t_programa * programa= buscarPrograma(programas,socket);
+	t_programa * programa= buscarPrograma(socket);
 
 	//crear segmento
 	// reservar paginas para satisfacer el length
 }
 
 int procesarSync(uint32_t addr, size_t len, int socket){
-	t_programa * programa= buscarPrograma(programas,socket);
+	t_programa * programa= buscarPrograma(socket);
 }
 
 uint32_t procesarUnMap(uint32_t dir, int socket){
-	t_programa * programa= buscarPrograma(programas,socket);
+	t_programa * programa= buscarPrograma(socket);
 
 }
 
@@ -131,4 +131,30 @@ uint32_t allocarEnPaginasNuevas(t_segmento* segmentoAExtender, uint32_t cantidad
 
 }
 
+void RegistrarMetricasPrograma(t_programa* programa){
+
+	int porcentaje = PorcentajeAsignacionMemoria(programa);
+	int bytesLibres = EspacioLibre(ultimoSegmentoPrograma(programa));
+
+	log_info( g_logger, "Programa:" );
+	log_info( g_logger, "Porcentaje de asignación de memoria:",porcentaje );
+	log_info( g_logger, "Espacio disponible último segmento:",bytesLibres );
+	log_info( g_logger, "Memoria perdida:", programa->memoriaPerdida  );
+	log_info( g_logger, "Memoria Liberada:", programa->memoriaLiberada  );
+	log_info( g_logger, "Memory Leaks", programa->memoryLeaks );
+
+
+}
+
+void ActualizarLogMetricas(){
+
+	list_iterate(programas, RegistrarMetricasPrograma);
+	int cantidadBytes = SistemaMemoriaDisponible();
+	log_info( g_logger, "La cantidad de memoria del sistema es de n bytes" );
+
+}
+
+int EspacioLibre(t_segmento* segmento){}
+int PorcentajeAsignacionMemoria(t_programa* programa){}
+int SistemaMemoriaDisponible(){}
 

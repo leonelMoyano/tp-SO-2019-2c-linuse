@@ -29,6 +29,9 @@ typedef struct{
 	int programaId;
 	int socket;
 	t_segmentos_programa* segmentos_programa;
+	int memoriaPerdida;
+	int memoriaLiberada;
+	int memoryLeaks;
 	pthread_t tid;
 }t_programa;
 

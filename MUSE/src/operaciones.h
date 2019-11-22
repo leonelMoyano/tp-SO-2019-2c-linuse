@@ -23,4 +23,10 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 
 uint32_t allocarEnPaginasNuevas(t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios );
 
+void ActualizarLogMetricas();
+void RegistrarMetricasPrograma(t_programa* programa);
+int EspacioLibre(t_segmento* segmento);
+int PorcentajeAsignacionMemoria(t_programa* programa);
+int SistemaMemoriaDisponible();
+
 #endif

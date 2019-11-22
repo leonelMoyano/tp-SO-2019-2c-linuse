@@ -141,6 +141,11 @@ void InicializarNuevoPrograma(int socket){
 	list_add(programas,nuevoPrograma);
 }
 
+void FinalizarPrograma(int socket){
+	destruirPrograma(buscarPrograma(socket));
+}
+
+
 void abrirArchivoSwap(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
 	// Abro el archivo
 	*archivo = fopen(rutaArchivo, "r");
