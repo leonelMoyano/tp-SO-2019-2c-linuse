@@ -7,9 +7,9 @@
 #include <commons/config.h>
 #include <commons/log.h>
 #include <commons/bitarray.h>
-#include <biblioteca/serializaciones.h>
-#include <biblioteca/conexiones.h>
-#include <biblioteca/estructurasAdministrativas.h>
+#include <biblioNOC/serializaciones.h>
+#include <biblioNOC/conexiones.h>
+#include <biblioNOC/estructurasAdministrativas.h>
 #include <biblioteca/paquetes.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -38,7 +38,8 @@ t_list* g_diccionarioConexiones; //de programas
 
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
 t_list* framesLibres;
-t_list* tablasDePaginas;
+
+t_list* tablasDePaginas; // o TLB para hacer reemplazo global
 
 t_bitarray * g_bitarray_swap;
 char * disco_swap;

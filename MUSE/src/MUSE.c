@@ -23,7 +23,7 @@ int main(void) {
 
 t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 
-	//Deberia pasarle el socket aca
+	int socket = cliente_fd;
 
 	log_debug( g_loggerDebug, "Proceso codigo op %d", paquete->codigoOperacion );
 
@@ -35,37 +35,60 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 		break;
     */
 	case MUSE_INIT: ;
-		//Deberia pasarle el socket aca
-		int socket = cliente_fd;
 	    InicializarNuevoPrograma(socket);
 		break;
 
 	case MUSE_ALLOC: ;
 		uint32_t tamanio  = deserializarUINT32(paquete->buffer);
-		uint32_t direccionLogica = procesarAlloc(tamanio);
+		uint32_t direccionLogica = procesarAlloc(tamanio, socket);
 		enviarRespuestaAlloc(cliente_fd,direccionLogica);
 		break;
 
 	case MUSE_FREE: ;
-
+		uint32_t direccionLogicaFree = deserializarUINT32(paquete->buffer);
+		procesarFree(direccionLogicaFree,socket); //Libera una porcion de memoria reservada
 		break;
 
 	case MUSE_GET: ;
+		t_registromget* registroGet = deserializarGet(paquete->buffer);
 
+		uint32_t operacionSatisfactoriaGet = procesarGet(registroGet->dst,registroGet->src,registroGet->n,socket);
+
+		enviarRespuestaGet(cliente_fd, operacionSatisfactoriaGet);
 		break;
 
 	case MUSE_COPY: ;
+		t_registromcopy* registroCopy = deserializarCopy(paquete->buffer);
 
+		uint32_t operacionSatisfactoriaCopy = procesarCopy( registroCopy->dst,registroCopy->src,registroCopy->n,socket);
+
+		enviarRespuestaCopy(cliente_fd, operacionSatisfactoriaCopy);
 		break;
 
 	case MUSE_MAP: ;
+		t_registromap* registroMap = deserealizarMap(paquete->buffer);
+
+		uint32_t pocision = procesarMap(registroMap->path,registroMap->length,registroMap->flags,socket);
+
+		enviarRespuestaMap(cliente_fd, pocision);
 
 		break;
 
-	case MUSE_SYNC:
+	case MUSE_SYNC: ;
+		t_registrosync* registroSync = deserealizarMsync(paquete->buffer);
+
+		uint32_t resultadoSync =  procesarSync( registroSync->addr,registroSync->len,socket);
+
+		enviarRespuestaMsync(cliente_fd,resultadoSync);
+
 		break;
 
-	case MUSE_UNMAP:
+	case MUSE_UNMAP: ;
+		t_registrounmap* registroUnmap = deserealizarUnmap(paquete->buffer);
+
+		uint32_t resultadoUnMap =  procesarUnMap(registroUnmap->dir,socket);
+
+		enviarRespuestaUnmap(cliente_fd,resultadoUnMap);
 
 		break;
 
@@ -118,6 +141,11 @@ void InicializarNuevoPrograma(int socket){
 	list_add(programas,nuevoPrograma);
 }
 
+void FinalizarPrograma(int socket){
+	destruirPrograma(buscarPrograma(socket));
+}
+
+
 void abrirArchivoSwap(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
 	// Abro el archivo
 	*archivo = fopen(rutaArchivo, "r");
@@ -146,6 +174,34 @@ void abrirArchivoSwap(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
 	string_trim( &( dataArchivo ) );
 	disco_swap = dataArchivo;
 	//se lo seteo a disco swap??
+}
+
+void mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
+	// Abro el archivo
+	*archivo = fopen(rutaArchivo, "r");
+
+	if (*archivo == NULL) {
+		log_error(g_logger, "%s: No existe el archivo", rutaArchivo);
+		exit(EXIT_FAILURE);
+	}
+
+	// Copio informacion del archivo
+	struct stat statArch;
+	stat(rutaArchivo, &statArch);
+
+	// Tamaño del archivo que voy a leer
+	*tamArc = tamArc;
+
+	// Leo el total del archivo y lo asigno al buffer
+	void * dataArchivo = calloc( 1, *tamArc + 1 );
+	fread( dataArchivo, *tamArc, 1, *archivo );
+	log_debug(g_logger, "Mapeo archivo a MUSE: %s", rutaArchivo);
+
+	//Cierro el archivo ??
+	//fclose(*archivo);
+
+	// Hago trim para borrar saltos de linea vacios al final
+	string_trim( &( dataArchivo ) );
 }
 
 

@@ -29,6 +29,9 @@ typedef struct{
 	int programaId;
 	int socket;
 	t_segmentos_programa* segmentos_programa;
+	int memoriaPerdida;
+	int memoriaLiberada;
+	int memoryLeaks;
 	pthread_t tid;
 }t_programa;
 
@@ -37,6 +40,7 @@ typedef struct{
 	int limiteLogico;
 	t_list* tablaPaginas;
 	int tipoSegmento;
+	t_list* heapsSegmento;
 }t_segmento;
 
 
@@ -51,9 +55,10 @@ typedef struct{
 }t_mmapSegmento;
 
 typedef struct{
-	int indiceBitArray;
+	int nroFrame;
 	uint32_t espacioLibre;
-}t_sizeFreeFrame;
+	t_list* heapsFrame;
+}t_heapFrameMetadata;
 
 typedef struct{
 	char* pathArchivo;
@@ -72,8 +77,9 @@ typedef struct{
 
 typedef struct{
 	int nroFrame;
+	bool flagUso;
 	bool flagModificado;
-	long flagPresencia;
+	bool flagPresencia;
 }t_pagina;
 
 typedef enum  {

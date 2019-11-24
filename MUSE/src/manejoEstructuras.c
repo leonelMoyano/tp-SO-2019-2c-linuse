@@ -9,7 +9,12 @@ t_list* crearDiccionarioConexiones() {
 
 t_list* crearTablaPaginas() {
 	t_list* aux = list_create();
-	list_add(tablasDePaginas,aux);
+	list_add(tablasDePaginas,aux);  //TODO: ver si reemplazar por TLB
+	return aux;
+}
+
+t_list* crearListaHeapsMetadata() {
+	t_list* aux = list_create();
 	return aux;
 }
 
@@ -33,7 +38,6 @@ t_list* crearTablaProgramas() {
 
 t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
-	//segmentoNuevo->nombreTabla = strdup( nombreDeTabla );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	return segmentoNuevo;
 }
@@ -56,34 +60,19 @@ t_pagina* crearPagina(int nroFrame ){
 	return pagina;
 }
 
-void crearRegistroYAgregarEnSegmento( int cantidadDeBytes, int programaId ){
-	// Recorro tabla de marcos buscando marco vacio
-	t_programa* programa = buscarPrograma(programas,programaId);
-
-	int numeroDeMarco = buscarMarcoConEspacioLibre();
-	if( numeroDeMarco == -1 ){
-		log_debug( g_loggerDebug, "Todos los marcos ocupados hago Clock modificado" );
-		numeroDeMarco = ClockModificado( programa->segmentos_programa );
-		if( numeroDeMarco == -1 ){
-			log_debug( g_loggerDebug, "Todos las paginas modificadas, seg fault?" );
-		}
-	}
-	//guardarbytesEnMemoria( segmento, unosBYtes, numeroDeMarco );
-}
-
 
 void agregarTablaSegmento(t_list * lista, t_segmento* tabla) {
 	list_add(lista, tabla);
 }
 
 
-void agregarRegistroEnSegmento(t_segmento * segmento, int numeroDeMarco) {
+void agregarPaginaEnSegmento(t_segmento * segmento, int numeroDeMarco) {
 	t_pagina * paginaNuevo = crearPagina( numeroDeMarco );
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
 }
 
-t_segmento* buscarSegmento(t_list* segmentos,int direccionVirtual) {
+t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 
 	bool existeDireccionSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
@@ -116,30 +105,31 @@ t_pagina* buscarFrameEnTablasDePaginas(t_list* tablasPaginas, int nroFrame) {
 	return frameBuscado;
 }
 
-t_sizeFreeFrame* buscarFramePorIndice(t_list* frames, int indice) {
+
+t_heapFrameMetadata* buscarFramePorIndice(t_list* frames, int indice) {
 
 	bool existeFrame(void* frame){
-		t_sizeFreeFrame* frameBuscar = (t_sizeFreeFrame*) frame;
+		t_heapFrameMetadata* frameBuscar = (t_heapFrameMetadata*) frame;
 
-		if (indice != NULL) return frameBuscar->indiceBitArray == indice;
+		if (indice != NULL) return frameBuscar->nroFrame == indice;
 		return false;
 
 	}
 
 	//sem_wait(&g_mutex_tablas);
-	t_sizeFreeFrame* frameBuscado = list_find(frames,existeFrame);
+	t_heapFrameMetadata* frameBuscado = list_find(frames,existeFrame);
 	//sem_post(&g_mutex_tablas);
 	return frameBuscado;
 }
 
 
 
-t_programa* buscarPrograma(t_list* programas, int Id) {
+t_programa* buscarPrograma(int socket) {
 
 	bool existeIdPrograma(void* programa){
 		t_programa* programaBuscar = (t_programa*) programa;
 
-		if (Id != NULL) return programaBuscar->programaId == Id;
+		if (socket != NULL) return programaBuscar->socket == socket;
 		return false;
 
 	}
@@ -150,29 +140,21 @@ t_programa* buscarPrograma(t_list* programas, int Id) {
 	return programaBuscado;
 }
 
+bool esSegmentoExtendible(t_segmentos_programa* segmentos, t_segmento* segmento){
 
-t_segmento* buscarDireccionEnPrograma(int direccionVirtual, int programaId) {
-	t_programa * programa = buscarPrograma( programas , programaId);
-	t_segmento * segmento = buscarSegmento(programa->segmentos_programa,  direccionVirtual);
-    //Convendria agregar nro de segmento??
-
-	/*if ( segmento == NULL ) {
-		segmento = crearSegmento( nombre );
-		agregarTablaSegmento( g_tabla_segmentos, segmento );
-	}*/
-	return segmento;
+	return segmentos->limiteLogico > segmento->limiteLogico;
 }
 
-int nroPaginaSegmento(int direccionVirtual, int baseLogica){
+int nroPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 	return (direccionVirtual - baseLogica) / g_configuracion->tamanioPagina ;
 }
 
-int desplazamientoPaginaSegmento(int direccionVirtual, int baseLogica){
+int desplazamientoPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 	int nroPagina = nroPaginaSegmento(direccionVirtual,baseLogica);
 	return (direccionVirtual - baseLogica) - (nroPagina * g_configuracion->tamanioPagina);
 }
 
-int buscarMarcoConEspacioLibre(int cantidadBytesNecesarios){
+int buscarFrameLibre(){
 		int i = 0;
 		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
 			return i;
@@ -180,7 +162,6 @@ int buscarMarcoConEspacioLibre(int cantidadBytesNecesarios){
 
 	return -1;
 }
-
 
 int ClockModificado() {
 
@@ -226,14 +207,8 @@ int bytesNecesariosUltimoFrame(int cantidadBytes){
 	return cantidadBytes - (framesCompletos * g_configuracion->tamanioPagina);
 }
 
-void agregarFrameLibre(int bytesConsumidos, int nroFrame){
-	t_sizeFreeFrame* frameLibre = malloc( sizeof( t_sizeFreeFrame ) );
-	frameLibre->indiceBitArray = nroFrame;
-	frameLibre->espacioLibre =  g_configuracion->tamanioPagina - bytesConsumidos - sizeof(t_sizeFreeFrame);
-}
-
-int verificarEspacioLibreUltimaPagina(int indiceFrame){
-	t_sizeFreeFrame* frame = buscarFramePorIndice(framesLibres,indiceFrame);
+int verificarEspacioLibreUltimaPagina(int nroFrame){
+	t_heapFrameMetadata* frame = buscarFramePorIndice(framesLibres,nroFrame);
 
 	if(frame == NULL) return 0;
 	return frame->espacioLibre;
@@ -241,11 +216,11 @@ int verificarEspacioLibreUltimaPagina(int indiceFrame){
 
 void destruirPrograma( t_programa* programa ){
 	//free( segmento->nombreTabla ); free resto de campos?
-	destruirSegmentoPrograma( programa->segmentos_programa);
+	destruirSegmentosPrograma( programa->segmentos_programa);
 	free( programa );
 }
 
-void destruirSegmentoPrograma( t_segmentos_programa* segmentos ){
+void destruirSegmentosPrograma( t_segmentos_programa* segmentos ){
 	//free( segmento->nombreTabla ); free resto de campos?
 	list_destroy_and_destroy_elements( segmentos->lista_segmentos, (void*) destruirSegmento );
 	free( segmentos );
@@ -259,7 +234,6 @@ void destruirSegmento( t_segmento* segmento ){
 
 
 void destruirPagina( t_pagina* pagina ){
-	//destruirRegistro( pagina->registro );
 	free( pagina );
 }
 
@@ -274,6 +248,10 @@ void leerDiscoSwap(int nroPagina){
 		for (i = 0; disco_swap[i] != '\n' && disco_swap[i] != '\0'; ++i){
 
 		}
+}
+
+t_segmento* ultimoSegmentoPrograma(t_programa* programa){
+	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);
 }
 
 
