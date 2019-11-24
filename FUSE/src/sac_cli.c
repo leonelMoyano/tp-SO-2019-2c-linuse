@@ -133,10 +133,10 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 
 	GFile* currNode = g_node_table + currNodeIndex;
 
-	// TODO aca el size puede venir con 4096 por ej aun cuando getattr da filesize en 0
-	copy_file_contents(currNode, buffer, size, offset, 1);
+	size_t copySize = min( currNode->file_size - offset, size );
+	copy_file_contents(currNode, buffer, copySize, offset, 1);
 
-	return size;
+	return copySize;
 }
 
 static int do_mknod (const char *path, mode_t mode, dev_t device){
@@ -253,9 +253,10 @@ void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t 
 		spaceLeftOnBlock = GBLOCKSIZE; // porque el proximo bloque lo voy a tener desde el principio
 		pendingSize -= copySize;
 		// muevo el filePointer a principio de proximo bloque ( offset 4096 es el byte 0 del block 1 )
-		// tal vez esto deberia estar dentro de un if(pendingSize) por si estaba apuntando al ultimo bloque ( 1000 * 1024 ) tal vez tenga comportamiento raro
-		filePointer = seek_offset(fileNode, dataBlockIndex * GBLOCKSIZE);
 		dataBlockIndex++;
+		if (pendingSize)
+			// si estaba apuntando al ultimo bloque ( 1000 * 1024 ) tal vez tenga comportamiento raro
+			filePointer = seek_offset(fileNode, dataBlockIndex * GBLOCKSIZE);
 	}
 }
 
@@ -270,11 +271,11 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 
 	int currUsedBlocks = currNode->file_size / GBLOCKSIZE;
 	int neededBlocks = (size + offset) / GBLOCKSIZE;
-	if (size + offset > currNode->file_size || currNode->file_size == 0) {
+	if (size + offset > currNode->file_size) {
 		// Lo que quiero escribir mas donde lo quiero escribir se pasa del tamanio actual
-		if( currUsedBlocks > neededBlocks ){
+		if( currUsedBlocks > neededBlocks  || currNode->file_size == 0){
 			// Los bloques que ya tengo reservados no alcanzan
-			int bloquesFaltantes = neededBlocks - currUsedBlocks;
+			int bloquesFaltantes = currNode->file_size == 0 ? 1 : neededBlocks - currUsedBlocks;
 
 			int nuevoDatablock;
 			int nuevoIndirect;
@@ -310,9 +311,22 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 	}
 
 	copy_file_contents(currNode, buffer, size, offset, 0);
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
 	return size;
 
+}
+
+static int do_truncate(const char* path, off_t size){
+	int currNodeIndex = find_by_name(path);
+	if( currNodeIndex == -1 ){
+		return -ENOENT;
+	}
+
+	GFile* currNode = g_node_table + currNodeIndex;
+	// TODO terminar implementacion, esto deberia pisar el tamanio del archivo
+	// loque implica reservar o liberar bloques
+	return 0;
 }
 
 static int do_utimens( const char *path, const struct timespec tv[2]){
@@ -339,6 +353,7 @@ static struct fuse_operations operations = {
 		.unlink = do_unlink,
 		.utimens = do_utimens,
 		.write = do_write,
+		.truncate = do_truncate,
 };
 
 /** keys for FUSE_OPT_ options */
