@@ -41,9 +41,7 @@ void procesarFree(uint32_t dir, int socket){
 
 	//int cantPaginasALiberar = framesNecesariosPorCantidadMemoria();
 
-
-
-	//Buscar heap metadata a liberar
+	//Buscar heap metadata a liberar - buscarHeapSegmento
 
 	free(dir);
 
@@ -67,15 +65,21 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 
 	if(dst + n > segmento->limiteLogico && !esExtendible){ return -1;}
 
-
-
-
 }
 
 uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	t_programa * programa= buscarPrograma(socket);
 
-	//crear segmento
+	mapearArchivoMUSE(path,length,flags);
+
+	int tamanioSegmento = length; //calcular por cantidad de paginas necesarias
+
+	t_segmento * nuevoSegmento = crearSegmento(programa->segmentos_programa->limiteLogico,length,1);
+	list_add(programa->segmentos_programa,crearSegmento(programa->segmentos_programa->limiteLogico,length,1));
+	programa->segmentos_programa->limiteLogico += tamanioSegmento;
+
+	allocarEnPaginasNuevas(nuevoSegmento, length);
+
 	// reservar paginas para satisfacer el length
 }
 
@@ -85,7 +89,6 @@ int procesarSync(uint32_t addr, size_t len, int socket){
 
 uint32_t procesarUnMap(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(socket);
-
 }
 
 
@@ -154,7 +157,24 @@ void ActualizarLogMetricas(){
 
 }
 
-int EspacioLibre(t_segmento* segmento){}
+uint32_t EspacioLibre(t_segmento* segmento){
+	t_heapSegmento* auxHeap = NULL;
+	t_heapSegmento* heapBuscado = NULL;
+	uint32_t espacioLibre = 0;
+
+	for (int i = 0; i < list_size(segmento->heapsSegmento); i++) {
+		auxHeap = list_get(segmento->heapsSegmento,i);
+		if(auxHeap->isFree) espacioLibre += auxHeap->t_size;
+	}
+
+	return espacioLibre;
+}
+
 int PorcentajeAsignacionMemoria(t_programa* programa){}
 int SistemaMemoriaDisponible(){}
+
+void EnviarPaginaASwap(int nroPrograma, int nroPagina){
+
+
+}
 

@@ -39,6 +39,8 @@ t_list* crearTablaProgramas() {
 t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
+	segmentoNuevo->baseLogica = direccionBase;
+	segmentoNuevo->limiteLogico = tamanio;
 	return segmentoNuevo;
 }
 
@@ -252,6 +254,24 @@ void leerDiscoSwap(int nroPagina){
 
 t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);
+}
+
+t_heapDireccion* buscarHeapSegmento(uint32_t direccionABuscar, t_segmento* segmento){
+	t_heapSegmento* auxHeap = NULL;
+	int tamanio_heap = 5;
+	uint32_t direccionHeap = 0;
+	bool encontrado = false;
+
+	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++) {
+		auxHeap = list_get(segmento->heapsSegmento,i);
+		direccionHeap += tamanio_heap;
+		if(direccionHeap == direccionABuscar) encontrado == true;
+		else direccionHeap += auxHeap->t_size;
+	}
+
+	t_heapDireccion* heapBuscado = malloc(sizeof(t_heapDireccion));
+	heapBuscado->heap = auxHeap;
+	heapBuscado->direccionLogica = direccionHeap + tamanio_heap;
 }
 
 

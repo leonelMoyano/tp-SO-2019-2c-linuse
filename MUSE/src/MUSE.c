@@ -143,6 +143,7 @@ void InicializarNuevoPrograma(int socket){
 
 void FinalizarPrograma(int socket){
 	destruirPrograma(buscarPrograma(socket));
+	ActualizarLogMetricas();
 }
 
 
