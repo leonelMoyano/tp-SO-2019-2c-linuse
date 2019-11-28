@@ -105,6 +105,34 @@ typedef struct {
 	int nroParticiones;
 	int tiempoCompactacion;
 } t_CREATE;
+//------------------------------Estructuras de comunicacion MUSE LibMuse - Registros - ------------------------------//
+
+typedef struct{
+	uint32_t src;
+	void* dst;
+	size_t n;
+}t_registromget;
+
+typedef struct{
+	void* src;
+	uint32_t dst;
+	int n;
+}t_registromcopy;
+
+typedef struct {
+	char * path;
+	size_t length;
+	int flags;
+}t_registromap;
+
+typedef struct{
+	uint32_t addr;
+	size_t len;
+}t_registrosync;
+
+typedef struct{
+	uint32_t dir;
+}t_registrounmap;
 
 //------------------------------Estructuras de comunicacion Kernel - Memorias------------------------------//
 typedef struct {

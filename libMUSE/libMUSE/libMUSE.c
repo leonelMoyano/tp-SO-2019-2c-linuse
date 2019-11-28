@@ -7,46 +7,98 @@ int main(void) {
 	return prueba();
 }
 
+int muse_init(int id, char* ip, int puerto){
+
+	socketConexion = conectarCliente(ip,puerto,id);
+
+	enviarMensaje(socketConexion, "");
+	//necesito proceso id, e hilo id?
+
+	return socket;
+
+}
+
+void muse_close(){
+
+	//limpiar estructuras, liberar memoria
+}
+
 uint32_t muse_alloc(uint32_t tam){
 
-	uint32_t aux = malloc(tam);
-	return aux;
+	enviarAlloc(socketConexion, tam);
+
+	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
+
+	uint32_t * direccionLogica = deserializarUINT32(paquete->buffer);
+
+	return direccionLogica;
 
 }
 
 void muse_free(uint32_t dir){
 
-	 free(dir);
-
+	enviarFree(socketConexion, dir);//CI: Deberia pasatle a MUSE la pocision del frame a liberar o Muse debe encontrarlo
 }
 
 int muse_get(void* dst, uint32_t src, size_t n){
 
-	return 1;
+	enviarGet(socketConexion,dst,src,n);
+
+	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
+
+	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+
+	return operacionSatisfactoria;
 }
 
 int muse_cpy(uint32_t dst, void* src, int n){
 
-	int aux = memcpy(src,dst,n);
-	return aux;
+	void * misBytes= malloc(n);
+
+	memcpy(misBytes,src,n);
+
+	enviarCopy(socketConexion, misBytes);
+
+	free(misBytes);
+
+	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
+
+	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+
+	return operacionSatisfactoria;
 }
 
 uint32_t muse_map(char *path, size_t length, int flags){
 
-	uint32_t aux = mmap(path,length,0,flags,0,0);
-	return aux;
+	enviarMap(socketConexion, path, length, flags);
+
+	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
+
+	uint32_t pocision = deserializarUINT32(paquete->buffer);
+
+	return pocision;
 }
 
 int muse_sync(uint32_t addr, size_t len){
 
-	int aux = msync(addr,len,0);
-	return aux;
+	enviarMsync(socketConexion, addr, len);
+
+	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
+
+	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+
+	return operacionSatisfactoria;
 }
 
 int muse_unmap(uint32_t dir){
 
-	int aux = munmap(dir,0);
-	return aux;
+	enviarUnmap(socketConexion, dir);
+
+	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
+
+	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+
+	return operacionSatisfactoria;
 
 }
 

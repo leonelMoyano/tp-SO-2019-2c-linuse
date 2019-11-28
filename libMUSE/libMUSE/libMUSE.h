@@ -3,6 +3,22 @@
 
     #include <stdint.h>
     #include <stddef.h>
+	#include <biblioteca/conexiones.h>
+	#include "util.h"
+
+	int socketConexion;
+
+	typedef enum  {
+		MUSE_INIT = 723,
+		MUSE_ALLOC,
+		MUSE_FREE,
+		MUSE_GET,
+		MUSE_COPY,
+		MUSE_MAP,
+		MUSE_SYNC,
+		MUSE_UNMAP,
+	}t_cod_operaciones_MUSE;
+
 
 	int pruebaReferenciaMUSE(void);
     /**
