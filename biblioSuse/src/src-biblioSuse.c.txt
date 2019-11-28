@@ -1,0 +1,93 @@
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include "biblioSuse.h"
+
+/* Lib implementation: It'll only schedule the last thread that was created */
+int max_tid = 0;
+int connSuseServer = 0;
+char* configBiblioSuse = "/home/utnso/workspace/confBiblioSuse/biblioSuse.cfg";
+
+int suse_create(int tid)
+{
+	t_config* config = leer_config(configBiblioSuse);
+	char* address = getAddress(config);
+	char* port = getPort(config);
+	int connSuseServer = crear_conexion(address,port);
+	printf("\nConexion suseCreate Ok: %d:\n", connSuseServer);
+	if (tid > max_tid) max_tid = tid;
+	char* suse_create_msg = ("Se pidio crear hilo ");
+	printf("\nSe pidio crear un hilo %d\n", tid);
+	enviar_mensaje(suse_create_msg,connSuseServer);
+	liberar_conexion(connSuseServer);
+	free(suse_create_msg);
+	free(address);
+	free(port);
+	config_destroy(config);
+	return 0;
+}
+
+int suse_schedule_next(void){
+	int next = max_tid;
+	printf("Scheduling next item %i...\n", next);
+	return next;
+}
+
+int suse_join(int tid)
+{
+	t_config* config = leer_config(configBiblioSuse);
+	char* address = getAddress(config);
+	char* port = getPort(config);
+	int connSuseServer = crear_conexion(address,port);
+	printf("\nConexion suseCreate Ok: %d:\n", connSuseServer);
+	if (tid > max_tid) max_tid = tid;
+	char* suse_create_msg = ("Joineando el hilo ");
+	printf("Joineando el hilo: %d...\n", tid);
+	enviar_mensaje(suse_create_msg,connSuseServer);
+	liberar_conexion(connSuseServer);
+	config_destroy(config);
+	free(suse_create_msg);
+	free(address);
+	free(port);
+	return 0;
+}
+
+int suse_close(int tid){
+	printf("Haciendo close del hilo: %i\n", tid);
+	max_tid--;
+	return 0;
+}
+
+int suse_wait(int tid, char *sem_name){
+	// Not supported
+	return 0;
+}
+
+int suse_signal(int tid, char *sem_name){
+	// Not supported
+	return 0;
+}
+
+struct hilolay_operations operaciones = {
+		.suse_close = &suse_close,
+		.suse_create = &suse_create,
+		.suse_join = &suse_join,
+		.suse_schedule_next = &suse_schedule_next,
+		.suse_signal = &suse_signal,
+		.suse_wait = &suse_wait};
+
+void hilolay_init(void)
+{
+	t_config* config = leer_config(configBiblioSuse);
+	char* address = getAddress(config);
+	char* port = getPort(config);
+	int connSuseServer = crear_conexion(address,port);
+	char* suse_create_msg = ("Iniciando un Proceso");
+	enviar_mensaje(suse_create_msg,connSuseServer);
+	printf("\nConexion con SuseServer exitosa: %d:\n", connSuseServer);
+	init_internal(&operaciones);
+	liberar_conexion(connSuseServer);
+	free(address);
+	free(port);
+	config_destroy(config);
+}

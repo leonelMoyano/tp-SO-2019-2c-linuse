@@ -41,7 +41,7 @@ void *test2(void *arg) {
 
 /* Main program */
 int main() {
-    int i;
+    //int i;
 
     hilolay_init();
     struct hilolay_t th1;

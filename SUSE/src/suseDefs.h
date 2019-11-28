@@ -14,29 +14,20 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <commons/log.h>
-#include <commons/collections/list.h>
+#include <commons/config.h>
 #include <string.h>
 #include <biblioSuse/biblioSuse.h>
+#include <biblioSuse/libSuseUtils.h>
 #include <hilolay/internal.h>
 #include <hilolay/alumnos.h>
 #include <hilolay/hilolay.h>
 
-#define IP "127.0.0.1"
-#define PUERTO "30001"
 
-typedef enum
-{
-	MENSAJE,
-	PAQUETE
-} op_code;
-
-t_log* logger;
-
-void* 	recibir_buffer		(int*, int);
-int 	iniciar_servidor	(void);
-int 	esperar_cliente		(int);
-t_list* recibir_paquete		(int);
-void 	recibir_mensaje		(int);
-int 	recibir_operacion	(int);
+int 		getSocketServidor	(t_config*);
+void 		esperarClientes		(int);
+int 		getSocketCliente	(int);
+void* 		recibir_buffer		(int*,int);
+int 		recibir_operacion	(int);
+char* 		recibir_mensaje		(int);
 
 #endif /* SUSEDEFS_H_ */

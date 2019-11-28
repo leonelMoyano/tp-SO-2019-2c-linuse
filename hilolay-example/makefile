@@ -4,7 +4,7 @@ ifeq ($(UNAME_S),Darwin)
 endif
 
 CC := gcc
-NAME := hilolayex
+NAME := example
 BUILD=bin
 
 all: clean example
@@ -17,4 +17,4 @@ clean:
 
 
 example:
-	$(CC) -L./$(BUILD)/ -Wall $(CFLAGS) -o $(BUILD)/example src/example_program.c -lhilolay
+	$(CC) -L./$(BUILD)/ -Wall $(CFLAGS) -o $(BUILD)/$(NAME) src/example_program.c -lhilolay
