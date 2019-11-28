@@ -176,6 +176,7 @@ static int do_unlink (const char *path){
 		msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 		return 0;
 	}
+	// TODO liberar bloques
 
 	return -ENOENT;
 }
@@ -260,6 +261,15 @@ void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t 
 	}
 }
 
+/**
+* @NAME: get_occupied_datablocks_qty
+* @DESC: Devuelve la cantidad de bloques de datos que necesito para guardar size bytes
+*
+*/
+int get_occupied_datablocks_qty(size_t size){
+	return size == 0 ? 0 : get_datablock_index(size - 1) + 1;
+}
+
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	printf( "[write]: %s\n", path);
 	int currNodeIndex = find_by_name( path );
@@ -269,12 +279,11 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 
 	GFile* currNode = g_node_table + currNodeIndex;
 
-	int currUsedBlocks = currNode->file_size == 0 ? 0 : get_datablock_index(currNode->file_size) + 1;
-	int neededBlocks = get_datablock_index(size + offset) + 1;
+	int currUsedBlocks = get_occupied_datablocks_qty(currNode->file_size);
+	int neededBlocks = get_occupied_datablocks_qty(size + offset);
 	if (size + offset > currNode->file_size) {
 		// Lo que quiero escribir mas donde lo quiero escribir se pasa del tamanio actual
-		if( currUsedBlocks > neededBlocks  || currNode->file_size == 0){
-			// Los bloques que ya tengo reservados no alcanzan
+		if( neededBlocks > currUsedBlocks ){
 			reservarBloques(currNode, currUsedBlocks, neededBlocks);
 			// TODO semaforo para bitmap
 			/*
@@ -373,8 +382,8 @@ static int do_truncate(const char* path, off_t size){
 
 	GFile* currNode = g_node_table + currNodeIndex;
 
-	int cantidadDatablocksActuales   = currNode->file_size == 0 ? 0 : get_datablock_index(currNode->file_size) + 1;
-	int cantidadDatablocksNecesarios = size == 0 ? 0 : get_datablock_index(size) + 1;
+	int cantidadDatablocksActuales   = get_occupied_datablocks_qty( currNode->file_size );
+	int cantidadDatablocksNecesarios = get_occupied_datablocks_qty( size );
 
 	if( cantidadDatablocksActuales > cantidadDatablocksNecesarios )
 		liberarBloques(currNode, cantidadDatablocksActuales, cantidadDatablocksNecesarios);
