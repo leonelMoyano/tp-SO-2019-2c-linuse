@@ -42,6 +42,7 @@ typedef struct{
 	int baseLogica;
 	int limiteLogico;
 	t_list* lista_segmentos;
+	int nroUltimaPagina;
 }t_segmentos_programa;
 
 
@@ -72,9 +73,11 @@ typedef struct{
 
 typedef struct{
 	int nroFrame;
+	int nroPagina;
 	bool flagUso;
 	bool flagModificado;
 	bool flagPresencia;
+	void* bytes;
 }t_pagina;
 
 
@@ -89,7 +92,7 @@ typedef struct{
 typedef struct{
 	int nroFrameSwap;
 	int nroPagina;
-	int nroPrograma;
+	int socketPrograma;
 	// identificar segmento por nro pagina global?
 }t_paginaSwap;
 

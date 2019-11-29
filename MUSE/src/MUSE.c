@@ -147,34 +147,33 @@ void FinalizarPrograma(int socket){
 }
 
 
-void abrirArchivoSwap(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
-	// Abro el archivo
-	*archivo = fopen(rutaArchivo, "r");
+void abrirArchivoSwap() {
+	// Abro el archivo .... o debo crearlo???
+	*disco_swap = fopen(RUTASWAP, "r+");
 
-	if (*archivo == NULL) {
-		log_error(g_logger, "%s: No existe el archivo", rutaArchivo);
+	if (*disco_swap == NULL) {
+		log_error(g_logger, "%s: No existe el archivo", RUTASWAP);
 		exit(EXIT_FAILURE);
 	}
 
 	// Copio informacion del archivo
 	struct stat statArch;
-	stat(rutaArchivo, &statArch);
+	stat(RUTASWAP, &statArch);
 
 	// Tamaño del archivo que voy a leer
-	*tamArc = g_configuracion->tamanioSwap;
+	size_t tamArc = g_configuracion->tamanioSwap;
 
 	// Leo el total del archivo y lo asigno al buffer
-	void * dataArchivo = calloc( 1, *tamArc + 1 );
-	fread( dataArchivo, *tamArc, 1, *archivo );
-	log_debug(g_logger, "Abrio el archivo de swap: %s", rutaArchivo);
+	void * dataArchivo = calloc( 1, tamArc + 1 );
+	fread( dataArchivo, tamArc, 1, *disco_swap );
+	log_debug(g_logger, "Abrio el archivo de swap: %s", RUTASWAP);
+
+	//creo ya el archivo para que cada pagina sea una linea, aunque esten vacias
+	char* paginas = string_repeat('\0',maxPaginasEnSwap);
+	fwrite(paginas,1,1,*disco_swap);
 
 	//Cierro el archivo ??
-	//fclose(*archivo);
-
-	// Hago trim para borrar saltos de linea vacios al final
-	string_trim( &( dataArchivo ) );
-	disco_swap = dataArchivo;
-	//se lo seteo a disco swap??
+	fclose(*disco_swap);
 }
 
 void mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {

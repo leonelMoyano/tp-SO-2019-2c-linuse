@@ -90,6 +90,59 @@ t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 	return segmentoBuscado;
 }
 
+//verifi nroDePagina para swap
+t_pagina* buscarPaginaPrograma(t_list* segmentos,int nroPagina) {
+
+	bool existePagina(void* segmento){
+		t_segmento* segmentoBuscar = (t_segmento*) segmento;
+
+		t_pagina* paginabuscar = buscarPaginaEnTabla(segmentoBuscar->tablaPaginas,nroPagina);
+		if(paginabuscar != NULL)return paginabuscar;
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	t_pagina* paginaBuscada = list_find(segmentos,existePagina);
+	//sem_post(&g_mutex_tablas);
+	return paginaBuscada;
+}
+
+t_pagina* buscarPaginaEnTabla(t_list* tablasPaginas, int nroPagina) {
+
+
+	bool existeFrame(void* frame){
+		t_pagina* paginaBuscar = (t_pagina*) frame;
+
+		if (nroPagina != NULL && paginaBuscar->nroPagina == nroPagina) return paginaBuscar;
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	t_pagina* paginaBuscada = list_find(tablasPaginas,existeFrame);
+	//sem_post(&g_mutex_tablas);
+	return paginaBuscada;
+}
+
+int traerFrameDePaginaEnSwap(int socketPrograma, int nroPagina) {
+
+
+	bool existeFrame(void* frame){
+		t_paginaSwap* paginaBuscar = (t_paginaSwap*) frame;
+
+		if (nroPagina != NULL) return paginaBuscar->nroPagina == nroPagina && paginaBuscar->socketPrograma == socketPrograma;
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	t_paginaSwap* paginaBuscada = list_find(paginasEnSwap,existeFrame);
+	//sem_post(&g_mutex_tablas);
+	return paginaBuscada->nroFrameSwap;
+}
+
+
 t_pagina* buscarFrameEnTablasDePaginas(t_list* tablasPaginas, int nroFrame) {
 
 
@@ -159,6 +212,17 @@ int desplazamientoPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 int buscarFrameLibre(){
 		int i = 0;
 		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
+			bitarray_set_bit(g_bitarray_marcos,i);
+			return i;
+		}
+
+	return -1;
+}
+
+int buscarFrameLibreSwap(){
+		int i = 0;
+		if( bitarray_test_bit(g_bitarray_swap, i) == false ) {
+			bitarray_set_bit(g_bitarray_swap,i);
 			return i;
 		}
 
@@ -199,21 +263,15 @@ int ClockModificado() {
 }
 
 int framesNecesariosPorCantidadMemoria(int cantidadBytes){
-
-	return cantidadBytes / g_configuracion->tamanioPagina;
+	bool sinResto = (cantidadBytes %  g_configuracion->tamanioPagina) == 0 ;
+	int aux = cantidadBytes / g_configuracion->tamanioPagina;
+	return sinResto ? aux : aux+1;
 }
 
 int bytesNecesariosUltimoFrame(int cantidadBytes){
 
 	int framesCompletos = framesNecesariosPorCantidadMemoria(cantidadBytes) - 1;
 	return cantidadBytes - (framesCompletos * g_configuracion->tamanioPagina);
-}
-
-int verificarEspacioLibreUltimaPagina(int nroFrame){
-	t_heapFrameMetadata* frame = buscarFramePorIndice(framesLibres,nroFrame);
-
-	if(frame == NULL) return 0;
-	return frame->espacioLibre;
 }
 
 void destruirPrograma( t_programa* programa ){
@@ -239,18 +297,6 @@ void destruirPagina( t_pagina* pagina ){
 	free( pagina );
 }
 
-void leerDiscoSwap(int nroPagina){
-
-	//1 byte igual 1 caracter
-
-	int posicionBuscada = nroPagina * g_configuracion->tamanioPagina;
-
-	// Leo hasta que encuentra un salto de linea o fin de string
-		int i;
-		for (i = 0; disco_swap[i] != '\n' && disco_swap[i] != '\0'; ++i){
-
-		}
-}
 
 t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);

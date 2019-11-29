@@ -106,7 +106,7 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 		segmentoBuscar = list_get(segmentos->lista_segmentos,j);
 		direccionHeap = segmentos->baseLogica;
 		if(segmentoBuscar->tipoSegmento)
-		{ //es heap
+		{ //es heap, para los mmap tengo que usar heaps igual?
 			for (int i = 0; i < list_size(segmentoBuscar->heapsSegmento) && !encontrado; i++) {
 				auxHeap = list_get(segmentoBuscar->heapsSegmento,i);
 				encontrado = heapBuscado->isFree && heapBuscado->t_size > cantidadBytesNecesarios;
@@ -129,6 +129,19 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 
 uint32_t allocarEnPaginasNuevas(t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios ){
 
+	int cantPaginasNecesarias = framesNecesariosPorCantidadMemoria(cantidadBytesNecesarios);
+
+	int i;
+
+	for (i = 0; cantPaginasNecesarias > i ; ++i){
+		int indiceFrame = buscarFrameLibre();
+		if(indiceFrame == -1) indiceFrame = ClockModificado();
+		else
+		agregarPaginaEnSegmento(segmentoAExtender,indiceFrame);
+		bitarray_set_bit(g_bitarray_marcos,indiceFrame);
+	}
+
+
 	uint32_t direccionHeap = 0;
 	return direccionHeap;
 
@@ -139,12 +152,12 @@ void RegistrarMetricasPrograma(t_programa* programa){
 	int porcentaje = PorcentajeAsignacionMemoria(programa);
 	int bytesLibres = EspacioLibre(ultimoSegmentoPrograma(programa));
 
-	log_info( g_logger, "Programa:" );
-	log_info( g_logger, "Porcentaje de asignación de memoria:",porcentaje );
-	log_info( g_logger, "Espacio disponible último segmento:",bytesLibres );
-	log_info( g_logger, "Memoria perdida:", programa->memoriaPerdida  );
-	log_info( g_logger, "Memoria Liberada:", programa->memoriaLiberada  );
-	log_info( g_logger, "Memory Leaks", programa->memoryLeaks );
+	log_info( g_logger, "Programa: %d",programa->programaId);
+	log_info( g_logger, "Porcentaje de asignación de memoria: %d",porcentaje );
+	log_info( g_logger, "Espacio disponible último segmento: %d",bytesLibres );
+	log_info( g_logger, "Memoria perdida: %d", programa->memoriaPerdida  );
+	log_info( g_logger, "Memoria Liberada: %d", programa->memoriaLiberada  );
+	log_info( g_logger, "Memory Leaks: %d", programa->memoryLeaks );
 
 
 }
@@ -173,7 +186,60 @@ uint32_t EspacioLibre(t_segmento* segmento){
 int PorcentajeAsignacionMemoria(t_programa* programa){}
 int SistemaMemoriaDisponible(){}
 
-void EnviarPaginaASwap(int nroPrograma, int nroPagina){
+void EnviarPaginaASwap(int socketPrograma, int nroPagina){}
+
+void TraerPaginaDeSwap(int socketPrograma, int nroPagina){
+
+	int marcoEnSwap = traerFrameDePaginaEnSwap(socketPrograma,nroPagina);
+
+}
+
+char* leerFrameSwap(int nroMarco){
+
+	*disco_swap = fopen(RUTASWAP, "r+");
+
+	// Tamaño del archivo que voy a leer
+	size_t tamArc = g_configuracion->tamanioSwap;
+
+	// Leo el total del archivo y lo asigno al buffer
+	void * dataArchivo = calloc( 1, tamArc + 1 );
+	fread( dataArchivo, tamArc, 1, *RUTASWAP );
+
+	char ** listaPaginas = string_split(dataArchivo, "\n");
+
+	char* asd = list_get(listaPaginas,nroMarco);
+
+	list_replace(listaPaginas,nroMarco,'\0');
+
+	bitarray_clean_bit(g_bitarray_swap,nroMarco);
+
+	fclose(*disco_swap);
+}
+
+char* escribirFrameSwap(int nroMarco, void* contenido, size_t largo){
+
+	*disco_swap = fopen(RUTASWAP, "r+");
+
+	// Tamaño del archivo que voy a leer
+	size_t tamArc = g_configuracion->tamanioSwap;
+
+	// Leo el total del archivo y lo asigno al buffer
+	void * dataArchivo = calloc( 1, tamArc + 1 );
+	fread( dataArchivo, tamArc, 1, *RUTASWAP );
+
+	char ** listaPaginas = string_split(dataArchivo, "\n");
+	list_replace(listaPaginas,nroMarco,contenido);
+
+	bitarray_set_bit(g_bitarray_swap,nroMarco);
+
+	fclose(*disco_swap);
+}
+
+void cargarPaginaEnSwap(void* bytes,int nroPagina, int nroPrograma){
+
+	int nroFrame = buscarFrameLibreSwap();
+
+
 
 
 }
