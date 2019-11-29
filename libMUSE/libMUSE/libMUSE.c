@@ -11,7 +11,7 @@ int muse_init(int id, char* ip, int puerto){
 
 	socketConexion = conectarCliente(ip,puerto,id);
 
-	enviarMensaje(socketConexion, tam);
+	enviarMensaje(socketConexion, "");
 	//necesito proceso id, e hilo id?
 
 	return socket;

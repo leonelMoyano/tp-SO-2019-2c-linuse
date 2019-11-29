@@ -2,7 +2,6 @@
 #include <unistd.h>
 #include <hilolay/hilolay.h>
 #include <hilolay/alumnos.h>
-#include <biblioSuse/biblioSuse.h>
 
 void recursiva(int cant) {
     if(cant > 0) recursiva(cant - 1);
@@ -42,7 +41,7 @@ void *test2(void *arg) {
 
 /* Main program */
 int main() {
-    int i;
+    //int i;
 
     hilolay_init();
     struct hilolay_t th1;

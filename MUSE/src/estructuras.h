@@ -19,9 +19,30 @@
 
 
 typedef struct{
+	int puertoConexion;
+	int tamanioMemoria;
+	int tamanioSwap;
+	int tamanioPagina;
+}t_configuracion;
+
+
+typedef enum  {
+	MUSE_INIT = 723,
+	MUSE_ALLOC,
+	MUSE_FREE,
+	MUSE_GET,
+	MUSE_COPY,
+	MUSE_MAP,
+	MUSE_SYNC,
+	MUSE_UNMAP,
+}t_cod_operaciones_MUSE;
+
+
+typedef struct{
 	int baseLogica;
 	int limiteLogico;
 	t_list* lista_segmentos;
+	int nroUltimaPagina;
 }t_segmentos_programa;
 
 
@@ -49,10 +70,31 @@ typedef struct{
 	bool isFree;
 }t_heapSegmento;
 
+
 typedef struct{
-	uint32_t t_size;
-	bool isFree;
-}t_mmapSegmento;
+	int nroFrame;
+	int nroPagina;
+	bool flagUso;
+	bool flagModificado;
+	bool flagPresencia;
+	void* bytes;
+}t_pagina;
+
+
+//Tipos auxiliares
+
+typedef struct{
+	int nroFrame;
+	uint32_t direccionLogica;
+	t_heapSegmento* heap;
+}t_heapDireccion;
+
+typedef struct{
+	int nroFrameSwap;
+	int nroPagina;
+	int socketPrograma;
+	// identificar segmento por nro pagina global?
+}t_paginaSwap;
 
 typedef struct{
 	int nroFrame;
@@ -66,32 +108,5 @@ typedef struct{
 	pthread_t tid; //o id de programa
 	sem_t semaforo;
 }t_segmento_compartido;
-
-
-typedef struct{
-	int puertoConexion;
-	int tamanioMemoria;
-	int tamanioSwap;
-	int tamanioPagina;
-}t_configuracion;
-
-typedef struct{
-	int nroFrame;
-	bool flagUso;
-	bool flagModificado;
-	bool flagPresencia;
-}t_pagina;
-
-typedef enum  {
-	MUSE_INIT = 723,
-	MUSE_ALLOC,
-	MUSE_FREE,
-	MUSE_GET,
-	MUSE_COPY,
-	MUSE_MAP,
-	MUSE_SYNC,
-	MUSE_UNMAP,
-}t_cod_operaciones_MUSE;
-
 
 #endif

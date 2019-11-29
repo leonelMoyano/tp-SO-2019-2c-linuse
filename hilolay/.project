@@ -3,7 +3,6 @@
 	<name>hilolay</name>
 	<comment></comment>
 	<projects>
-		<project>biblioSuse</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

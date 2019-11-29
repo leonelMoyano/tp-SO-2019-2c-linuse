@@ -18,6 +18,8 @@ void 			agregarPaginaEnSegmento		    (t_segmento * segmento, int numeroDeMarco);
 void			registrarYAgregarEnSegmento		( int cantidadDeBytes, t_programa* programa, t_segmento* segmentoElegido );
 t_segmento*	    buscarSegmento					(t_list* segmentos,uint32_t direccionVirtual);
 t_segmento* 	ultimoSegmentoPrograma			(t_programa* programa);
+t_pagina* 		buscarPaginaPrograma			(t_list* segmentos,int nroPagina);
+t_pagina*		buscarPaginaEnTabla				(t_list* tablasPaginas, int nroPagina);
 t_programa* 	buscarPrograma				    (int socket);
 int             buscarFrameLibre                ();
 t_heapSegmento* buscarHeapConEspacioLibre		(int cantidadBytesNecesarios, t_segmento* segmento);
