@@ -169,16 +169,17 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 
 static int do_unlink (const char *path){
 	int currNodeIndex = find_by_name(path);
-	if (currNodeIndex != -1) {
-		GFile* currNode = g_node_table + currNodeIndex;
-		currNode->state = 0;
+	if (currNodeIndex == -1)
+		return -ENOENT;
+	GFile* currNode = g_node_table + currNodeIndex;
 
-		msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
-		return 0;
-	}
-	// TODO liberar bloques
+	currNode->state = 0;
+	// TODO capaz que loggear cantidad de lboques que libero ?
+	liberarBloques(currNode, get_occupied_datablocks_qty( currNode->file_size ), 0 );
 
-	return -ENOENT;
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+	return 0;
+
 }
 
 
