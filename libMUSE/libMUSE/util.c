@@ -178,6 +178,17 @@ void enviarRespuestaAlloc(int server_socket, uint32_t * tamanio) {
 	enviarPaquetes(server_socket, unPaquete);
 }
 
+void enviarMuseClose(int server_socket) {
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+
+	unPaquete->codigoOperacion = MUSE_CLOSE;
+
+	serializarMensaje(unPaquete, "Cerrate Loro");
+
+	enviarPaquetes(server_socket, unPaquete);
+}
+
+
 void enviarRespuestaGet(int server_socket, uint32_t * operacionSatisfactoria){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 

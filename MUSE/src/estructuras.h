@@ -35,6 +35,7 @@ typedef enum  {
 	MUSE_MAP,
 	MUSE_SYNC,
 	MUSE_UNMAP,
+	MUSE_CLOSE
 }t_cod_operaciones_MUSE;
 
 

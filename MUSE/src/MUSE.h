@@ -10,7 +10,7 @@
 #include <biblioNOC/serializaciones.h>
 #include <biblioNOC/conexiones.h>
 #include <biblioNOC/estructurasAdministrativas.h>
-#include <biblioteca/paquetes.h>
+#include <biblioNOC/paquetes.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdarg.h>

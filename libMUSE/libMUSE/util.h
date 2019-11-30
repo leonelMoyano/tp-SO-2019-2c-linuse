@@ -3,6 +3,7 @@
 
 #include <biblioNOC/estructurasAdministrativas.h>
 #include <biblioNOC/paquetes.h>
+#include "libMUSE.h"
 
 //si queres podemos cambiar parametros por estructuras que los contengan
 void serializarUINT32(t_paquete* unPaquete, uint32_t numero);
@@ -34,6 +35,8 @@ void enviarRespuestaMap(int server_socket, uint32_t posicion);
 void enviarRespuestaMsync(int server_socket, uint32_t operacionSatisfactoria);
 
 void enviarRespuestaUnmap(int server_socket,uint32_t operacionSatisfactoria);
+
+void enviarMuseClose(int server_socket);
 
 
 

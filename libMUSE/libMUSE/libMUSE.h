@@ -3,10 +3,12 @@
 
     #include <stdint.h>
     #include <stddef.h>
-	#include <biblioteca/conexiones.h>
+	#include <biblioNOC/conexiones.h>
 	#include "util.h"
+	#define LIBMUSE 400
 
 	int socketConexion;
+
 
 	typedef enum  {
 		MUSE_INIT = 723,
@@ -17,6 +19,7 @@
 		MUSE_MAP,
 		MUSE_SYNC,
 		MUSE_UNMAP,
+		MUSE_CLOSE
 	}t_cod_operaciones_MUSE;
 
 
