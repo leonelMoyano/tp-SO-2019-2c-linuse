@@ -16,7 +16,8 @@ int main(void) {
 	//abrirArchivoSwap();  va a romper por ruta configurada
 	//armarConfigMemoria(); va a romper por ruta configurada;
 
-	iniciarServer(g_configuracion->puertoConexion,g_logger, (void*) attendConnection);
+	char * puertoString = string_itoa(g_configuracion->puertoConexion);
+	iniciarServidor(puertoString, g_logger, (void*) attendConnection);
 
 	return prueba();
 
@@ -39,7 +40,7 @@ void attendConnection( int socketCliente) {
 				log_debug( g_loggerDebug, "Recibo paquete" );
 
 				if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ){
-					log_warning( g_loggerDebug, "Cierro esta conexion del kernel %d", socketCliente );
+					log_warning( g_loggerDebug, "Cierro esta conexion del LibMuse %d", socketCliente );
 					break;
 				};
 
