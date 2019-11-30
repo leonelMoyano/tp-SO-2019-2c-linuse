@@ -169,15 +169,17 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 
 static int do_unlink (const char *path){
 	int currNodeIndex = find_by_name(path);
-	if (currNodeIndex != -1) {
-		GFile* currNode = g_node_table + currNodeIndex;
-		currNode->state = 0;
+	if (currNodeIndex == -1)
+		return -ENOENT;
+	GFile* currNode = g_node_table + currNodeIndex;
 
-		msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
-		return 0;
-	}
+	currNode->state = 0;
+	// TODO capaz que loggear cantidad de lboques que libero ?
+	liberarBloques(currNode, get_occupied_datablocks_qty( currNode->file_size ), 0 );
 
-	return -ENOENT;
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+	return 0;
+
 }
 
 
@@ -260,6 +262,15 @@ void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t 
 	}
 }
 
+/**
+* @NAME: get_occupied_datablocks_qty
+* @DESC: Devuelve la cantidad de bloques de datos que necesito para guardar size bytes
+*
+*/
+int get_occupied_datablocks_qty(size_t size){
+	return size == 0 ? 0 : get_datablock_index(size - 1) + 1;
+}
+
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	printf( "[write]: %s\n", path);
 	int currNodeIndex = find_by_name( path );
@@ -269,37 +280,12 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 
 	GFile* currNode = g_node_table + currNodeIndex;
 
-	int currUsedBlocks = currNode->file_size / GBLOCKSIZE;
-	int neededBlocks = (size + offset) / GBLOCKSIZE;
+	int currUsedBlocks = get_occupied_datablocks_qty(currNode->file_size);
+	int neededBlocks = get_occupied_datablocks_qty(size + offset);
 	if (size + offset > currNode->file_size) {
 		// Lo que quiero escribir mas donde lo quiero escribir se pasa del tamanio actual
-		if( currUsedBlocks > neededBlocks  || currNode->file_size == 0){
-			// Los bloques que ya tengo reservados no alcanzan
-			int bloquesFaltantes = currNode->file_size == 0 ? 1 : neededBlocks - currUsedBlocks;
-
-			int nuevoDatablock;
-			int nuevoIndirect;
-			int proxDatablock = currNode->file_size == 0 ? 0 : currUsedBlocks % 1024 + 1;
-			int proxIndirect = currNode->file_size == 0 ? 0 : currUsedBlocks / 1024 + 1;
-
-			GPtrIndSimple * indirectBlock;
-			// tal vez valga la pena reescribir esto para no tener el proximo indice sino el actual y que sea menos confuso
-
-			for (int i = 0; i < bloquesFaltantes; i++) {
-				if( proxDatablock % 1024 == 0 ){
-					// necesito un bloque indirecto
-					nuevoIndirect = get_avail_block();
-					currNode->blk_indirect[proxIndirect] = nuevoIndirect;
-					bitarray_set_bit(g_bitmap, nuevoIndirect);
-					proxIndirect++;
-					proxDatablock = 0;
-				}
-				nuevoDatablock = get_avail_block();
-				indirectBlock = (GPtrIndSimple*) g_first_block + currNode->blk_indirect[proxIndirect - 1];
-				indirectBlock->blk_direct[ proxDatablock ] = nuevoDatablock;
-				bitarray_set_bit(g_bitmap, nuevoDatablock);
-				nuevoDatablock++;
-			}
+		if( neededBlocks > currUsedBlocks ){
+			reservarBloques(currNode, currUsedBlocks, neededBlocks);
 			// TODO semaforo para bitmap
 			/*
 			 * TODO preguntar si tengo bloques disponibles
@@ -317,6 +303,78 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 
 }
 
+/**
+* @NAME: liberarBloques
+* @DESC: Libera los bloques de datos que sobren restando cantidadDatablocksActuales - cantidadDatablocksFinales.
+* Devuelve la cantidad de datablocks liberados.
+*
+*/
+int liberarBloques(GFile* fileNode, int cantidadDatablocksActuales, int cantidadDatablocksFinales){
+	// TODO poner semaforos
+	// Resto 1 porque la cantidad la paso como 1 padded y para sacar los indices necesito 0 padded
+	int datablockIndexInsideIndir = ( cantidadDatablocksActuales -1 ) % PTRBYINDIRECT;
+	int indirIndex = ( cantidadDatablocksActuales - 1 ) / PTRBYINDIRECT;
+	GPtrIndSimple* ptrIndir;
+	int freedDatablocks = 0;
+	for(int i = 0; i < cantidadDatablocksActuales - cantidadDatablocksFinales; i++){
+		ptrIndir = (GPtrIndSimple*)g_header + fileNode->blk_indirect[ indirIndex ];
+		bitarray_clean_bit(g_bitmap, ptrIndir->blk_direct[datablockIndexInsideIndir]);
+		freedDatablocks++;
+		datablockIndexInsideIndir--;
+		// Si borre el 0 y tengo que borrar uno mas agarro el ultimo del indirecto anterior
+		if( datablockIndexInsideIndir == -1 ){
+			freedDatablocks++;
+			bitarray_clean_bit(g_bitmap, fileNode->blk_indirect[indirIndex]);
+			datablockIndexInsideIndir = PTRBYINDIRECT - 1;
+			indirIndex--;
+		}
+	}
+	return freedDatablocks;
+}
+
+/**
+* @NAME: reservarBloques
+* @DESC: Reserva los bloques de datos necesarios restando cantidadDatablocksFinales - cantidadDatablocksActuales.
+* Devuelve la cantidad de datablocks liberados.
+*
+*/
+int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFinales ){
+	// TODO poner semaforos
+	int reservedDatablocks = 0;
+
+	int bloquesFaltantes = cantBlocksFinales - cantBlocksActuales;
+
+	int nuevoDatablock;
+	int nuevoIndirect;
+	int datablockIndiceActual = cantBlocksActuales - 1;
+	int proxDatablock = cantBlocksActuales == 0 ? 0 : datablockIndiceActual % 1024 + 1;
+	int proxIndirect = cantBlocksActuales == 0 ? 0 : datablockIndiceActual / 1024 + 1;
+
+	GPtrIndSimple * indirectBlock;
+	// tal vez valga la pena reescribir esto para no tener el proximo indice sino el actual y que sea menos confuso ?
+
+	for (int i = 0; i < bloquesFaltantes; i++) {
+		// para que agarre tanto cuando tengo 0 como cuando llego a 1024
+		if( proxDatablock % 1024 == 0 ){
+			// necesito un bloque indirecto
+			nuevoIndirect = get_avail_block();
+			fileNode->blk_indirect[proxIndirect] = nuevoIndirect;
+			bitarray_set_bit(g_bitmap, nuevoIndirect);
+			proxIndirect++;
+			proxDatablock = 0;
+			reservedDatablocks++;
+		}
+		nuevoDatablock = get_avail_block();
+		indirectBlock = (GPtrIndSimple*) g_first_block + fileNode->blk_indirect[proxIndirect - 1];
+		indirectBlock->blk_direct[ proxDatablock ] = nuevoDatablock;
+		bitarray_set_bit(g_bitmap, nuevoDatablock);
+		proxDatablock++;
+		reservedDatablocks++;
+	}
+
+	return reservedDatablocks;
+}
+
 static int do_truncate(const char* path, off_t size){
 	int currNodeIndex = find_by_name(path);
 	if( currNodeIndex == -1 ){
@@ -324,8 +382,18 @@ static int do_truncate(const char* path, off_t size){
 	}
 
 	GFile* currNode = g_node_table + currNodeIndex;
-	// TODO terminar implementacion, esto deberia pisar el tamanio del archivo
-	// loque implica reservar o liberar bloques
+
+	int cantidadDatablocksActuales   = get_occupied_datablocks_qty( currNode->file_size );
+	int cantidadDatablocksNecesarios = get_occupied_datablocks_qty( size );
+
+	if( cantidadDatablocksActuales > cantidadDatablocksNecesarios )
+		liberarBloques(currNode, cantidadDatablocksActuales, cantidadDatablocksNecesarios);
+	else if( cantidadDatablocksActuales < cantidadDatablocksNecesarios )
+		reservarBloques(currNode, cantidadDatablocksActuales, cantidadDatablocksNecesarios);
+
+	currNode->file_size = size;
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+
 	return 0;
 }
 
