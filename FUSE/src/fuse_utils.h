@@ -20,5 +20,6 @@ void copy_file_contents(GFile*, const char*, size_t, off_t, int);
 
 int liberarBloques(GFile* file, int cantidadDatablosActuales, int cantidadDatablocksFinales);
 int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFinales );
+int get_occupied_datablocks_qty(size_t size);
 
 #endif /* FUSE_UTILS_H_ */

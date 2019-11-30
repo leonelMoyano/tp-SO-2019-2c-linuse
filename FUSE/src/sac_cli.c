@@ -139,6 +139,14 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	return copySize;
 }
 
+int get_avail_node;
+/*
+static int mkdir(const char *path, mode_t mode){
+	// TODO implementar
+	return 0;
+}
+*/
+
 static int do_mknod (const char *path, mode_t mode, dev_t device){
 	int currNode = find_by_name(path);
 	if( currNode != -1 ){
