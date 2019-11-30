@@ -16,11 +16,46 @@ int main(void) {
 	//abrirArchivoSwap();  va a romper por ruta configurada
 	//armarConfigMemoria(); va a romper por ruta configurada;
 
-	iniciarServer(g_configuracion->puertoConexion, procesarPaqueteLibMuse(NULL, LIBMUSE),g_logger);
+	iniciarServer(g_configuracion->puertoConexion,g_logger, (void*) attendConnection);
 
 	return prueba();
 
 }
+
+void attendConnection( int socketCliente) {
+	// int socketCliente = *(int *)socket_fd;
+	log_debug( g_loggerDebug, "Attend connection con este socket %d", socketCliente );
+	t_paquete* package = recibirArmarPaquete(socketCliente);
+	t_paquete* response;
+
+	log_debug( g_loggerDebug, "Checkeo que el paquete sea handshake" );
+	// Espero recibir el handshake y trato segun quien se conecte
+	switch(recibirHandshake(package)){
+		case LIBMUSE: ;
+			log_debug( g_loggerDebug, "Recibi el handshake del cliente" );
+
+			while (1) {
+				package = recibirArmarPaquete(socketCliente);
+				log_debug( g_loggerDebug, "Recibo paquete" );
+
+				if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ){
+					log_warning( g_loggerDebug, "Cierro esta conexion del kernel %d", socketCliente );
+					break;
+				};
+
+				response = procesarPaqueteLibMuse( package, socketCliente );
+				// enviarPaquetes(socketCliente, response);
+				// destruirPaquete(response);
+			}
+			break;
+		default:
+			log_warning( g_loggerDebug, "El paquete recibido no es handshake" );
+			break;
+	}
+	close(socketCliente);
+	// removeThreadFromActualThreads( pthread_self() );
+}
+
 
 t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 

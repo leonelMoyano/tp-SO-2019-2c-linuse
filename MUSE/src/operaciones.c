@@ -219,14 +219,12 @@ char* leerFrameSwap(int nroMarco){
 	void * dataArchivo = calloc( 1, tamArc + 1 );
 	fread( dataArchivo, tamArc, 1, *RUTASWAP );
 
-	//hacer malloc de tamanio de pagina, y luego enviar el void* , hacer lectura por bloques
-	//tener en cuenta que lo que voy a mandar tiene el tamannio a alloquear mas el heapmetadata
+	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
+	fseek(disco_swap, indiceArchivo ,SEEK_SET);
 
-	char ** listaPaginas = string_split(dataArchivo, "\n");
+	void* bloqueVacio = malloc(g_configuracion->tamanioPagina);
 
-	char* asd = list_get(listaPaginas,nroMarco);
-
-	list_replace(listaPaginas,nroMarco,'\0');
+	fwrite(bloqueVacio,g_configuracion->tamanioPagina,1,disco_swap);
 
 	bitarray_clean_bit(g_bitarray_swap,nroMarco);
 
@@ -248,7 +246,10 @@ char* escribirFrameSwap(int nroMarco, void* contenido, size_t largo){
 	fseek(disco_swap, indiceArchivo ,SEEK_SET);
 
 	void* bloque = malloc(g_configuracion->tamanioPagina);
+
+	//lo que quiero aca es malloquear el bloque de la pagina y luego el contenido, para que queden todos los bytes escritos
 	fwrite(bloque,g_configuracion->tamanioPagina,1,disco_swap);
+	fwrite(contenido,g_configuracion->tamanioPagina,1,disco_swap);
 
 	bitarray_set_bit(g_bitarray_swap,nroMarco);
 

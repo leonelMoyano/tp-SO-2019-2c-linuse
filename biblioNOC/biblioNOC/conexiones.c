@@ -116,6 +116,49 @@ void iniciarServer(int puerto, void (*procesarPaquete)(void*, int*),
 
 }
 
+
+int iniciarServidor(char* puerto, t_log* g_loggerDebug, void (*attendConnection)(int*)) {
+
+	struct sockaddr_storage their_addr;
+	struct addrinfo hints, *res;
+	int status, sockfd;
+	socklen_t addr_size;
+
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC; // AF_INET or AF_INET6 to force version
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = AI_PASSIVE; // use my IP
+
+	if ((status = getaddrinfo(NULL, puerto, &hints, &res)) != 0) {
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
+		return 1;
+	}
+
+	sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+
+	int yes = 1;
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+	bind(sockfd, res->ai_addr, res->ai_addrlen);
+
+	//TODO cerrar o free adrrinfo
+
+	if (-1 == listen(sockfd, 10))
+		perror("listen");
+
+	log_debug( g_loggerDebug, "Esperando conexiones en puerto %s", puerto);
+
+	while (1) {
+		addr_size = sizeof(their_addr);
+		int cliente_fd = accept(sockfd, (struct sockaddr*) &their_addr, &addr_size);
+
+		pthread_t pid;
+
+		log_debug( g_loggerDebug, "Me llego conexion con este socket %d", cliente_fd );
+		pthread_create(&pid, NULL, (void*) attendConnection, (void*) cliente_fd);
+
+	}
+}
+
 int crearSocketServer(char * puerto) {
 	//Creo las estructuras
 	struct addrinfo hints;

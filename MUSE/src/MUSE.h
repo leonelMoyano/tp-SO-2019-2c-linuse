@@ -51,6 +51,7 @@ t_list* programas;
 int tamanio_heap;
 
 /*------------------------Funciones-------------------------*/
+void 			attendConnection				(int socketCliente);
 void			reservarEspacioMemoriaPrincipal	();
 void            destruirGlobales                ();
 void 			armarConfigMemoria				();
