@@ -9,6 +9,8 @@
 
 #include "SUSE.h"
 
+void atenderConexion(int socketCliente);
+
 int main(void)
 {
 	iniciar_logger();
@@ -18,16 +20,8 @@ int main(void)
 
 	printf("asda2");
 	/*
-	char* mensaje;
-	socketServidor = getSocketServidor(configServer);
-	log_info(logger, "Socket servidor creado %d", socketServidor);
-
 	while(1)
 	{
-		esperarClientes(socketServidor);
-		log_info(logger, "Sin conexiones. Esperando clientes Hilolay");
-		socketCliente =  getSocketCliente(socketServidor);
-		log_info(logger, "Se conecto un cliente Hilolay! %d", socketCliente);
 		int cod_op = recibir_operacion(socketCliente);
 		switch(cod_op) 
 		{
@@ -52,6 +46,8 @@ int main(void)
 
 
 void atenderConexion(int socketCliente) {
+
+	// TODO seguir por aca
 	log_debug(g_logger, "Attend connection con este socket %d", socketCliente);
 	t_paquete* package = recibirArmarPaquete(socketCliente);
 	t_paquete* response;
@@ -72,7 +68,7 @@ void atenderConexion(int socketCliente) {
 				break;
 			};
 
-			response = procesarPaqueteLibMuse(package, socketCliente);
+			// response = procesarPaqueteLibMuse(package, socketCliente);
 			// enviarPaquetes(socketCliente, response);
 			// destruirPaquete(response);
 		}

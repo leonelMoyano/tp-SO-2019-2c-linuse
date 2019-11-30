@@ -13,7 +13,7 @@ CC := gcc
 MAJOR := 0
 MINOR := 1
 NAME := biblioSuse
-BUILD=bin
+BUILD=Debug
 
 all: clean $(NAME).so install
 
