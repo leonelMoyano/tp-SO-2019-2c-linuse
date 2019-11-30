@@ -69,13 +69,13 @@ void sendMssgSuse(char* mssg) {
 	char* port = getPort(config);
 	int  socketServer =	crear_conexion(ip, port);
 	enviar_mensaje(mssg , socketServer);
-	log_info(logger, "Socket servidor creado %d", socketServer);
-	log_destroy(logger);
+	log_info(g_logger, "Socket servidor creado %d", socketServer);
+	log_destroy(g_logger);
 	config_destroy(config);
 	close(socketServer);
 }
 
 void iniciar_log(void)
 {
-	logger = log_create("/home/utnso/workspace/confBiblioSuse/suseServer.log", "biblioSuse", 1, LOG_LEVEL_INFO);
+	g_logger = log_create("/home/utnso/workspace/confBiblioSuse/suseServer.log", "biblioSuse", 1, LOG_LEVEL_INFO);
 }

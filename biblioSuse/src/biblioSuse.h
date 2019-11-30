@@ -20,7 +20,7 @@
 #include "libSuseUtils.h"
 
 t_config* config;
-t_log* logger;
+t_log* g_logger;
 
 int suse_create(int tid);
 int suse_schedule_next(void);

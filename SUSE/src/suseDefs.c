@@ -7,6 +7,7 @@
 
 #include"suseDefs.h"
 
+/*
 int getSocketServidor(t_config* config)
 {
 	int socket_servidor;
@@ -33,6 +34,7 @@ int getSocketServidor(t_config* config)
     freeaddrinfo(servinfo);
     return socket_servidor;
 }
+*/
 
 void esperarClientes(int socket_servidor)
 {
@@ -82,4 +84,11 @@ char* recibir_mensaje(int socket_cliente)
 	int size;
 	char* buffer = recibir_buffer(&size, socket_cliente);
 	return buffer;
+}
+
+int tamanio_array(char** array) {
+	int tamanio;
+	for (tamanio = 0; array[tamanio] != NULL; tamanio++)
+		;
+	return tamanio;
 }

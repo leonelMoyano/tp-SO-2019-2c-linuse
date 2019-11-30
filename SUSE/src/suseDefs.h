@@ -15,19 +15,31 @@
 #include <netdb.h>
 #include <commons/log.h>
 #include <commons/config.h>
+#include <commons/collections/list.h>
 #include <string.h>
-#include <biblioSuse/biblioSuse.h>
-#include <biblioSuse/libSuseUtils.h>
-#include <hilolay/internal.h>
-#include <hilolay/alumnos.h>
-#include <hilolay/hilolay.h>
 
+#include "SUSE.h"
 
-int 		getSocketServidor	(t_config*);
+typedef struct suse_config{
+	char *puerto;
+	int metrics_timer;
+	int max_multiprog;
+	t_list* sem_ids;
+	t_list* sem_init;
+	t_list* sem_max;
+	double alpha_sjf;
+} t_config_suse;
+
+t_config_suse* g_config_server;
+
+void        iniciar_config(char* path);
 void 		esperarClientes		(int);
-int 		getSocketCliente	(int);
+// int 		getSocketCliente	(int);
 void* 		recibir_buffer		(int*,int);
 int 		recibir_operacion	(int);
 char* 		recibir_mensaje		(int);
+
+/*********** algunas utils ***********/
+int tamanio_array(char** array);
 
 #endif /* SUSEDEFS_H_ */

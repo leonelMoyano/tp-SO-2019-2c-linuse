@@ -1,0 +1,8 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.exe.debug.30192104/LD_LIBRARY_PATH/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.exe.debug.30192104/LD_LIBRARY_PATH/operation=append
+environment/project/cdt.managedbuild.config.gnu.exe.debug.30192104/LD_LIBRARY_PATH/value=/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug
+environment/project/cdt.managedbuild.config.gnu.exe.debug.30192104/append=true
+environment/project/cdt.managedbuild.config.gnu.exe.debug.30192104/appendContributed=true
+environment/project/cdt.managedbuild.toolchain.gnu.base.1908624631/append=true
+environment/project/cdt.managedbuild.toolchain.gnu.base.1908624631/appendContributed=true
