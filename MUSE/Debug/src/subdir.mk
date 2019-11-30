@@ -4,13 +4,22 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../src/MUSE.c 
+../src/MUSE.c \
+../src/manejoEstructuras.c \
+../src/operaciones.c \
+../src/util.c 
 
 OBJS += \
-./src/MUSE.o 
+./src/MUSE.o \
+./src/manejoEstructuras.o \
+./src/operaciones.o \
+./src/util.o 
 
 C_DEPS += \
-./src/MUSE.d 
+./src/MUSE.d \
+./src/manejoEstructuras.d \
+./src/operaciones.d \
+./src/util.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

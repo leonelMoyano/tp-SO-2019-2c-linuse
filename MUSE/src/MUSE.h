@@ -48,6 +48,7 @@ int maxPaginasEnSwap;
 void * g_granMalloc;
 
 t_list* programas;
+int tamanio_heap;
 
 /*------------------------Funciones-------------------------*/
 void			reservarEspacioMemoriaPrincipal	();

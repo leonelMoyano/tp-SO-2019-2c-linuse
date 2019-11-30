@@ -5,6 +5,7 @@ int main(void) {
 	punteroClock = 0;
 	nroPrograma = 0;
 	direccionamientoLogicoActual = 0;
+	tamanio_heap = 5;
 
 	g_logger = log_create("MUSE.log", "MUSE", true, LOG_LEVEL_TRACE);
 	g_loggerDebug = log_create("MUSE.log", "MUSE", false, LOG_LEVEL_DEBUG);

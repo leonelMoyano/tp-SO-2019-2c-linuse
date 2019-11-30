@@ -139,7 +139,7 @@ int traerFrameDePaginaEnSwap(int socketPrograma, int nroPagina) {
 	//sem_wait(&g_mutex_tablas);
 	t_paginaSwap* paginaBuscada = list_find(paginasEnSwap,existeFrame);
 	//sem_post(&g_mutex_tablas);
-	return paginaBuscada->nroFrameSwap;
+	return paginaBuscada->nroFrame;
 }
 
 
@@ -304,7 +304,6 @@ t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 
 t_heapDireccion* buscarHeapSegmento(uint32_t direccionABuscar, t_segmento* segmento){
 	t_heapSegmento* auxHeap = NULL;
-	int tamanio_heap = 5;
 	uint32_t direccionHeap = 0;
 	bool encontrado = false;
 

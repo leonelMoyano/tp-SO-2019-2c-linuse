@@ -25,7 +25,7 @@ int             buscarFrameLibre                ();
 t_heapSegmento* buscarHeapConEspacioLibre		(int cantidadBytesNecesarios, t_segmento* segmento);
 int             ClockModificado                 ();
 
-int 			verificarEspacioLibreUltimaPagina(int indiceFrame);
+
 int				bytesNecesariosUltimoFrame		(int cantidadBytes);
 int				framesNecesariosPorCantidadMemoria(int cantidadBytes);
 int				desplazamientoPaginaSegmento	(uint32_t direccionVirtual, int baseLogica);

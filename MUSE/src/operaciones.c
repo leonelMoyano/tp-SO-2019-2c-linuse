@@ -54,7 +54,6 @@ int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 	bool segmentoUnico = segmento->limiteLogico > src + n;
 
 	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(n);
-
 }
 
 int procesarCopy(uint32_t dst, void* src, int n, int socket){
@@ -96,7 +95,6 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 	t_segmento* segmentoBuscar = NULL;
 	t_heapSegmento* auxHeap = NULL;
 	t_heapSegmento* heapBuscado = NULL;
-	int tamanio_heap = 5;
 	uint32_t direccionHeap = 0;
 	bool encontrado = false;
 	int i = 0;
@@ -147,6 +145,23 @@ uint32_t allocarEnPaginasNuevas(t_segmento* segmentoAExtender, uint32_t cantidad
 
 }
 
+int freeDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
+
+
+	int direccionLogicaAux = 0;
+	bool encontrado = false;
+	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++)
+	{
+		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
+		encontrado = !auxHeap->isFree && (direccionLogicaAux + tamanio_heap == direccionLogica);
+		if(!encontrado) direccionLogicaAux += auxHeap->t_size + tamanio_heap;
+		else auxHeap->isFree = true; //fijar si tengo que compactar heaps
+	}
+
+	if(!encontrado) return -1; //segmentation fault
+}
+
+
 void RegistrarMetricasPrograma(t_programa* programa){
 
 	int porcentaje = PorcentajeAsignacionMemoria(programa);
@@ -186,9 +201,8 @@ uint32_t EspacioLibre(t_segmento* segmento){
 int PorcentajeAsignacionMemoria(t_programa* programa){}
 int SistemaMemoriaDisponible(){}
 
-void EnviarPaginaASwap(int socketPrograma, int nroPagina){}
 
-void TraerPaginaDeSwap(int socketPrograma, int nroPagina){
+void TraerPaginaDeSwap(int socketPrograma, int nroPagina, int idSegmento){
 
 	int marcoEnSwap = traerFrameDePaginaEnSwap(socketPrograma,nroPagina);
 
@@ -204,6 +218,9 @@ char* leerFrameSwap(int nroMarco){
 	// Leo el total del archivo y lo asigno al buffer
 	void * dataArchivo = calloc( 1, tamArc + 1 );
 	fread( dataArchivo, tamArc, 1, *RUTASWAP );
+
+	//hacer malloc de tamanio de pagina, y luego enviar el void* , hacer lectura por bloques
+	//tener en cuenta que lo que voy a mandar tiene el tamannio a alloquear mas el heapmetadata
 
 	char ** listaPaginas = string_split(dataArchivo, "\n");
 
@@ -227,19 +244,20 @@ char* escribirFrameSwap(int nroMarco, void* contenido, size_t largo){
 	void * dataArchivo = calloc( 1, tamArc + 1 );
 	fread( dataArchivo, tamArc, 1, *RUTASWAP );
 
-	char ** listaPaginas = string_split(dataArchivo, "\n");
-	list_replace(listaPaginas,nroMarco,contenido);
+	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
+	fseek(disco_swap, indiceArchivo ,SEEK_SET);
+
+	void* bloque = malloc(g_configuracion->tamanioPagina);
+	fwrite(bloque,g_configuracion->tamanioPagina,1,disco_swap);
 
 	bitarray_set_bit(g_bitarray_swap,nroMarco);
 
 	fclose(*disco_swap);
 }
 
-void cargarPaginaEnSwap(void* bytes,int nroPagina, int nroPrograma){
+void cargarPaginaEnSwap(void* bytes,int nroPagina, int nroPrograma, int idSegmento){
 
 	int nroFrame = buscarFrameLibreSwap();
-
-
 
 
 }

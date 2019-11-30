@@ -57,6 +57,7 @@ typedef struct{
 }t_programa;
 
 typedef struct{
+	int idSegmento;
 	int baseLogica;
 	int limiteLogico;
 	t_list* tablaPaginas;
@@ -90,10 +91,10 @@ typedef struct{
 }t_heapDireccion;
 
 typedef struct{
-	int nroFrameSwap;
+	int nroFrame;
 	int nroPagina;
 	int socketPrograma;
-	// identificar segmento por nro pagina global?
+	int idSegmento;
 }t_paginaSwap;
 
 typedef struct{
