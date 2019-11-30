@@ -12,7 +12,7 @@
 	#include <ucontext.h>
 
 	#include <unistd.h>
-	
+
 	/* Error code sent when you cannot create more ULTs */
 	#define ERROR_TOO_MANY_ULTS -1
 

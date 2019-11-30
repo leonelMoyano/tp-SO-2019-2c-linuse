@@ -22,12 +22,11 @@ void init_internal(struct hilolay_operations* ops){
 	/* Initializes main as a thread */
 	/* TODO: Abstract*/
     current_ult = &ults[0];
-    printf("\n\nInit_Internal!\n\n");
     current_ult->context = malloc(sizeof(ucontext_t));
     set_tcb(current_ult, MAIN_THREAD_ID, RUNNING);
 
     /* Call function on clients code */
-	main_ops->suse_create(current_ult->id);
+    main_ops->suse_create(current_ult->id);
 }
 
 void* wrap(void *(*start_routine)(void *), void *arg, int tid){
@@ -126,7 +125,7 @@ int hilolay_join(hilolay_t *thread){
 
 hilolay_sem_t* hilolay_sem_open(char *name){
     hilolay_sem_t* sem = malloc(sizeof(hilolay_sem_t));
-    sem->name = malloc(strlen(name));
+    sem->name = malloc(strlen(name)+1);
     stpcpy(sem->name, name);
     return sem;
 }
