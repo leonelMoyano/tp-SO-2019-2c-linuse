@@ -12,7 +12,7 @@ int get_datablock_index(off_t);
 int get_indirect_block_index(off_t);
 int get_datablock_index_inside_indirect_block(off_t);
 
-int find_by_name(const char*);
+int find_by_path(const char*);
 
 size_t min(size_t, size_t);
 

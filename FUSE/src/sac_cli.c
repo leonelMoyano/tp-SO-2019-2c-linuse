@@ -15,6 +15,7 @@
 #include <commons/temporal.h>
 #include <commons/log.h>
 #include <commons/bitarray.h>
+#include <commons/string.h>
 #include "biblioNOC/paquetes.h"
 #include "sac.h"
 #include "fuse_utils.h"
@@ -23,6 +24,7 @@ ptrGBloque* g_first_block; // Puntero al inicio del primer bloque dentro del arc
 long g_disk_size; // Tamanio en bytes del archivo
 GHeader* g_header; // Puntero al header del FS
 GFile* g_node_table; // Puntero al primer nodo del FS
+int g_node_table_block_index; // Indice de comienzo de la tabla de nodos
 u_int32_t g_block_count; // Cantidad de bloques en el archivo
 t_bitarray* g_bitmap; // Puntero al bitmap del FS
 
@@ -44,20 +46,35 @@ struct t_runtime_options {
 
 
 /**
-* @NAME: find_by_name
-* @DESC: Devuelve el indice en la tabla de nodos para el archivo, -1 en caso de no encontrarlo
+* @NAME: find_by_name_in_parent
+* @DESC: Devuelve el indice en la tabla de nodos para el archivo de nombre name con nodo padre parent_index, -1 en caso de no encontrarlo
 *
 */
-int find_by_name(const char *path){
-	// Por el momento asumo que todx esta en / asi que aca solo recorro la tabla de nodos y pregunto por el nombre
+int find_by_name_in_parent(const char *name, int parent_index){
 	GFile* currNode;
 	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
 		currNode = g_node_table + currNodeIndex;
-		if( strcmp( path + 1, currNode->fname ) == 0 && currNode->state != 0){ // path + 1 para omitir la barra
+		if( currNode->state != 0 && currNode->parent_dir_block == parent_index && strcmp( name, currNode->fname ) == 0 ){
 			return currNodeIndex;
 		}
 	}
 	return -1;
+}
+
+
+/**
+* @NAME: find_by_path
+* @DESC: Devuelve el indice en la tabla de nodos para el archivo con full path igual a path, -1 en caso de no encontrarlo
+*
+*/
+int find_by_path(const char *path){
+	// TODO liberar memoria de string_split
+	char **splitted_path = string_split( path, "/" );
+	int parent_node_index = get_parent_node( path );
+	int splitted_path_index = 0;
+	while( splitted_path[ splitted_path_index + 1 ] != NULL )
+		splitted_path_index++;
+	return find_by_name_in_parent( splitted_path[ splitted_path_index ], parent_node_index );
 }
 
 static int do_getattr(const char *path, struct stat *st) {
@@ -86,10 +103,13 @@ static int do_getattr(const char *path, struct stat *st) {
 	}
 
 	// path aca es por ej "/testFoo"
-	int currNodeIndex = find_by_name(path);
+	int currNodeIndex = find_by_path(path);
 	if (currNodeIndex != -1) {
 		GFile* currNode = g_node_table + currNodeIndex;
-		st->st_mode = S_IFREG | 0644;
+		if( currNode->state == 1 )
+			st->st_mode = S_IFREG | 0644;
+		else
+			st->st_mode = S_IFDIR | 0755;
 		st->st_nlink = 1;
 		st->st_mtime = currNode->m_date;
 		st->st_size = currNode->file_size;
@@ -102,31 +122,40 @@ static int do_getattr(const char *path, struct stat *st) {
 static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
 	printf("--> Getting The List of Files of %s\n", path);
 
+	int parentNodeIndex;
+	if( strcmp( path, "/" ) == 0 ){
+		parentNodeIndex = 0;
+	} else {
+		parentNodeIndex = find_by_path( path );
+		if( parentNodeIndex == -1 )
+			return -ENOENT;
+		else {
+			GFile *parentNode = g_node_table + parentNodeIndex;
+			if( parentNode->state == 1 )
+				return -ENOTDIR;
+		}
+	}
+
 	filler(buffer, ".", NULL, 0); // Current Directory
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
-	int currNodeIndex = 0;
-	for(; currNodeIndex < GFILEBYTABLE; currNodeIndex++){ // Por el momento asumo que todx existe en /
+	if( parentNodeIndex != 0 )
+		parentNodeIndex += g_node_table_block_index; // Convertir a indice absoluto
+
+	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
 		GFile* currNode = g_node_table + currNodeIndex;
-		if( currNode->state == 1 ){
+		if( currNode->parent_dir_block == parentNodeIndex && currNode->state != 0 ){
 			// TODO logear algo aca ?
 			filler(buffer, currNode->fname, NULL, 0);
 		}
 	}
-
-	/*
-	 * TODO cuando tenga una estructura de directorios y no todx tirado en /
-	 * voy a tener una llamada a una funcion que dado un path devuelve el id de directorio
-	 * cuando tenga ese id voy a hacer el for buscando todx lo que tenga estado != 0
-	 * y con el parent node en ese id
-	 */
 
 	return 0;
 }
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	printf( "[read]: %s\n", path);
-	int currNodeIndex = find_by_name( path );
+	int currNodeIndex = find_by_path( path );
 	if(currNodeIndex == -1){
 		return -ENOENT;
 	}
@@ -139,36 +168,119 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	return copySize;
 }
 
-int get_avail_node;
-/*
-static int mkdir(const char *path, mode_t mode){
-	// TODO implementar
-	return 0;
-}
-*/
 
-static int do_mknod (const char *path, mode_t mode, dev_t device){
-	int currNode = find_by_name(path);
-	if( currNode != -1 ){
-		return -EEXIST; // path already exists
-	}
-	currNode = 0;
+/**
+* @NAME: get_avail_node
+* @DESC: Devuelve el indice en la tabla de nodos del proximo nodo libre, -EDQUOT
+*
+*/
+int get_avail_node(){
+	int currNode = 0;
 
 	while( g_node_table[currNode].state!=0 && currNode < GFILEBYTABLE ) // Busco la proxima entrada disponible en la tabla de nodos
 		currNode++;
 
 	if (currNode >= g_block_count)
 		return -EDQUOT; // No tengo nodos disponibles para crear otro archivo
+	return currNode;
+}
 
-	GFile* nodeToSet = g_node_table + currNode;
-	// TODO pasar esto a log
-	printf( "[mknod][%d]: %s\n", currNode, path);
-	strcpy((char*) nodeToSet->fname, path + 1); // TODO IMPORTATEN + 1 ES PARA SALTEARSE LA BARRA
-	nodeToSet->state = 1;
+
+/**
+* @NAME: get_parent_node
+* @DESC: Devuelve el indice absoluto del nodo padre para path, 0 si es root, -ENOTDIR si no existe el directorio
+*
+*/
+int get_parent_node(const char *path){
+	// TODO liberar la memoria del split
+	char **split_path = string_split( path, "/" );
+	// string_split( "/testetset/opt/okok", "/" ) -> [ testsetest, opt, okokok, NULL ]
+	// string_split( "/", "/" ) -> [ NULL ]
+	// string_split( "/test", "/" ) -> [ test, NULL ]
+	int currentParent = 0;
+	int currentPathIndex = 0;
+
+	GFile *currNode;
+
+	while( split_path[ currentPathIndex ] != NULL && split_path[ currentPathIndex + 1 ] != NULL ){
+		// Sumo y resto el indice donde inicia la tabla de nodos porque find_by_name_in_parent
+		// devuelve el indice relativo dentro de la tabla y los padres estan indicados como indices absolutos
+		currentParent = find_by_name_in_parent( split_path[ currentPathIndex ], currentParent ) + g_node_table_block_index;
+		currNode = g_node_table + currentParent - g_node_table_block_index;
+		if( currNode->state != 2 )
+			return -ENOTDIR;
+		currentPathIndex++;
+	}
+	return currentParent;
+}
+
+
+/**
+* @NAME: check_existance_and_availability
+* @DESC: Chequea la existencia de path, si existe devuelve -EEXIST,
+* si no existe devuelve indice a un nodo libre en la tabla,
+* si no hay nodos libres devuelve -EDQUOT
+*
+*/
+int check_existance_and_availability( const char *path ){
+	int currNode = find_by_path(path);
+	if( currNode != -1 ){
+		return -EEXIST; // path already exists
+	}
+
+	currNode = get_avail_node();
+	if( currNode == -EDQUOT )
+		return -EDQUOT;
+	return currNode;
+}
+
+void occupy_node( char *path, int nodeIndex, int parentNodeIndex, int state ){
+	GFile* nodeToSet = g_node_table + nodeIndex;
+
+	char **splitted_path = string_split( path, "/" );
+	int splitted_path_index = 0;
+	// TODO liberar memoria de string_split
+	while( splitted_path[ splitted_path_index + 1 ] != NULL )
+		splitted_path_index++;
+
+	strcpy((char*) nodeToSet->fname, splitted_path[ splitted_path_index ] );
+	nodeToSet->state = state;
 	nodeToSet->file_size = 0;
-	time_t now = time( NULL);
-	printf("sizeof time_t %u", sizeof(now));
-	nodeToSet->c_date = now;
+	nodeToSet->parent_dir_block = parentNodeIndex;
+	nodeToSet->c_date = time( NULL );
+}
+
+static int do_mknod (const char *path, mode_t mode, dev_t device){
+	int currNode = check_existance_and_availability( path );
+	if( currNode < 0 )
+		return currNode;
+
+	int parentNode = get_parent_node( path );
+	if( parentNode == -ENOTDIR )
+		return -ENOENT;
+
+	// TODO pasar esto a log ?
+	printf( "[mknod][%d]: %s\n", currNode, path);
+	occupy_node( path, currNode, parentNode, 1 );
+
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+
+	return 0;
+}
+
+
+static int do_mkdir(const char *path, mode_t mode){
+	int currNode = check_existance_and_availability( path );
+	if( currNode < 0 )
+		return currNode;
+
+	int parentNode = get_parent_node( path );
+	if( parentNode == -ENOTDIR )
+		return -ENOTDIR;
+
+	// TODO pasar esto a log ?
+	printf( "[mkdir][%d]: %s\n", currNode, path);
+	occupy_node( path, currNode, parentNode, 2 );
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
@@ -176,7 +288,7 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 }
 
 static int do_unlink (const char *path){
-	int currNodeIndex = find_by_name(path);
+	int currNodeIndex = find_by_path(path);
 	if (currNodeIndex == -1)
 		return -ENOENT;
 	GFile* currNode = g_node_table + currNodeIndex;
@@ -281,7 +393,7 @@ int get_occupied_datablocks_qty(size_t size){
 
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	printf( "[write]: %s\n", path);
-	int currNodeIndex = find_by_name( path );
+	int currNodeIndex = find_by_path( path );
 	if(currNodeIndex == -1){
 		return -ENOENT;
 	}
@@ -384,7 +496,7 @@ int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFina
 }
 
 static int do_truncate(const char* path, off_t size){
-	int currNodeIndex = find_by_name(path);
+	int currNodeIndex = find_by_path(path);
 	if( currNodeIndex == -1 ){
 		return -ENOENT;
 	}
@@ -407,7 +519,7 @@ static int do_truncate(const char* path, off_t size){
 
 static int do_utimens( const char *path, const struct timespec tv[2]){
 	// donde tv[ 0 ] es last access time y tv[ 1 ] es last modified time
-	int currNodeIndex = find_by_name(path);
+	int currNodeIndex = find_by_path(path);
 	if( currNodeIndex == -1 ){
 		return -ENOENT;
 	}
@@ -430,6 +542,7 @@ static struct fuse_operations operations = {
 		.utimens = do_utimens,
 		.write = do_write,
 		.truncate = do_truncate,
+		.mkdir = do_mkdir,
 };
 
 /** keys for FUSE_OPT_ options */
@@ -511,7 +624,8 @@ int main(int argc, char *argv[]) {
 	}
 	printf( "%d libres con %d ocupados", free, occupied);
 
-	g_node_table = (GFile*) g_header + g_header->blk_bitmap + g_header->size_bitmap;
+	g_node_table_block_index = g_header->blk_bitmap + g_header->size_bitmap;
+	g_node_table = (GFile*) g_header + g_node_table_block_index;
 
 	// Esta es la funcion principal de FUSE, es la que se encarga
 	// de realizar el montaje, comuniscarse con el kernel, delegar todx
