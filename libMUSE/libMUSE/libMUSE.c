@@ -9,18 +9,20 @@ int main(void) {
 
 int muse_init(int id, char* ip, int puerto){
 
-	socketConexion = conectarCliente(ip,puerto,id);
+	printf("Entro a la funcon init de LibMuse");
+
+	socketConexion = conectarCliente(ip,puerto,LIBMUSE);
 
 	enviarMensaje(socketConexion, "");
-	//necesito proceso id, e hilo id?
 
-	return socket;
+	return socketConexion;
 
 }
 
 void muse_close(){
 
-	//limpiar estructuras, liberar memoria
+	enviarMuseClose(socketConexion);
+	free(socketConexion);
 }
 
 uint32_t muse_alloc(uint32_t tam){

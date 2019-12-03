@@ -13,11 +13,11 @@ int main(void) {
 
 	programas = crearTablaProgramas();
 
-	//abrirArchivoSwap();  va a romper por ruta configurada
+	//abrirArchivoSwap();  va a romper por ruta configurada;
 	//armarConfigMemoria(); va a romper por ruta configurada;
 
-	char * puertoString = string_itoa(g_configuracion->puertoConexion);
-	iniciarServidor(puertoString, g_logger, (void*) attendConnection);
+	//char * puertoString = string_itoa(g_configuracion->puertoConexion);
+	iniciarServidor("4005", g_logger, attendConnection);
 
 	return prueba();
 
@@ -73,6 +73,10 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
     */
 	case MUSE_INIT: ;
 	    InicializarNuevoPrograma(socket);
+		break;
+
+	case MUSE_CLOSE: ;
+		FinalizarPrograma(socket);
 		break;
 
 	case MUSE_ALLOC: ;
@@ -141,7 +145,6 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 
 
 void armarConfigMemoria() {
-
 	log_info( g_logger, "Leyendo config: %s", RUTACONFIG );
 
 	g_config = config_create(RUTACONFIG);
@@ -151,10 +154,7 @@ void armarConfigMemoria() {
 	g_configuracion->tamanioMemoria    = config_get_int_value(g_config, "MEMORY_SIZE");
 	g_configuracion->tamanioSwap    = config_get_int_value(g_config, "PAGE_SIZE");
 	g_configuracion->tamanioPagina    = config_get_int_value(g_config, "SWAP_SIZE");
-
-
 }
-
 
 void reservarEspacioMemoriaPrincipal(){
 
@@ -182,7 +182,6 @@ void FinalizarPrograma(int socket){
 	destruirPrograma(buscarPrograma(socket));
 	ActualizarLogMetricas();
 }
-
 
 void abrirArchivoSwap() {
 	// Abro el archivo .... o debo crearlo???
