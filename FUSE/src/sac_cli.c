@@ -234,6 +234,7 @@ int check_existance_and_availability( const char *path ){
 	return currNode;
 }
 
+
 void occupy_node( char *path, int nodeIndex, int parentNodeIndex, int state ){
 	GFile* nodeToSet = g_node_table + nodeIndex;
 
@@ -299,7 +300,15 @@ static int do_unlink (const char *path){
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 	return 0;
+}
 
+static int do_rmdir( const char *path ){
+	int currNode = find_by_path( path );
+	GFile *fileNode = g_node_table + currNode;
+	fileNode->state = 0;
+
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+	return 0;
 }
 
 
@@ -543,6 +552,7 @@ static struct fuse_operations operations = {
 		.write = do_write,
 		.truncate = do_truncate,
 		.mkdir = do_mkdir,
+		.rmdir = do_rmdir,
 };
 
 /** keys for FUSE_OPT_ options */
