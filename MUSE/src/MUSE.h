@@ -23,6 +23,7 @@
 #define RUTASWAP "ASDAS"
 #define LIBMUSE 400
 
+int idSegmento;
 int nroPrograma;
 int punteroClock;
 int direccionamientoLogicoActual;
@@ -34,10 +35,11 @@ int g_cantidadFrames;
 t_configuracion * g_configuracion;
 t_config* g_config;
 t_list* g_diccionarioConexiones; //de programas
+pthread_t hiloServidor;
 
 
 t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
-
+t_list * contenidoFrames;
 t_list* tablasDePaginas; // o TLB para hacer reemplazo global
 
 t_bitarray * g_bitarray_swap;

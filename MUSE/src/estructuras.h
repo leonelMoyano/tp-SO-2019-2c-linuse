@@ -74,14 +74,18 @@ typedef struct{
 
 
 typedef struct{
-	int nroFrame;
 	int nroPagina;
+	int nroFrame;
 	bool flagUso;
 	bool flagModificado;
 	bool flagPresencia;
 	void* bytes;
 }t_pagina;
 
+typedef struct{
+	int nroFrame;
+	void* contenido;
+}t_contenidoFrame;
 
 //Tipos auxiliares
 
@@ -96,7 +100,7 @@ typedef struct{
 	int nroPagina;
 	int socketPrograma;
 	int idSegmento;
-}t_paginaSwap;
+}t_paginaAdministrativa;
 
 typedef struct{
 	int nroFrame;

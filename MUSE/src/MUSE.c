@@ -2,6 +2,7 @@
 
 int main(void) {
 
+	idSegmento = 0;
 	punteroClock = 0;
 	nroPrograma = 0;
 	direccionamientoLogicoActual = 0;
@@ -15,13 +16,27 @@ int main(void) {
 
 	//abrirArchivoSwap();  va a romper por ruta configurada;
 	//armarConfigMemoria(); va a romper por ruta configurada;
-
 	//char * puertoString = string_itoa(g_configuracion->puertoConexion);
+
+	/*if( pthread_create( &hiloServidor, NULL, (void*) arrancarServer ) < 0 ) {
+			log_error(g_logger, "No pude crear thread de servidor");
+			destruirGlobales();
+			return EXIT_FAILURE;
+		}
+	*/
+
+
 	iniciarServidor("4005", g_logger, attendConnection);
+
+
+
+
 
 	return prueba();
 
 }
+
+void arrancarServer(){}
 
 void attendConnection( int socketCliente) {
 	// int socketCliente = *(int *)socket_fd;
