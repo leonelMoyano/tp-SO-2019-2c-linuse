@@ -1,7 +1,7 @@
 /* Lib implementation: It'll only schedule the last thread that was created */
 #include "biblioSuse.h"
 
-char* confSuse = "/home/utnso/workspace/confBiblioSuse/biblioSuse.cfg";
+#define CONFIG_PATH "/home/utnso/workspace/confBiblioSuse/biblioSuse.cfg"
 int max_tid = 0;
 int server_socket;
 
@@ -79,14 +79,12 @@ void init_config(char *path){
 
 void sendMssgSuse(char* mssg) {
 	iniciar_log();
-	config = leer_config(confSuse);
-	char* ip = getAddress(config);
-	char* port = getPort(config);
+	char* ip = g_config->ip;
+	char* port = g_config->puerto;
 	int  socketServer =	crear_conexion(ip, port);
 	enviar_mensaje(mssg , socketServer);
 	log_info(g_logger, "Socket servidor creado %d", socketServer);
 	log_destroy(g_logger);
-	config_destroy(config);
 	close(socketServer);
 }
 

@@ -16,6 +16,8 @@
 #include<netdb.h>
 #include<string.h>
 #include <commons/config.h>
+#include <biblioNOC/conexiones.h>
+#include <biblioNOC/paquetes.h>
 
 typedef enum
 {
