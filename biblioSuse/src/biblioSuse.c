@@ -3,6 +3,7 @@
 
 char* confSuse = "/home/utnso/workspace/confBiblioSuse/biblioSuse.cfg";
 int max_tid = 0;
+int server_socket;
 
 int suse_create(int tid)
 {
@@ -58,8 +59,22 @@ struct hilolay_operations operaciones = {
 
 void hilolay_init(void)
 {
+	// TODO en paquetes tenemos una util para inicar conexión
+	// TODO levantar config y guardar en la global
+	init_config( CONFIG_PATH );
+
 	init_internal(&operaciones);
 	sendMssgSuse("Se Inicio un Proceso");
+}
+
+void init_config(char *path){
+	t_config *config = config_create(path);
+	g_config = malloc( sizeof( t_config_lib_suse ) );
+
+	g_config->ip = config_get_string_value( config, "IP" );
+	g_config->puerto = config_get_string_value( config, "PUERTO" );
+
+	config_destroy( config );
 }
 
 void sendMssgSuse(char* mssg) {

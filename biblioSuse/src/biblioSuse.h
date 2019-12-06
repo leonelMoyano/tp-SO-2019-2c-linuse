@@ -16,10 +16,11 @@
 #include <hilolay/internal.h>
 #include <commons/config.h>
 #include <commons/log.h>
+#include <biblioNOC/conexiones.h>
 
 #include "libSuseUtils.h"
 
-t_config* config;
+t_config_lib_suse *g_config;
 t_log* g_logger;
 
 int suse_create(int tid);
