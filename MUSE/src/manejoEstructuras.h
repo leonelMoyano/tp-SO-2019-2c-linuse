@@ -12,18 +12,22 @@ t_list*			crearTablaProgramas				();
 t_list*			crearTablaPaginas				();
 t_list*         crearTablaSegmentos             ();
 t_segmento*     crearSegmento                   (int direccionBase, int tamanio, int tipoSegmento);
-t_pagina*       crearPagina                     (int numeroDeMarco);
+t_pagina*       crearPagina                     (int numeroDeMarco, int nroPagina);
+t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegmento,int nroPagina, int nroFrame);
 void 			agregarTablaSegmento			(t_list * lista, t_segmento* tabla);
-void 			agregarPaginaEnSegmento		    (t_segmento * segmento, int numeroDeMarco);
+void 			agregarPaginaEnSegmento		    (int socket, t_segmento * segmento, int numeroDeMarco);
 void			registrarYAgregarEnSegmento		( int cantidadDeBytes, t_programa* programa, t_segmento* segmentoElegido );
+t_segmento*		buscarSegmentoId				(t_list* segmentos,int idSemgneto);
 t_segmento*	    buscarSegmento					(t_list* segmentos,uint32_t direccionVirtual);
 t_segmento* 	ultimoSegmentoPrograma			(t_programa* programa);
-t_pagina* 		buscarPaginaPrograma			(t_list* segmentos,int nroPagina);
-t_pagina*		buscarPaginaEnTabla				(t_list* tablasPaginas, int nroPagina);
 t_programa* 	buscarPrograma				    (int socket);
 int             buscarFrameLibre                ();
+t_pagina*		buscarFrameEnTablasDePaginas	(t_paginaAdministrativa* paginaABuscar);
+t_paginaAdministrativa* buscarPaginaAdministrativa(t_list* SwapOPrincipal, int nroFrame);
+int				traerFrameDePaginaEnSwap		(int socketPrograma,int idSegmento, int nroPagina);
 t_heapSegmento* buscarHeapConEspacioLibre		(int cantidadBytesNecesarios, t_segmento* segmento);
 int             ClockModificado                 ();
+
 
 
 int				bytesNecesariosUltimoFrame		(int cantidadBytes);

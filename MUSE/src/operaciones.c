@@ -8,7 +8,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
 		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1 );
-		direccionLogica = allocarEnPaginasNuevas(segmentoElegido,tam);
+		direccionLogica = allocarEnPaginasNuevas(socket, segmentoElegido,tam);
 	}
 	else
 	{
@@ -22,7 +22,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 			}
 			else segmentoElegido = ultimoSegmento;
 
-			direccionLogica = allocarEnPaginasNuevas(segmentoElegido,tam);
+			direccionLogica = allocarEnPaginasNuevas(socket,segmentoElegido,tam);
 		}
 	}
 
@@ -77,7 +77,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	list_add(programa->segmentos_programa,crearSegmento(programa->segmentos_programa->limiteLogico,length,1));
 	programa->segmentos_programa->limiteLogico += tamanioSegmento;
 
-	allocarEnPaginasNuevas(nuevoSegmento, length);
+	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
 
 	// reservar paginas para satisfacer el length
 }
@@ -88,6 +88,11 @@ int procesarSync(uint32_t addr, size_t len, int socket){
 
 uint32_t procesarUnMap(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(socket);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dir);
+
+	//es segmento mmap?
+
+
 }
 
 
@@ -125,18 +130,20 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 	return direccionHeap;
 }
 
-uint32_t allocarEnPaginasNuevas(t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios ){
+uint32_t allocarEnPaginasNuevas(int socket, t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios ){
 
 	int cantPaginasNecesarias = framesNecesariosPorCantidadMemoria(cantidadBytesNecesarios);
 
 	int i;
 
 	for (i = 0; cantPaginasNecesarias > i ; ++i){
+
 		int indiceFrame = buscarFrameLibre();
+
+		//si es de mmap solo debo cargar las paginas en el segmento,sin que esten presentes
 		if(indiceFrame == -1) indiceFrame = ClockModificado();
 		else
-		agregarPaginaEnSegmento(segmentoAExtender,indiceFrame);
-		bitarray_set_bit(g_bitarray_marcos,indiceFrame);
+		agregarPaginaEnSegmento(socket, segmentoAExtender,indiceFrame);
 	}
 
 
@@ -204,11 +211,12 @@ int SistemaMemoriaDisponible(){}
 
 void TraerPaginaDeSwap(int socketPrograma, int nroPagina, int idSegmento){
 
-	int marcoEnSwap = traerFrameDePaginaEnSwap(socketPrograma,nroPagina);
+	int marcoEnSwap = traerFrameDePaginaEnSwap(socketPrograma,idSegmento,nroPagina);
+	void* contenido = leerFrameSwap(marcoEnSwap);
 
 }
 
-char* leerFrameSwap(int nroMarco){
+void* leerFrameSwap(int nroMarco){
 
 	*disco_swap = fopen(RUTASWAP, "r+");
 
@@ -220,18 +228,23 @@ char* leerFrameSwap(int nroMarco){
 	fread( dataArchivo, tamArc, 1, *RUTASWAP );
 
 	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
-	fseek(disco_swap, indiceArchivo ,SEEK_SET);
+	int indiceALeer = fseek(disco_swap, indiceArchivo ,SEEK_SET);
+
+	//ver cual de las 2 formas es la correcta
+	void* contenido = fgets(dataArchivo,g_configuracion->tamanioPagina,disco_swap);
+	read(indiceALeer, dataArchivo, g_configuracion->tamanioPagina );
 
 	void* bloqueVacio = malloc(g_configuracion->tamanioPagina);
-
 	fwrite(bloqueVacio,g_configuracion->tamanioPagina,1,disco_swap);
 
 	bitarray_clean_bit(g_bitarray_swap,nroMarco);
 
 	fclose(*disco_swap);
+
+	return contenido;
 }
 
-char* escribirFrameSwap(int nroMarco, void* contenido, size_t largo){
+void escribirFrameSwap(int nroMarco, void* contenido){
 
 	*disco_swap = fopen(RUTASWAP, "r+");
 
@@ -256,10 +269,15 @@ char* escribirFrameSwap(int nroMarco, void* contenido, size_t largo){
 	fclose(*disco_swap);
 }
 
-void cargarPaginaEnSwap(void* bytes,int nroPagina, int nroPrograma, int idSegmento){
+void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSegmento){
 
 	int nroFrame = buscarFrameLibreSwap();
-
+	escribirFrameSwap(nroFrame,bytes);
+	list_add(paginasEnSwap, crearPaginaAdministrativa(socketPrograma, idSegmento, nroPagina, nroFrame));
 
 }
+
+void* leerArchivoCompartido(){}
+
+void* escribirEnArchivoCompartido(){}
 

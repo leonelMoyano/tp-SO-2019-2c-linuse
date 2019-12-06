@@ -54,12 +54,24 @@ t_programa* crearPrograma(int socket){
 }
 
 
-t_pagina* crearPagina(int nroFrame ){
+t_pagina* crearPagina(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
-	pagina->flagPresencia  = true;
-	pagina->flagModificado  = true;
-	pagina->nroFrame        = nroFrame;
+	pagina->flagPresencia  = true; //si es mmap deberia ir en false
+	pagina->flagModificado = false;
+	pagina->nroFrame  = nroFrame;
+	pagina->nroPagina = nroPagina;
+	//TODO
+	//pagina->bytes = contenido; ver como gestionar los bytes por frame o pagina, como dividir los bytes de alloc en frames
 	return pagina;
+}
+
+t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegmento,int nroPagina, int nroFrame){
+	t_paginaAdministrativa* paginaAdministrativa = malloc( sizeof( t_paginaAdministrativa ) );
+	paginaAdministrativa->socketPrograma  = socketPrograma;
+	paginaAdministrativa->idSegmento  = idSegmento;
+	paginaAdministrativa->nroPagina   = nroPagina;
+	paginaAdministrativa->nroFrame = nroFrame;
+		return paginaAdministrativa;
 }
 
 
@@ -68,10 +80,11 @@ void agregarTablaSegmento(t_list * lista, t_segmento* tabla) {
 }
 
 
-void agregarPaginaEnSegmento(t_segmento * segmento, int numeroDeMarco) {
-	t_pagina * paginaNuevo = crearPagina( numeroDeMarco );
+void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
+	t_pagina * paginaNuevo = crearPagina( numeroDeMarco, list_size( segmento->tablaPaginas) );
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
+	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas),numeroDeMarco));
 }
 
 t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
@@ -90,74 +103,75 @@ t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 	return segmentoBuscado;
 }
 
-//verifi nroDePagina para swap
-t_pagina* buscarPaginaPrograma(t_list* segmentos,int nroPagina) {
+t_segmento* buscarSegmentoId(t_list* segmentos,int idSemgneto) {
 
-	bool existePagina(void* segmento){
+	bool existeDireccionSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
 
-		t_pagina* paginabuscar = buscarPaginaEnTabla(segmentoBuscar->tablaPaginas,nroPagina);
-		if(paginabuscar != NULL)return paginabuscar;
+		if (idSemgneto != NULL) return segmentoBuscar->idSegmento == idSemgneto;
 		return false;
 
 	}
 
 	//sem_wait(&g_mutex_tablas);
-	t_pagina* paginaBuscada = list_find(segmentos,existePagina);
+	t_segmento* segmentoBuscado = list_find(segmentos,existeDireccionSegmento);
 	//sem_post(&g_mutex_tablas);
-	return paginaBuscada;
+	return segmentoBuscado;
 }
 
-t_pagina* buscarPaginaEnTabla(t_list* tablasPaginas, int nroPagina) {
 
+t_contenidoFrame* buscarContenidoFrameMemoria(t_list* contenidoFrames,int nroFrame) {
 
-	bool existeFrame(void* frame){
-		t_pagina* paginaBuscar = (t_pagina*) frame;
+	bool existePagina(void* contenidoFrame){
+		t_contenidoFrame* contenidoBuscar = (t_contenidoFrame*) contenidoFrame;
 
-		if (nroPagina != NULL && paginaBuscar->nroPagina == nroPagina) return paginaBuscar;
+		if(nroFrame != NULL) return contenidoBuscar->nroFrame == nroFrame;
 		return false;
 
 	}
 
 	//sem_wait(&g_mutex_tablas);
-	t_pagina* paginaBuscada = list_find(tablasPaginas,existeFrame);
+	t_contenidoFrame* contenidoBuscado = list_find(contenidoFrames,existePagina);
 	//sem_post(&g_mutex_tablas);
-	return paginaBuscada;
+	return contenidoBuscado;
 }
 
-int traerFrameDePaginaEnSwap(int socketPrograma, int nroPagina) {
-
+int traerFrameDePaginaEnSwap(int socketPrograma,int idSegmento, int nroPagina) {
 
 	bool existeFrame(void* frame){
-		t_paginaSwap* paginaBuscar = (t_paginaSwap*) frame;
-
-		if (nroPagina != NULL) return paginaBuscar->nroPagina == nroPagina && paginaBuscar->socketPrograma == socketPrograma;
+		t_paginaAdministrativa* paginaBuscar = (t_paginaAdministrativa*) frame;
+		if (nroPagina != NULL) return paginaBuscar->nroPagina == nroPagina && paginaBuscar->socketPrograma == socketPrograma && paginaBuscar->idSegmento == idSegmento;
 		return false;
-
 	}
 
 	//sem_wait(&g_mutex_tablas);
-	t_paginaSwap* paginaBuscada = list_find(paginasEnSwap,existeFrame);
+	t_paginaAdministrativa* paginaBuscada = list_find(paginasEnSwap,existeFrame);
 	//sem_post(&g_mutex_tablas);
 	return paginaBuscada->nroFrame;
 }
 
-
-t_pagina* buscarFrameEnTablasDePaginas(t_list* tablasPaginas, int nroFrame) {
-
+t_paginaAdministrativa* buscarPaginaAdministrativa(t_list* SwapOPrincipal, int nroFrame){
 
 	bool existeFrame(void* frame){
-		t_pagina* frameBuscar = (t_pagina*) frame;
+		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
 
 		if (nroFrame != NULL) return frameBuscar->nroFrame == nroFrame;
 		return false;
-
 	}
-
 	//sem_wait(&g_mutex_tablas);
-	t_pagina* frameBuscado = list_find(tablasPaginas,existeFrame);
+	t_paginaAdministrativa* paginaAdministrativa = list_find(SwapOPrincipal,existeFrame);
 	//sem_post(&g_mutex_tablas);
-	return frameBuscado;
+
+	return paginaAdministrativa;
+
+}
+
+t_pagina* buscarFrameEnTablasDePaginas(t_paginaAdministrativa* paginaABuscar) {
+
+	t_programa * programa= buscarPrograma(paginaABuscar->socketPrograma);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,paginaABuscar->idSegmento);
+	t_pagina* paginaBuscada = list_get(segmento->tablaPaginas,paginaABuscar->nroPagina);
+	return paginaBuscada;
 }
 
 
@@ -239,7 +253,8 @@ int ClockModificado() {
 	if (punteroClock ==  g_cantidadFrames) punteroClock = 0;
 		for (int j = punteroClock; j < g_cantidadFrames; j++) {
 			punteroClock = j;
-			aux = buscarFrameEnTablasDePaginas(tablasDePaginas,j);
+			t_paginaAdministrativa* paginaGloblal = buscarPaginaAdministrativa(tablasDePaginas, j);
+			aux = buscarFrameEnTablasDePaginas(paginaGloblal);
 			if ( aux->flagPresencia == true && aux->flagModificado == true) {
 				 aux->flagModificado = false;
 			}
@@ -248,15 +263,17 @@ int ClockModificado() {
 			}
 			else{
 				paginaVictima = aux;
-				//if( aux->flagModificado == true) Escribir en disco
+				if( aux->flagModificado == true) cargarPaginaEnSwap(aux->bytes,paginaGloblal->nroPagina,paginaGloblal->socketPrograma,paginaGloblal->idSegmento);
 			}
 		}
 	// Libero el frame, destruyo pagina y devuelvo indice
 	if( paginaVictima != NULL ){
 		indiceDeMarco = paginaVictima->nroFrame;
-		//Enviar victima a disco de swap
-		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco );
+
+		//aca me parece que deberua modificarla nada mas la pagina
+		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco);
 		destruirPagina( paginaVictima );
+
 		return indiceDeMarco;
 	}
 	else return ClockModificado();
@@ -294,6 +311,7 @@ void destruirSegmento( t_segmento* segmento ){
 
 
 void destruirPagina( t_pagina* pagina ){
+	bitarray_clean_bit(g_bitarray_marcos,pagina->nroFrame);
 	free( pagina );
 }
 
