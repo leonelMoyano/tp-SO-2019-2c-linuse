@@ -20,8 +20,12 @@
 
 #include "libSuseUtils.h"
 
+#define BIBLIO_SUSE_CLIENT_ID 99
+
+
 t_config_lib_suse *g_config;
 t_log* g_logger;
+t_config *g_config_commons;
 
 int suse_create(int tid);
 int suse_schedule_next(void);
@@ -34,6 +38,9 @@ struct hilolay_operations operaciones;
 
 void hilolay_init(void);
 void iniciar_log(void);
+
 void sendMssgSuse(char*);
+void enviarThreadCreate(int socket, int tid);
+void esperarRespuestaConfig(int);
 
 #endif /* BIBLIOSUSE_H_ */

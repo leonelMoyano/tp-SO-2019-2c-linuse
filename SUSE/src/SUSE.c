@@ -41,12 +41,13 @@ int main(void)
 	}
 	*/
 	log_destroy(g_logger);
+
+	config_destroy( g_config );
 	return EXIT_SUCCESS;
 }
 
 
 void atenderConexion(int socketCliente) {
-
 	// TODO seguir por aca
 	log_debug(g_logger, "Attend connection con este socket %d", socketCliente);
 	t_paquete* package = recibirArmarPaquete(socketCliente);
@@ -55,10 +56,11 @@ void atenderConexion(int socketCliente) {
 	log_debug(g_logger, "Checkeo que el paquete sea handshake");
 	// Espero recibir el handshake y trato segun quien se conecte
 	switch (recibirHandshake(package)) {
-	case LIBSUSE:
+	case BIBLIO_SUSE_CLIENT_ID:
 		;
 		log_debug(g_logger, "Recibi el handshake del cliente");
 
+		enviarMultiProg( socketCliente );
 		while (1) {
 			package = recibirArmarPaquete(socketCliente);
 			log_debug(g_logger, "Recibo paquete");
@@ -80,28 +82,37 @@ void atenderConexion(int socketCliente) {
 	close(socketCliente);
 }
 
+void enviarMultiProg( int socket_dst ){
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+	unPaquete->codigoOperacion = SUSE_GRADO_MULTIPROG;
+
+	log_debug(g_logger, "Recibi el handshake del cliente %d", g_config_server->max_multiprog);
+	serializarNumero(unPaquete, g_config_server->max_multiprog);
+	enviarPaquetes(socket_dst, unPaquete);
+}
+
 
 void iniciar_config(char* path){
-	t_config* config = config_create(path);
+	g_config = config_create(path);
 	g_config_server = malloc( sizeof( t_config_suse ) );
 
-	g_config_server->puerto = config_get_string_value( config, "LISTEN_PORT" );
-	g_config_server->metrics_timer = config_get_int_value( config, "METRICS_TIMER" );
-	g_config_server->max_multiprog = config_get_int_value( config, "MAX_MULTIPROG" );
+	g_config_server->puerto = config_get_string_value( g_config, "LISTEN_PORT" );
+	g_config_server->metrics_timer = config_get_int_value( g_config, "METRICS_TIMER" );
+	g_config_server->max_multiprog = config_get_int_value( g_config, "MAX_MULTIPROG" );
 
-	char ** array = config_get_array_value( config, "SEM_IDS" );
+	char ** array = config_get_array_value( g_config, "SEM_IDS" );
 	g_config_server->sem_ids = list_create();
 	for( int i = 0; array[ i ] != NULL; i++ ){
 		list_add( g_config_server->sem_ids, array[ i ] );
 	}
 
-	array = config_get_array_value( config, "SEM_INIT" );
+	array = config_get_array_value( g_config, "SEM_INIT" );
 	g_config_server->sem_init = list_create();
 	for( int i = 0; array[ i ] != NULL; i++ ){
 		list_add( g_config_server->sem_init, array[ i ] );
 	}
 
-	array = config_get_array_value( config, "SEM_MAX" );
+	array = config_get_array_value( g_config, "SEM_MAX" );
 	g_config_server->sem_max = list_create();
 	for( int i = 0; array[ i ] != NULL; i++ ){
 		list_add( g_config_server->sem_max, array[ i ] );
@@ -114,8 +125,6 @@ void iniciar_config(char* path){
 		$4 = 0
 	 *
 	 */
-
-	config_destroy( config );
 }
 
 void iniciar_logger(void)

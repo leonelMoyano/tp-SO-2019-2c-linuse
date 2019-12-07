@@ -20,6 +20,8 @@
 
 #include "SUSE.h"
 
+#define BIBLIO_SUSE_CLIENT_ID 99
+
 typedef struct suse_config{
 	char *puerto;
 	int metrics_timer;
@@ -29,6 +31,11 @@ typedef struct suse_config{
 	t_list* sem_max;
 	double alpha_sjf;
 } t_config_suse;
+
+typedef enum  {
+	SUSE_CREATE = 650,
+	SUSE_GRADO_MULTIPROG,
+}t_cod_operaciones_SUSE;
 
 t_config_suse* g_config_server;
 

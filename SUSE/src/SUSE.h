@@ -19,6 +19,7 @@
 #define LIBSUSE 10
 
 t_log* g_logger;
+t_config *g_config;
 
 void iniciar_logger	(void);
 

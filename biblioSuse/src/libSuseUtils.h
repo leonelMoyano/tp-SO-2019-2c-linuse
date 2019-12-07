@@ -19,11 +19,10 @@
 #include <biblioNOC/conexiones.h>
 #include <biblioNOC/paquetes.h>
 
-typedef enum
-{
-	MENSAJE,
-	PAQUETE
-}op_code;
+typedef enum  {
+	SUSE_CREATE = 650,
+	SUSE_GRADO_MULTIPROG,
+}t_cod_operaciones_SUSE;
 
 typedef struct{
 	char *ip;
@@ -35,6 +34,7 @@ void 		enviar_mensaje		(char* mensaje, int socket_cliente);
 void 		eliminar_paquete	(t_paquete* paquete);
 void 		liberar_conexion	(int socket_cliente);
 void* 		serializar_paquete	(t_paquete* paquete, int bytes);
+void        init_config         (char *path);
 t_config* 	leer_config			(char*);
 char* 		getAddress			(t_config*);
 char* 		getPort				(t_config*);

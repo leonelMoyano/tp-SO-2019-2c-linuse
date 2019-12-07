@@ -27,7 +27,7 @@ int crear_conexion(char *ip, char* puerto)
 void enviar_mensaje(char* mensaje, int socket_cliente)
 {
 	t_paquete* paquete = malloc(sizeof(t_paquete));
-	paquete->codigoOperacion = MENSAJE;
+	paquete->codigoOperacion = 0; // TODO revisar esto y borrarlo biewn
 	paquete->buffer = malloc(sizeof(t_stream));
 	paquete->buffer->size = strlen(mensaje) + 1;
 	paquete->buffer->data = malloc(paquete->buffer->size);
