@@ -19,8 +19,8 @@
 #include "operaciones.h"
 #include "util.h"
 
-#define RUTACONFIG "csdasd"
-#define RUTASWAP "ASDAS"
+#define RUTACONFIG "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/muse.cfg"
+#define RUTASWAP "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/swap.txt"
 #define LIBMUSE 400
 
 int idSegmento;
@@ -42,8 +42,10 @@ t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
 t_list * contenidoFrames;
 t_list* tablasDePaginas; // o TLB para hacer reemplazo global
 
+t_list* mapeosAbiertosCompartidos;
+
 t_bitarray * g_bitarray_swap;
-FILE ** disco_swap;
+FILE * disco_swap;
 t_list * paginasEnSwap;
 int maxPaginasEnSwap;
 
@@ -58,6 +60,7 @@ void			reservarEspacioMemoriaPrincipal	();
 void            destruirGlobales                ();
 void 			armarConfigMemoria				();
 t_paquete* 		procesarPaqueteLibMuse			(t_paquete* paquete, int cliente_fd);
+void 			abrirArchivoGral					(FILE ** archivo);
 
 #endif
 

@@ -51,6 +51,8 @@ t_registromget* deserializarGet(t_stream * buffer){
 void serialzarCopy(t_paquete* unPaquete, void* src,uint32_t dst, int n){
 	int desplazamiento = 0;
 
+	//TODO revisar el malloc de tamanioDatosy void* de src
+
 	unPaquete->buffer = malloc(sizeof(t_stream));
 	int tamanioDatos = sizeof(sizeof(void *) + sizeof(uint32_t) + sizeof(size_t));
 	unPaquete->buffer->size = tamanioDatos;

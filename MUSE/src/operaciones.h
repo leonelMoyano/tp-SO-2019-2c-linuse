@@ -17,13 +17,14 @@ uint32_t		 procesarUnMap		(uint32_t dir, int socket);
 uint32_t		 allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_programa* segmentos);
 uint32_t		 allocarEnPaginasNuevas(int socket,t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios );
 
-void*			 leerFrameSwap		(int nroMarco);
-void			 escribirFrameSwap	(int nroMarco, void* contenido);
+void*			 leerFrameSwap		(int nroMarco, FILE** archivo);
+void			 escribirFrameSwap	(int nroMarco, void* contenido,FILE** archivo);
 void			 TraerPaginaDeSwap	(int socketPrograma, int nroPagina, int idSegmento);
 void			 cargarPaginaEnSwap	(void* bytes,int nroPagina, int socketPrograma, int idSegmento);
 
 void*			 leerArchivoCompartido();
 void*			 escribirEnArchivoCompartido();
+void*			 mapearArchivoMUSE	(char * rutaArchivo, size_t * tamArc, FILE ** archivo,int flags);
 
 void			 ActualizarLogMetricas();
 void 			 RegistrarMetricasPrograma(t_programa* programa);

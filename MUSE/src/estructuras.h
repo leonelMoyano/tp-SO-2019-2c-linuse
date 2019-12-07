@@ -79,13 +79,18 @@ typedef struct{
 	bool flagUso;
 	bool flagModificado;
 	bool flagPresencia;
-	void* bytes;
 }t_pagina;
 
 typedef struct{
 	int nroFrame;
 	void* contenido;
 }t_contenidoFrame;
+
+typedef struct{
+	int socketPrograma;
+	int idSegmento;
+	char* path;
+}t_mapAbierto;
 
 //Tipos auxiliares
 
@@ -110,9 +115,11 @@ typedef struct{
 
 typedef struct{
 	char* pathArchivo;
+	int socketPrograma;
+	int idSegmento;
 	t_list* tablaPaginas;
-	pthread_t tid; //o id de programa
 	sem_t semaforo;
+	bool compartido;
 }t_segmento_compartido;
 
 #endif

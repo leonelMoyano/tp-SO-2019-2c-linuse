@@ -69,7 +69,9 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	t_programa * programa= buscarPrograma(socket);
 
-	mapearArchivoMUSE(path,length,flags);
+	FILE * archivoMap;
+
+	void* referencia = mapearArchivoMUSE(path,length,&archivoMap,flags);
 
 	int tamanioSegmento = length; //calcular por cantidad de paginas necesarias
 
@@ -79,7 +81,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
 
-	// reservar paginas para satisfacer el length
+	return nuevoSegmento->baseLogica;
 }
 
 int procesarSync(uint32_t addr, size_t len, int socket){
@@ -212,13 +214,15 @@ int SistemaMemoriaDisponible(){}
 void TraerPaginaDeSwap(int socketPrograma, int nroPagina, int idSegmento){
 
 	int marcoEnSwap = traerFrameDePaginaEnSwap(socketPrograma,idSegmento,nroPagina);
-	void* contenido = leerFrameSwap(marcoEnSwap);
+	void* contenido = leerFrameSwap(marcoEnSwap, &disco_swap);
 
 }
 
-void* leerFrameSwap(int nroMarco){
+void* leerFrameSwap(int nroMarco, FILE ** archivo){
 
-	*disco_swap = fopen(RUTASWAP, "r+");
+	*archivo = fopen(RUTASWAP, "r+");
+
+
 
 	// Tamaño del archivo que voy a leer
 	size_t tamArc = g_configuracion->tamanioSwap;
@@ -228,25 +232,25 @@ void* leerFrameSwap(int nroMarco){
 	fread( dataArchivo, tamArc, 1, *RUTASWAP );
 
 	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
-	int indiceALeer = fseek(disco_swap, indiceArchivo ,SEEK_SET);
+	int indiceALeer = fseek(archivo, indiceArchivo ,SEEK_SET);
 
 	//ver cual de las 2 formas es la correcta
-	void* contenido = fgets(dataArchivo,g_configuracion->tamanioPagina,disco_swap);
+	void* contenido = fgets(dataArchivo,g_configuracion->tamanioPagina,archivo);
 	read(indiceALeer, dataArchivo, g_configuracion->tamanioPagina );
 
 	void* bloqueVacio = malloc(g_configuracion->tamanioPagina);
-	fwrite(bloqueVacio,g_configuracion->tamanioPagina,1,disco_swap);
+	fwrite(bloqueVacio,g_configuracion->tamanioPagina,1,archivo);
 
 	bitarray_clean_bit(g_bitarray_swap,nroMarco);
 
-	fclose(*disco_swap);
+	fclose(*archivo);
 
 	return contenido;
 }
 
-void escribirFrameSwap(int nroMarco, void* contenido){
+void escribirFrameSwap(int nroMarco, void* contenido, FILE ** archivo){
 
-	*disco_swap = fopen(RUTASWAP, "r+");
+	*archivo = fopen(RUTASWAP, "r+");
 
 	// Tamaño del archivo que voy a leer
 	size_t tamArc = g_configuracion->tamanioSwap;
@@ -256,23 +260,23 @@ void escribirFrameSwap(int nroMarco, void* contenido){
 	fread( dataArchivo, tamArc, 1, *RUTASWAP );
 
 	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
-	fseek(disco_swap, indiceArchivo ,SEEK_SET);
+	fseek(archivo, indiceArchivo ,SEEK_SET);
 
 	void* bloque = malloc(g_configuracion->tamanioPagina);
 
 	//lo que quiero aca es malloquear el bloque de la pagina y luego el contenido, para que queden todos los bytes escritos
-	fwrite(bloque,g_configuracion->tamanioPagina,1,disco_swap);
-	fwrite(contenido,g_configuracion->tamanioPagina,1,disco_swap);
+	fwrite(bloque,g_configuracion->tamanioPagina,1,archivo);
+	fwrite(contenido,g_configuracion->tamanioPagina,1,archivo);
 
 	bitarray_set_bit(g_bitarray_swap,nroMarco);
 
-	fclose(*disco_swap);
+	fclose(*archivo);
 }
 
 void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSegmento){
 
 	int nroFrame = buscarFrameLibreSwap();
-	escribirFrameSwap(nroFrame,bytes);
+	escribirFrameSwap(nroFrame,bytes,&disco_swap);
 	list_add(paginasEnSwap, crearPaginaAdministrativa(socketPrograma, idSegmento, nroPagina, nroFrame));
 
 }
@@ -280,4 +284,30 @@ void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSeg
 void* leerArchivoCompartido(){}
 
 void* escribirEnArchivoCompartido(){}
+
+void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, int flags) {
+	//Abro el archivo
+	*archivo = fopen(rutaArchivo, "r");
+
+	if (*archivo == NULL) {
+		printf("%s: No existe el archivo o el directorio", rutaArchivo);
+		return NULL;
+	}
+
+	//Copio informacion del archivo
+	struct stat statArch;
+
+	stat(rutaArchivo, &statArch);
+
+	//Tamaño del archivo que voy a leer
+	*tamArc = statArch.st_size;
+
+	//Leo el total del archivo y lo asigno al buffer
+	int fd = fileno(*archivo);
+	void * dataArchivo = mmap(0, *tamArc, PROT_READ, flags, fd, 0);
+
+	return dataArchivo;
+}
+
+
 

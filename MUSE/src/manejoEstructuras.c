@@ -263,7 +263,9 @@ int ClockModificado() {
 			}
 			else{
 				paginaVictima = aux;
-				if( aux->flagModificado == true) cargarPaginaEnSwap(aux->bytes,paginaGloblal->nroPagina,paginaGloblal->socketPrograma,paginaGloblal->idSegmento);
+				//TODO: buscar contenido de void* a estructuca de contenidoframe
+				void* unosBytes;
+				if( aux->flagModificado == true) cargarPaginaEnSwap(unosBytes,paginaGloblal->nroPagina,paginaGloblal->socketPrograma,paginaGloblal->idSegmento);
 			}
 		}
 	// Libero el frame, destruyo pagina y devuelvo indice

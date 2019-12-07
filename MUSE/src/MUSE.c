@@ -13,9 +13,20 @@ int main(void) {
 	log_info( g_logger, "Inicio proceso de MUSE" );
 
 	programas = crearTablaProgramas();
+	paginasEnSwap = crearTablaProgramas();
+	mapeosAbiertosCompartidos = crearTablaProgramas();
+	tablasDePaginas = crearTablaPaginas();
 
-	//abrirArchivoSwap();  va a romper por ruta configurada;
-	//armarConfigMemoria(); va a romper por ruta configurada;
+	armarConfigMemoria();
+
+	size_t tamArch;
+	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
+	//abrirArchivoGral(&disco_swap);
+
+	void* asd = malloc(50);
+	escribirFrameSwap(1,g_configuracion->tamanioPagina,&disco_swap);
+
+
 	//char * puertoString = string_itoa(g_configuracion->puertoConexion);
 
 	/*if( pthread_create( &hiloServidor, NULL, (void*) arrancarServer ) < 0 ) {
@@ -198,11 +209,12 @@ void FinalizarPrograma(int socket){
 	ActualizarLogMetricas();
 }
 
-void abrirArchivoSwap() {
+void abrirArchivoGral(FILE** archivo)
+{
 	// Abro el archivo .... o debo crearlo???
-	*disco_swap = fopen(RUTASWAP, "r+");
+	*archivo = fopen(RUTASWAP, "r+");
 
-	if (*disco_swap == NULL) {
+	if (*archivo == NULL) {
 		log_error(g_logger, "%s: No existe el archivo", RUTASWAP);
 		exit(EXIT_FAILURE);
 	}
@@ -216,45 +228,15 @@ void abrirArchivoSwap() {
 
 	// Leo el total del archivo y lo asigno al buffer
 	void * dataArchivo = calloc( 1, tamArc + 1 );
-	fread( dataArchivo, tamArc, 1, *disco_swap );
+	fread( dataArchivo, tamArc, 1, *archivo );
 	log_debug(g_logger, "Abrio el archivo de swap: %s", RUTASWAP);
 
 	//creo ya el archivo para que cada pagina sea una linea, aunque esten vacias
 	char* paginas = string_repeat('\0',maxPaginasEnSwap);
-	fwrite(paginas,1,1,*disco_swap);
+	fwrite(paginas,1,1,*archivo);
 
 	//Cierro el archivo ??
-	fclose(*disco_swap);
+	fclose(*archivo);
 }
-
-void mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo) {
-	// Abro el archivo
-	*archivo = fopen(rutaArchivo, "r");
-
-	if (*archivo == NULL) {
-		log_error(g_logger, "%s: No existe el archivo", rutaArchivo);
-		exit(EXIT_FAILURE);
-	}
-
-	// Copio informacion del archivo
-	struct stat statArch;
-	stat(rutaArchivo, &statArch);
-
-	// Tamaño del archivo que voy a leer
-	*tamArc = tamArc;
-
-	// Leo el total del archivo y lo asigno al buffer
-	void * dataArchivo = calloc( 1, *tamArc + 1 );
-	fread( dataArchivo, *tamArc, 1, *archivo );
-	log_debug(g_logger, "Mapeo archivo a MUSE: %s", rutaArchivo);
-
-	//Cierro el archivo ??
-	//fclose(*archivo);
-
-	// Hago trim para borrar saltos de linea vacios al final
-	string_trim( &( dataArchivo ) );
-}
-
-
 
 
