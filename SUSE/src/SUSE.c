@@ -12,7 +12,8 @@
 void atenderConexion(int socketCliente);
 t_paquete* procesarPaqueteLibSuse( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente );
 t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
-t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+void       esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente );
 
 int main(void)
 {
@@ -42,7 +43,7 @@ void atenderConexion(int socketCliente) {
 		t_client_suse* cliente_suse = malloc( sizeof( t_client_suse ) );
 
 		enviarMultiProg( socketCliente );
-		// TODO hacer aca el esperarArmarPaquete y procesar el create del main thread
+		esperarPaqueteCreateMain( cliente_suse, socketCliente );
 		while (1) {
 			package = recibirArmarPaquete(socketCliente);
 			log_debug(g_logger, "Recibo paquete");
@@ -75,6 +76,7 @@ t_paquete* procesarPaqueteLibSuse(t_paquete* paquete, t_client_suse* cliente_sus
 		response = procesarThreadCreate( paquete, cliente_suse, 0, socket_cliente );
 		break;
 	case SUSE_CLOSE:
+		response = procesarThreadClose( paquete, cliente_suse, socket_cliente);
 		break;
 	case SUSE_JOIN:
 		break;
@@ -86,14 +88,14 @@ t_paquete* procesarPaqueteLibSuse(t_paquete* paquete, t_client_suse* cliente_sus
 		break;
 	}
 
+	destruirPaquete( paquete );
 	return response;
 }
 
 t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente){
 	log_info( g_logger, "Recibi un create");
 
-	// TODO deserealizar paquete y obtener tid
-	int tid = 0; // placeholder
+	int tid = deserializarNumero( paquete->buffer );
 	t_client_thread_suse* nuevo_thread = malloc( sizeof( t_client_thread_suse ) );
 	nuevo_thread->tid = tid;
 	nuevo_thread->time_created = time( NULL );
@@ -101,6 +103,7 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 		nuevo_thread->time_last_run = time( NULL );
 		nuevo_thread->time_last_yield = time( NULL );
 
+		cliente_suse->main_tid = tid;
 		cliente_suse->running_thread = nuevo_thread;
 		cliente_suse->new = queue_create();
 		cliente_suse->waiting = list_create();
@@ -116,8 +119,19 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 	return NULL;
 }
 
-t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-// TODO este deberia buscar el tid, hacer el memfree de su estrutura y pasarlo a la lista de exit
+t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
+	// TODO este deberia buscar el tid, hacer el memfree de su estrutura y pasarlo a la lista de exit
+	return NULL;
+}
+
+void esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente ){
+	t_paquete *paqueteCreate = recibirArmarPaquete( socket );
+	if( paqueteCreate->codigoOperacion == SUSE_CREATE ){
+		procesarThreadCreate( paqueteCreate, cliente_suse, 1, socket_cliente);
+	} else {
+		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
+	}
+}
 
 void enviarMultiProg( int socket_dst ){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));

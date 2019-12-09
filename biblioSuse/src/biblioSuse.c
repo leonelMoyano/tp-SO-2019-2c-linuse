@@ -89,6 +89,7 @@ void esperarRespuestaConfig( int socket ){
 	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
 	if( respuetaMultiprog->codigoOperacion == SUSE_GRADO_MULTIPROG ){
 		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
+		// TODO free de este paquete ?
 		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );
 	} else {
 		log_error( g_logger, "Recibi algo que no es el grado del multiprog");

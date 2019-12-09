@@ -57,6 +57,7 @@ typedef struct suse_cliente_thread{
 } t_client_thread_suse;
 
 typedef struct suse_cliente{
+	int main_tid;
 	t_client_thread_suse* running_thread;
 	t_queue* new;
 	t_list* blocked;
