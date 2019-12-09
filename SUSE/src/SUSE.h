@@ -13,12 +13,12 @@
 #include <string.h>
 #include <commons/log.h>
 #include <commons/config.h>
-#include <biblioNOC/conexiones.h>
+#include "biblioNOC/conexiones.h"
 #include "suseDefs.h"
 
 #define LIBSUSE 10
 
-t_log* g_logger;
+t_log* g_logger; // s
 t_config *g_config;
 
 void iniciar_logger	(void);

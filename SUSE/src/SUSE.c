@@ -10,45 +10,25 @@
 #include "SUSE.h"
 
 void atenderConexion(int socketCliente);
+t_paquete* procesarPaqueteLibSuse( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente );
+t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
+t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 
 int main(void)
 {
 	iniciar_logger();
 	iniciar_config("/home/utnso/workspace/confBiblioSuse/suseServer.cfg");
+	// TODO despues de levantar la config inicializar los semaforos de la config
 
 	iniciarServidor(g_config_server->puerto, g_logger, (void*)atenderConexion);
 
-	printf("asda2");
-	/*
-	while(1)
-	{
-		int cod_op = recibir_operacion(socketCliente);
-		switch(cod_op) 
-		{
-		case MENSAJE:
-			mensaje = recibir_mensaje(socketCliente);
-			log_info(logger, mensaje);
-			free(mensaje);
-			continue;
-		case -1:
-			close(socketCliente);
-			log_info(logger, "el cliente se desconecto.%d", socketCliente);
-			continue;
-		default:
-			log_warning(logger, "Operacion desconocida. No quieras meter la pata");
-			break;
-		}
-	}
-	*/
 	log_destroy(g_logger);
-
 	config_destroy( g_config );
 	return EXIT_SUCCESS;
 }
 
 
 void atenderConexion(int socketCliente) {
-	// TODO seguir por aca
 	log_debug(g_logger, "Attend connection con este socket %d", socketCliente);
 	t_paquete* package = recibirArmarPaquete(socketCliente);
 	t_paquete* response;
@@ -59,8 +39,10 @@ void atenderConexion(int socketCliente) {
 	case BIBLIO_SUSE_CLIENT_ID:
 		;
 		log_debug(g_logger, "Recibi el handshake del cliente");
+		t_client_suse* cliente_suse = malloc( sizeof( t_client_suse ) );
 
 		enviarMultiProg( socketCliente );
+		// TODO hacer aca el esperarArmarPaquete y procesar el create del main thread
 		while (1) {
 			package = recibirArmarPaquete(socketCliente);
 			log_debug(g_logger, "Recibo paquete");
@@ -70,27 +52,81 @@ void atenderConexion(int socketCliente) {
 				break;
 			};
 
-			// response = procesarPaqueteLibMuse(package, socketCliente);
-			// enviarPaquetes(socketCliente, response);
-			// destruirPaquete(response);
+			response = procesarPaqueteLibSuse(package, cliente_suse, socketCliente);
+			if( response != NULL )
+				enviarPaquetes(socketCliente, response);
 		}
 		break;
 	default:
 		log_warning(g_logger, "El paquete recibido no es handshake");
 		break;
 	}
+
 	close(socketCliente);
 }
+
+t_paquete* procesarPaqueteLibSuse(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente) {
+	log_debug(g_logger, "Proceso codigo op %d", paquete->codigoOperacion);
+	t_paquete* response = NULL;
+
+	switch (paquete->codigoOperacion) {
+	/* nunca entra por aca porque el handshake lo recibo cuando entro a "attendConnection" */
+	case SUSE_CREATE:
+		response = procesarThreadCreate( paquete, cliente_suse, 0, socket_cliente );
+		break;
+	case SUSE_CLOSE:
+		break;
+	case SUSE_JOIN:
+		break;
+	case SUSE_SCHEDULE_NEXT:
+		break;
+	case SUSE_SIGNAL:
+		break;
+	case SUSE_WAIT:
+		break;
+	}
+
+	return response;
+}
+
+t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente){
+	log_info( g_logger, "Recibi un create");
+
+	// TODO deserealizar paquete y obtener tid
+	int tid = 0; // placeholder
+	t_client_thread_suse* nuevo_thread = malloc( sizeof( t_client_thread_suse ) );
+	nuevo_thread->tid = tid;
+	nuevo_thread->time_created = time( NULL );
+	if( is_main_thread == 1 ){
+		nuevo_thread->time_last_run = time( NULL );
+		nuevo_thread->time_last_yield = time( NULL );
+
+		cliente_suse->running_thread = nuevo_thread;
+		cliente_suse->new = queue_create();
+		cliente_suse->waiting = list_create();
+		cliente_suse->exit = list_create();
+		cliente_suse->blocked = list_create();
+	} else {
+		// Le pongo 0 para simbolizar que nunca corrio
+		nuevo_thread->time_last_run = 0;
+		nuevo_thread->time_last_yield = 0;
+		queue_push( cliente_suse->new, nuevo_thread );
+	}
+
+	return NULL;
+}
+
+t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+// TODO este deberia buscar el tid, hacer el memfree de su estrutura y pasarlo a la lista de exit
 
 void enviarMultiProg( int socket_dst ){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 	unPaquete->codigoOperacion = SUSE_GRADO_MULTIPROG;
 
-	log_debug(g_logger, "Recibi el handshake del cliente %d", g_config_server->max_multiprog);
+	log_debug(g_logger, "Envio este grado de multiprogramacion %d", g_config_server->max_multiprog);
 	serializarNumero(unPaquete, g_config_server->max_multiprog);
 	enviarPaquetes(socket_dst, unPaquete);
 }
-
 
 void iniciar_config(char* path){
 	g_config = config_create(path);

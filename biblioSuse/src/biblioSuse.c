@@ -6,10 +6,10 @@ int g_max_multiprog; // Esta es la respuesta de grado de multiprogramacion en el
 int g_server_socket; // Esta es la referencia global al socket conectado al server SUSE
 
 int suse_create(int tid) {
-	// TODO hacer aca el chequeo real contra max multiprog del server
-	if (tid > g_max_multiprog) {
-		g_max_multiprog = tid;
-	}
+	/*
+	 *  No chequeo contra max nivel de multiprog porque eso solo indica la cantidad de threads
+	 *  que pueden estar en runnign/waiting, en NEW puede haber muchos mas que el max nivel
+	 */
 	printf("Se creo un nuevo hilo: %d...\n", tid);
 	enviarThreadCreate( g_server_socket, tid );
 	return 0;
@@ -89,6 +89,7 @@ void esperarRespuestaConfig( int socket ){
 	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
 	if( respuetaMultiprog->codigoOperacion == SUSE_GRADO_MULTIPROG ){
 		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
+		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );
 	} else {
 		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
 	}
