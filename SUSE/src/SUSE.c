@@ -179,6 +179,6 @@ void iniciar_config(char* path){
 
 void iniciar_logger(void)
 {
-	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/log/suseServer.log", "SUSE-Server", 1, LOG_LEVEL_INFO);
+	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/logFiles/suseServer.log", "SUSE-Server", 1, LOG_LEVEL_INFO);
 	log_info(g_logger, "Iniciando SuseServer");
 }
