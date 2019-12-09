@@ -5,7 +5,6 @@ libMUSE/Debug
 MUSE/Debug
 SACFSInit/Debug
 SACServer/Debug
-SUSE/Debug
 
 # Archivos de log
 *.log

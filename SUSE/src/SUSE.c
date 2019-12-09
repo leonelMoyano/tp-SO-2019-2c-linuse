@@ -18,7 +18,7 @@ void       esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cli
 int main(void)
 {
 	iniciar_logger();
-	iniciar_config("/home/utnso/workspace/confBiblioSuse/suseServer.cfg");
+	iniciar_config("/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/SUSE/suseServer.cfg");
 	// TODO despues de levantar la config inicializar los semaforos de la config
 
 	iniciarServidor(g_config_server->puerto, g_logger, (void*)atenderConexion);
@@ -179,6 +179,6 @@ void iniciar_config(char* path){
 
 void iniciar_logger(void)
 {
-	g_logger = log_create("suseServer.log", "SUSE-Server", 1, LOG_LEVEL_INFO);
+	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/log/suseServer.log", "SUSE-Server", 1, LOG_LEVEL_INFO);
 	log_info(g_logger, "Iniciando SuseServer");
 }
