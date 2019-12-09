@@ -43,26 +43,43 @@ typedef enum  {
 	SUSE_WAIT
 } t_cod_operaciones_SUSE;
 
+typedef enum  {
+	NEW,
+	READY,
+	RUNNING,
+	BLOCKED,
+	EXIT
+} t_estado_thead_SUSE;
+
+typedef struct suse_sem_req_thread{
+	int tid;
+	char* name;
+} t_semaforo_request_suse;
+
 typedef struct suse_semaforo{
 	char* nombre;
 	int current_value;
 	int max_value;
+	t_queue* threads_bloquedos;
 } t_semaforo_suse;
 
 typedef struct suse_cliente_thread{
 	int tid;
+	t_client_suse* proceso_padre;
+	t_estado_thead_SUSE estado;
 	time_t time_created;
 	time_t time_last_run;
 	time_t time_last_yield;
+	t_list* threads_bloqueados;
 } t_client_thread_suse;
 
 typedef struct suse_cliente{
 	int main_tid;
 	t_client_thread_suse* running_thread;
 	t_queue* new;
-	t_list* blocked;
-	t_list* waiting;
-	t_list* exit;
+	t_list* ready;
+	t_list* blocked; // TODO blocked tiene que ser comun a todos los programas ?
+	t_list* exit; // TODO exit tiene que ser comun a todos los programas ?
 } t_client_suse;
 
 t_config_suse* g_config_server;
@@ -74,6 +91,7 @@ void        enviarMultiProg     ( int socket_dst );
 void* 		recibir_buffer		(int*,int);
 int 		recibir_operacion	(int);
 char* 		recibir_mensaje		(int);
+t_semaforo_request_suse* deserializarSemaforoRequest( t_stream* buffer );
 
 /*********** algunas utils ***********/
 int tamanio_array(char** array);

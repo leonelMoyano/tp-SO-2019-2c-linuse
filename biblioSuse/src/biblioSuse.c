@@ -75,19 +75,61 @@ void init_config(char *path){
 	g_config->puerto = config_get_string_value( g_config_commons, "PUERTO" );
 }
 
-void enviarThreadCreate(int socket, int tid) {
+void enviarThreadCreate(int socket_dst, int tid) {
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = SUSE_CREATE;
 
 	serializarNumero(unPaquete, tid);
 
-	enviarPaquetes(socket, unPaquete);
+	enviarPaquetes(socket_dst, unPaquete);
+}
+
+void enviarSemWait( int socket_dst, int tid, char* nombre ){
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+
+	unPaquete->codigoOperacion = SUSE_WAIT;
+
+	serializarSemaforoRequest(unPaquete, tid, nombre);
+
+	enviarPaquetes(socket_dst, unPaquete);
+}
+
+void enviarSemPost( int socket_dst, int tid, char* nombre ){
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+
+	unPaquete->codigoOperacion = SUSE_SIGNAL;
+
+	serializarSemaforoRequest(unPaquete, tid, nombre);
+
+	enviarPaquetes(socket_dst, unPaquete);
 }
 
 void esperarRespuestaConfig( int socket ){
 	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
 	if( respuetaMultiprog->codigoOperacion == SUSE_GRADO_MULTIPROG ){
+		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
+		// TODO free de este paquete ?
+		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );
+	} else {
+		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
+	}
+}
+
+void esperarRespuestaSemWait( int socket ){
+	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
+	if( respuetaMultiprog->codigoOperacion == SUSE_WAIT ){
+		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
+		// TODO free de este paquete ?
+		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );
+	} else {
+		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
+	}
+}
+
+void esperarRespuestaSemPost( int socket ){
+	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
+	if( respuetaMultiprog->codigoOperacion == SUSE_SIGNAL ){
 		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
 		// TODO free de este paquete ?
 		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );

@@ -92,3 +92,12 @@ int tamanio_array(char** array) {
 		;
 	return tamanio;
 }
+
+t_semaforo_request_suse* deserializarSemaforoRequest( t_stream* buffer ){
+	t_semaforo_request_suse* sem_req_info = malloc( sizeof( t_semaforo_request_suse ) );
+
+	sem_req_info->tid = *( (int *) buffer->data );
+	sem_req_info->name = buffer->data + sizeof( int );
+
+	return sem_req_info;
+}

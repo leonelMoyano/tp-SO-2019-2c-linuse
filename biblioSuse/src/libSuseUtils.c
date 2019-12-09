@@ -45,6 +45,19 @@ void liberar_conexion(int socket_cliente)
 {
 	close(socket_cliente);
 }
+
+void serializarSemaforoRequest(t_paquete* paquete, int tid, char* nombre) {
+	int tamNombre = strlen(nombre) + 1;
+	int tamBuffer = tamNombre + sizeof( int );
+
+	paquete->buffer = malloc(sizeof(t_stream));
+	paquete->buffer->data = calloc(1, tamBuffer);
+	paquete->buffer->size = tamBuffer;
+
+	memcpy(paquete->buffer->data, &tid, sizeof( int ));
+	memcpy(paquete->buffer->data, nombre, tamNombre);
+}
+
 void* serializar_paquete(t_paquete* paquete, int bytes)
 {
 	void * magic = malloc(bytes);

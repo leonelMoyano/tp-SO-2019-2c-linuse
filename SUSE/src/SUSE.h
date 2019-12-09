@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <commons/log.h>
 #include <commons/config.h>
 #include "biblioNOC/conexiones.h"
@@ -18,8 +19,9 @@
 
 #define LIBSUSE 10
 
-t_log* g_logger; // s
+t_log* g_logger;
 t_config *g_config;
+t_list* g_semaforos;
 
 void iniciar_logger	(void);
 

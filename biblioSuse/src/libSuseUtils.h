@@ -22,7 +22,12 @@
 typedef enum  {
 	SUSE_CREATE = 650,
 	SUSE_GRADO_MULTIPROG,
-}t_cod_operaciones_SUSE;
+	SUSE_CLOSE,
+	SUSE_JOIN,
+	SUSE_SCHEDULE_NEXT,
+	SUSE_SIGNAL,
+	SUSE_WAIT
+} t_cod_operaciones_SUSE;
 
 typedef struct{
 	char *ip;
