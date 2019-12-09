@@ -19,6 +19,7 @@ int main(void) {
 
 	armarConfigMemoria();
 
+	lengthPagina = g_configuracion->tamanioPagina;
 	size_t tamArch;
 	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
 	//abrirArchivoGral(&disco_swap);
@@ -209,34 +210,5 @@ void FinalizarPrograma(int socket){
 	ActualizarLogMetricas();
 }
 
-void abrirArchivoGral(FILE** archivo)
-{
-	// Abro el archivo .... o debo crearlo???
-	*archivo = fopen(RUTASWAP, "r+");
-
-	if (*archivo == NULL) {
-		log_error(g_logger, "%s: No existe el archivo", RUTASWAP);
-		exit(EXIT_FAILURE);
-	}
-
-	// Copio informacion del archivo
-	struct stat statArch;
-	stat(RUTASWAP, &statArch);
-
-	// Tamaño del archivo que voy a leer
-	size_t tamArc = g_configuracion->tamanioSwap;
-
-	// Leo el total del archivo y lo asigno al buffer
-	void * dataArchivo = calloc( 1, tamArc + 1 );
-	fread( dataArchivo, tamArc, 1, *archivo );
-	log_debug(g_logger, "Abrio el archivo de swap: %s", RUTASWAP);
-
-	//creo ya el archivo para que cada pagina sea una linea, aunque esten vacias
-	char* paginas = string_repeat('\0',maxPaginasEnSwap);
-	fwrite(paginas,1,1,*archivo);
-
-	//Cierro el archivo ??
-	fclose(*archivo);
-}
 
 

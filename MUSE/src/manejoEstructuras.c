@@ -35,12 +35,13 @@ t_list* crearTablaProgramas() {
 	return aux;
 }
 
-
-t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento ){
+t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento, bool tablaDePaginasCompartida ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
-	segmentoNuevo->tablaPaginas = crearTablaPaginas();
+	if(!tablaDePaginasCompartida) segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	segmentoNuevo->baseLogica = direccionBase;
 	segmentoNuevo->limiteLogico = tamanio;
+	segmentoNuevo->idSegmento = idSegmento;
+	idSegmento++;
 	return segmentoNuevo;
 }
 
@@ -60,8 +61,6 @@ t_pagina* crearPagina(int nroFrame, int nroPagina){
 	pagina->flagModificado = false;
 	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
-	//TODO
-	//pagina->bytes = contenido; ver como gestionar los bytes por frame o pagina, como dividir los bytes de alloc en frames
 	return pagina;
 }
 
@@ -71,12 +70,28 @@ t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegm
 	paginaAdministrativa->idSegmento  = idSegmento;
 	paginaAdministrativa->nroPagina   = nroPagina;
 	paginaAdministrativa->nroFrame = nroFrame;
-		return paginaAdministrativa;
+	return paginaAdministrativa;
 }
 
 
 void agregarTablaSegmento(t_list * lista, t_segmento* tabla) {
 	list_add(lista, tabla);
+}
+
+void agregarContenido(int nroFrame, void* contenido){
+	t_contenidoFrame* contenidoFrame = malloc( sizeof( t_contenidoFrame ) );
+	contenidoFrame->nroFrame = nroFrame;
+	contenidoFrame->contenido = contenido;
+	list_add(contenidoFrames, contenidoFrame);
+}
+
+void agregarMapCompartido(char* path, int socketPrograma, int idSegmento, t_list* tablaPaginas){
+	t_mapAbierto* map = malloc(sizeof(t_mapAbierto));
+	map->socketPrograma = socketPrograma;
+	map->path = path;
+	map->idSegmento = idSegmento;
+	map->tablaPaginas = tablaPaginas;
+	list_add(mapeosAbiertosCompartidos, map);
 }
 
 
@@ -103,6 +118,24 @@ t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 	return segmentoBuscado;
 }
 
+t_mapAbierto* buscarMapeoAbierto(char* path) {
+
+	bool existePath(void* mapAbierto){
+		t_mapAbierto* mapAbiertoBuscar = (t_mapAbierto*) mapAbierto;
+
+		if (path != NULL) return string_equals_ignore_case(mapAbiertoBuscar->path, path);
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	t_mapAbierto* mapAbiertoBuscado = list_find(mapeosAbiertosCompartidos,existePath);
+	//sem_post(&g_mutex_tablas);
+	return mapAbiertoBuscado;
+}
+
+
+
 t_segmento* buscarSegmentoId(t_list* segmentos,int idSemgneto) {
 
 	bool existeDireccionSegmento(void* segmento){
@@ -120,9 +153,9 @@ t_segmento* buscarSegmentoId(t_list* segmentos,int idSemgneto) {
 }
 
 
-t_contenidoFrame* buscarContenidoFrameMemoria(t_list* contenidoFrames,int nroFrame) {
+t_contenidoFrame* buscarContenidoFrameMemoria(int nroFrame) {
 
-	bool existePagina(void* contenidoFrame){
+	bool existeContenidoFrame(void* contenidoFrame){
 		t_contenidoFrame* contenidoBuscar = (t_contenidoFrame*) contenidoFrame;
 
 		if(nroFrame != NULL) return contenidoBuscar->nroFrame == nroFrame;
@@ -131,7 +164,7 @@ t_contenidoFrame* buscarContenidoFrameMemoria(t_list* contenidoFrames,int nroFra
 	}
 
 	//sem_wait(&g_mutex_tablas);
-	t_contenidoFrame* contenidoBuscado = list_find(contenidoFrames,existePagina);
+	t_contenidoFrame* contenidoBuscado = list_find(contenidoFrames,existeContenidoFrame);
 	//sem_post(&g_mutex_tablas);
 	return contenidoBuscado;
 }
@@ -175,24 +208,6 @@ t_pagina* buscarFrameEnTablasDePaginas(t_paginaAdministrativa* paginaABuscar) {
 }
 
 
-t_heapFrameMetadata* buscarFramePorIndice(t_list* frames, int indice) {
-
-	bool existeFrame(void* frame){
-		t_heapFrameMetadata* frameBuscar = (t_heapFrameMetadata*) frame;
-
-		if (indice != NULL) return frameBuscar->nroFrame == indice;
-		return false;
-
-	}
-
-	//sem_wait(&g_mutex_tablas);
-	t_heapFrameMetadata* frameBuscado = list_find(frames,existeFrame);
-	//sem_post(&g_mutex_tablas);
-	return frameBuscado;
-}
-
-
-
 t_programa* buscarPrograma(int socket) {
 
 	bool existeIdPrograma(void* programa){
@@ -224,21 +239,22 @@ int desplazamientoPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 }
 
 int buscarFrameLibre(){
-		int i = 0;
+	for (int i = 0; i < g_cantidadFrames; i++) {
 		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
 			bitarray_set_bit(g_bitarray_marcos,i);
 			return i;
 		}
-
+	}
 	return -1;
 }
 
 int buscarFrameLibreSwap(){
-		int i = 0;
+	for (int i = 0; i < maxPaginasEnSwap; i++) {
 		if( bitarray_test_bit(g_bitarray_swap, i) == false ) {
 			bitarray_set_bit(g_bitarray_swap,i);
 			return i;
 		}
+	}
 
 	return -1;
 }

@@ -11,7 +11,7 @@ t_list*			crearListaHeapsMetadata			();
 t_list*			crearTablaProgramas				();
 t_list*			crearTablaPaginas				();
 t_list*         crearTablaSegmentos             ();
-t_segmento*     crearSegmento                   (int direccionBase, int tamanio, int tipoSegmento);
+t_segmento*     crearSegmento                   (int direccionBase, int tamanio, int tipoSegmento, bool tablaDePaginasCompartida);
 t_pagina*       crearPagina                     (int numeroDeMarco, int nroPagina);
 t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegmento,int nroPagina, int nroFrame);
 void 			agregarTablaSegmento			(t_list * lista, t_segmento* tabla);
