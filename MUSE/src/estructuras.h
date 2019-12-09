@@ -90,6 +90,7 @@ typedef struct{
 	int socketPrograma;
 	int idSegmento;
 	char* path;
+	t_list* tablaPaginas;
 }t_mapAbierto;
 
 //Tipos auxiliares

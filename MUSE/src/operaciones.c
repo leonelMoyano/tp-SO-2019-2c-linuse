@@ -7,7 +7,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
-		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1 );
+		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1,0 );
 		direccionLogica = allocarEnPaginasNuevas(socket, segmentoElegido,tam);
 	}
 	else
@@ -18,7 +18,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 			t_segmento * ultimoSegmento =  ultimoSegmentoPrograma(programa);
 			if(ultimoSegmento->tipoSegmento == 2)//segmento mmap
 			{
-				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1 );
+				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1,0 );
 			}
 			else segmentoElegido = ultimoSegmento;
 
@@ -75,11 +75,23 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	int tamanioSegmento = length; //calcular por cantidad de paginas necesarias
 
-	t_segmento * nuevoSegmento = crearSegmento(programa->segmentos_programa->limiteLogico,length,1);
-	list_add(programa->segmentos_programa,crearSegmento(programa->segmentos_programa->limiteLogico,length,1));
+	t_segmento * nuevoSegmento;
+
+	if(flags == MAP_SHARED) {
+		t_mapAbierto* mapAbierto = buscarMapeoAbierto(path);
+		if(mapAbierto != NULL){
+			nuevoSegmento = crearSegmento(programa->segmentos_programa->limiteLogico,length,2,1);
+			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
+		}
+	}
+	else	nuevoSegmento = crearSegmento(programa->segmentos_programa->limiteLogico,length,2,0);
+
+	list_add(programa->segmentos_programa,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += tamanioSegmento;
 
 	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
+
+	if(flags == MAP_SHARED) agregarMapCompartido(path,socket,nuevoSegmento->idSegmento,nuevoSegmento->tablaPaginas);
 
 	return nuevoSegmento->baseLogica;
 }
@@ -214,38 +226,31 @@ int SistemaMemoriaDisponible(){}
 void TraerPaginaDeSwap(int socketPrograma, int nroPagina, int idSegmento){
 
 	int marcoEnSwap = traerFrameDePaginaEnSwap(socketPrograma,idSegmento,nroPagina);
-	void* contenido = leerFrameSwap(marcoEnSwap, &disco_swap);
+	void* contenido = sacarFrameSwap(marcoEnSwap, &disco_swap);
 
 }
 
-void* leerFrameSwap(int nroMarco, FILE ** archivo){
+void* sacarFrameSwap(int nroMarco, FILE ** archivo){
 
 	*archivo = fopen(RUTASWAP, "r+");
-
-
 
 	// Tamaño del archivo que voy a leer
 	size_t tamArc = g_configuracion->tamanioSwap;
 
-	// Leo el total del archivo y lo asigno al buffer
-	void * dataArchivo = calloc( 1, tamArc + 1 );
-	fread( dataArchivo, tamArc, 1, *RUTASWAP );
+	int fd = fileno(*archivo);
 
 	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
-	int indiceALeer = fseek(archivo, indiceArchivo ,SEEK_SET);
 
-	//ver cual de las 2 formas es la correcta
-	void* contenido = fgets(dataArchivo,g_configuracion->tamanioPagina,archivo);
-	read(indiceALeer, dataArchivo, g_configuracion->tamanioPagina );
+	void* dataPagina = mmap(0, lengthPagina, PROT_READ, MAP_SHARED, fd, indiceArchivo);
 
-	void* bloqueVacio = malloc(g_configuracion->tamanioPagina);
-	fwrite(bloqueVacio,g_configuracion->tamanioPagina,1,archivo);
+	//meter pagina en blanco
+	void * paginaVacia = mmap( malloc(g_configuracion->tamanioPagina), lengthPagina, PROT_WRITE, MAP_SHARED, fd, indiceArchivo);
 
 	bitarray_clean_bit(g_bitarray_swap,nroMarco);
 
 	fclose(*archivo);
 
-	return contenido;
+	return dataPagina;
 }
 
 void escribirFrameSwap(int nroMarco, void* contenido, FILE ** archivo){
@@ -257,16 +262,13 @@ void escribirFrameSwap(int nroMarco, void* contenido, FILE ** archivo){
 
 	// Leo el total del archivo y lo asigno al buffer
 	void * dataArchivo = calloc( 1, tamArc + 1 );
-	fread( dataArchivo, tamArc, 1, *RUTASWAP );
 
 	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
-	fseek(archivo, indiceArchivo ,SEEK_SET);
 
-	void* bloque = malloc(g_configuracion->tamanioPagina);
+	int fd = fileno(*archivo);
 
-	//lo que quiero aca es malloquear el bloque de la pagina y luego el contenido, para que queden todos los bytes escritos
-	fwrite(bloque,g_configuracion->tamanioPagina,1,archivo);
-	fwrite(contenido,g_configuracion->tamanioPagina,1,archivo);
+	void * dataPagina = mmap(0, lengthPagina, PROT_READ, MAP_SHARED, fd, indiceArchivo);
+	void * dataPaginaNueva = mmap(contenido, lengthPagina, PROT_WRITE, MAP_SHARED, fd, indiceArchivo);
 
 	bitarray_set_bit(g_bitarray_swap,nroMarco);
 
@@ -308,6 +310,8 @@ void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, i
 
 	return dataArchivo;
 }
+
+
 
 
 

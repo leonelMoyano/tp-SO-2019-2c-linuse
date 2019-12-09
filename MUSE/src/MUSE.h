@@ -27,7 +27,14 @@ int idSegmento;
 int nroPrograma;
 int punteroClock;
 int direccionamientoLogicoActual;
+size_t lengthPagina;
+
 void* archivoSwap;
+int fdSwap;
+FILE * disco_swap;
+t_bitarray * g_bitarray_swap;
+t_list * paginasEnSwap;
+int maxPaginasEnSwap;
 
 t_log* g_logger;
 t_log* g_loggerDebug;
@@ -43,11 +50,6 @@ t_list * contenidoFrames;
 t_list* tablasDePaginas; // o TLB para hacer reemplazo global
 
 t_list* mapeosAbiertosCompartidos;
-
-t_bitarray * g_bitarray_swap;
-FILE * disco_swap;
-t_list * paginasEnSwap;
-int maxPaginasEnSwap;
 
 void * g_granMalloc;
 
