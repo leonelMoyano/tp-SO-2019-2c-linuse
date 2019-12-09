@@ -7,6 +7,9 @@ SACFSInit/Debug
 SACServer/Debug
 SUSE/Debug
 
+# Archivos de log
+*.log
+
 # Prerequisites
 *.d
 
