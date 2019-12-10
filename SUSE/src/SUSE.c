@@ -168,7 +168,7 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 		thread_a_cerrar->time_last_run = time(NULL);							// actualizamos time_last_run de *thread_a_cerrar*
 		t_list* pasar_a_ready = thread_a_cerrar->threads_bloqueados;			// en el "proceso_padre" de thread_a_cerrar
 																				// muevo elementos de la lista "blocked" a "ready";
-		list_iterate(pasar_a_ready,(void*) trancisionar_bloqueado_a_ready(thread_a_cerrar)); // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
+		list_iterate(pasar_a_ready, trancisionar_bloqueado_a_ready); // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
 		log_info( g_logger, "Close Ok para hilo en ejecucion del Proceso %d", cliente_suse->main_tid );
 
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
