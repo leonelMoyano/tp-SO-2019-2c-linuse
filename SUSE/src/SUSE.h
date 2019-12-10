@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <commons/log.h>
 #include <commons/config.h>
 #include "biblioNOC/conexiones.h"
@@ -24,5 +25,6 @@ t_config *g_config;
 t_list* g_semaforos;
 
 void iniciar_logger	(void);
+void inicializar_estructuras();
 
 #endif /* SUSESERVER_H_ */

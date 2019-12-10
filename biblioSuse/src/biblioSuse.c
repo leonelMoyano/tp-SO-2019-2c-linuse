@@ -15,15 +15,15 @@ int suse_create(int tid) {
 	return 0;
 }
 
-int suse_schedule_next(void){
-	int next = g_max_multiprog;
-	printf("Scheduling next item %i...\n", next);
-	//sendMssgSuse("Proximo hilo a ejecutar");
-	return next;
+int suse_schedule_next(void) {
+	// int next = g_max_multiprog;
+	// printf("Scheduling next item %i...\n", next);
+	// sendMssgSuse("Proximo hilo a ejecutar");
+	log_debug( g_logger, "Suse schedule next devuelvo siempre 0");
+	return 0;
 }
 
-int suse_join(int tid)
-{
+int suse_join(int tid) {
 	if (tid > g_max_multiprog) {
 		g_max_multiprog = tid;
 	}
@@ -40,13 +40,15 @@ int suse_close(int tid){
 }
 
 int suse_wait(int tid, char *sem_name){
-	// Not supported
-	return 0;
+	log_info( g_logger, "Sem wait de %s, para tid %d", sem_name, tid );
+	enviarSemWait( g_server_socket, tid, sem_name );
+	return esperarRespuestaSemWait( g_server_socket );
 }
 
 int suse_signal(int tid, char *sem_name){
-	// Not supported
-	return 0;
+	log_info( g_logger, "Sem post de %s, para tid %d", sem_name, tid );
+	enviarSemPost( g_server_socket, tid, sem_name );
+	return esperarRespuestaSemPost( g_server_socket );
 }
 
 struct hilolay_operations operaciones = {
@@ -62,6 +64,7 @@ void hilolay_init(void) {
 	init_config( CONFIG_PATH );
 	iniciar_log();
 
+	log_info( g_logger, "Me conecto a SUSE server en %s:%s", g_config->ip, g_config->puerto );
 	g_server_socket = conectarCliente( g_config->ip, atoi( g_config->puerto ), BIBLIO_SUSE_CLIENT_ID);
 	esperarRespuestaConfig( g_server_socket );
 	init_internal(&operaciones);
@@ -116,26 +119,26 @@ void esperarRespuestaConfig( int socket ){
 	}
 }
 
-void esperarRespuestaSemWait( int socket ){
+int esperarRespuestaSemWait( int socket ){
 	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
-	if( respuetaMultiprog->codigoOperacion == SUSE_WAIT ){
-		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
-		// TODO free de este paquete ?
-		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );
-	} else {
-		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
+	if( respuetaMultiprog->codigoOperacion != SUSE_WAIT ){
+		log_error( g_logger, "Recibi algo que no es respuesta de sem wait");
 	}
+	int respuesta = deserializarNumero( respuetaMultiprog->buffer );
+	log_info( g_logger, "Sem wait recibio esta respuesta %d", respuesta );
+	destruirPaquete( respuetaMultiprog );
+	return respuesta;
 }
 
-void esperarRespuestaSemPost( int socket ){
+int esperarRespuestaSemPost( int socket ){
 	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
-	if( respuetaMultiprog->codigoOperacion == SUSE_SIGNAL ){
-		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
-		// TODO free de este paquete ?
-		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );
-	} else {
-		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
+	if( respuetaMultiprog->codigoOperacion != SUSE_SIGNAL ){
+		log_error( g_logger, "Recibi algo que no es respuesta de sem signal");
 	}
+	int respuesta = deserializarNumero( respuetaMultiprog->buffer );
+	log_info( g_logger, "Sem signal recibio esta respuesta %d", respuesta );
+	destruirPaquete( respuetaMultiprog );
+	return respuesta;
 }
 
 void sendMssgSuse(char* mssg) {
@@ -149,5 +152,5 @@ void sendMssgSuse(char* mssg) {
 }
 
 void iniciar_log(void) {
-	g_logger = log_create("/home/utnso/workspace/confBiblioSuse/suseServer.log", "biblioSuse", 1, LOG_LEVEL_INFO);
+	g_logger = log_create("/home/utnso/workspace/confBiblioSuse/suseServer.log", "biblioSuse", 1, LOG_LEVEL_TRACE);
 }

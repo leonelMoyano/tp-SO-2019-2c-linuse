@@ -55,7 +55,7 @@ void serializarSemaforoRequest(t_paquete* paquete, int tid, char* nombre) {
 	paquete->buffer->size = tamBuffer;
 
 	memcpy(paquete->buffer->data, &tid, sizeof( int ));
-	memcpy(paquete->buffer->data, nombre, tamNombre);
+	memcpy(paquete->buffer->data + sizeof( int ), nombre, tamNombre);
 }
 
 void* serializar_paquete(t_paquete* paquete, int bytes)

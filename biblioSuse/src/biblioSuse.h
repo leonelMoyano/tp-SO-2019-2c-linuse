@@ -43,4 +43,10 @@ void sendMssgSuse(char*);
 void enviarThreadCreate(int socket, int tid);
 void esperarRespuestaConfig(int);
 
+void enviarSemWait( int socket_dst, int tid, char* nombre );
+int  esperarRespuestaSemWait( int socket );
+
+void enviarSemPost( int socket_dst, int tid, char* nombre );
+int  esperarRespuestaSemPost( int socket );
+
 #endif /* BIBLIOSUSE_H_ */
