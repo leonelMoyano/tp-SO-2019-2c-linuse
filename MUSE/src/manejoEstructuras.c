@@ -9,7 +9,6 @@ t_list* crearDiccionarioConexiones() {
 
 t_list* crearTablaPaginas() {
 	t_list* aux = list_create();
-	list_add(tablasDePaginas,aux);  //TODO: ver si reemplazar por TLB
 	return aux;
 }
 
@@ -42,12 +41,22 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 	segmentoNuevo->limiteLogico = tamanio;
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 1;
-	//ver flag y caso en el que agregar puntero a mmap
 	idSegmento++;
 	return segmentoNuevo;
 }
 
-t_segmento* crearSegmentoMmap(int direccionBase, int tamanio, bool tablaDePaginasCompartida, t_mapAbierto* mapeo ){
+t_segmento* crearSegmentoMmap(int direccionBase, int tamanio, t_mapAbierto* mapeo ){
+	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
+	segmentoNuevo->baseLogica = direccionBase;
+	segmentoNuevo->limiteLogico = tamanio;
+	segmentoNuevo->idSegmento = idSegmento;
+	segmentoNuevo->tipoSegmento = 2;
+	segmentoNuevo->mmap = mapeo;
+	idSegmento++;
+	return segmentoNuevo;
+}
+
+t_segmento* crearSegmentoMmapCompartido(int direccionBase, int tamanio, bool tablaDePaginasCompartida, t_mapAbierto* mapeo){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	if(!tablaDePaginasCompartida) segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	segmentoNuevo->baseLogica = direccionBase;
@@ -101,13 +110,15 @@ void agregarContenido(int nroFrame, void* contenido){
 
 //TODO:agregar map, no compartido, no lo va a agregar a la lista de archivos compartido
 
-void agregarMapCompartido(char* path, int socketPrograma, int idSegmento, t_list* tablaPaginas){
+t_mapAbierto* crearMapeo(char* path, void* contenido){
 	t_mapAbierto* map = malloc(sizeof(t_mapAbierto));
 	map->path = path;
-	map->tablaPaginas = tablaPaginas;
-	list_add(mapeosAbiertosCompartidos, map);
+	map->tablaPaginas = crearTablaPaginas();
+	map->contenido = contenido;
+	sem_init(&map->semaforoPaginas, 0, 1);
+	map->cantProcesosUsando = 1;
+	return map;
 }
-
 
 void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
 	t_pagina * paginaNuevo = crearPagina( numeroDeMarco, list_size( segmento->tablaPaginas) );

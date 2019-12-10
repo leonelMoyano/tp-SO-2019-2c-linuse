@@ -71,32 +71,41 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	FILE * archivoMap;
 
-	void* referencia = mapearArchivoMUSE(path,length,&archivoMap,flags);
+	void* contenidoMap = mapearArchivoMUSE(path,length,&archivoMap,flags);
 
-	int tamanioSegmento = length; //calcular por cantidad de paginas necesarias
+	//TODO: optimizar funcion, evitar repeticion codigo
 
 	t_segmento * nuevoSegmento;
 
+	t_mapAbierto* mapAbierto = buscarMapeoAbierto(path);
+
 	if(flags == MAP_SHARED) {
-		t_mapAbierto* mapAbierto = buscarMapeoAbierto(path);
 		if(mapAbierto != NULL){
-			nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
+			//mmap compartido apuntando a mapeo existente
+			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 			mapAbierto->cantProcesosUsando = mapAbierto->cantProcesosUsando + 1;
 		}
-		else agregarMapCompartido(path,socket,nuevoSegmento->idSegmento,nuevoSegmento->tablaPaginas);
+		else{
+			//Mmap compartido nuevo
+			mapAbierto = crearMapeo(path,contenidoMap);
+			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,length,0,mapAbierto);
+			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
+			list_add(mapeosAbiertosCompartidos,mapAbierto);
+		}
 
 	}
-	else	nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,length,0,NULL);
-	////TODO:agregar map, no compartido, no lo va a agregar a la lista de archivos compartidos, sacar el NULL
-
+	else{ //mapeo privado
+		mapAbierto = crearMapeo(path,contenidoMap);
+		nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,length,mapAbierto);
+		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
+	}
 
 	list_add(programa->segmentos_programa,nuevoSegmento);
-	programa->segmentos_programa->limiteLogico += tamanioSegmento;
+	programa->segmentos_programa->limiteLogico += length;
 
+	//TODO: el flag para paginas no presentes
 	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
-
-	if(flags == MAP_SHARED) agregarMapCompartido(path,socket,nuevoSegmento->idSegmento,nuevoSegmento->tablaPaginas);
 
 	return nuevoSegmento->baseLogica;
 }
