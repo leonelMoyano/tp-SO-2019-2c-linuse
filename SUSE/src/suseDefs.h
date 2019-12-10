@@ -63,6 +63,8 @@ typedef struct suse_semaforo{
 	t_queue* threads_bloquedos;
 } t_semaforo_suse;
 
+typedef struct suse_cliente t_client_suse;
+
 typedef struct suse_cliente_thread{
 	int tid;
 	t_client_suse* proceso_padre;

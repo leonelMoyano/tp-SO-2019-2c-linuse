@@ -43,13 +43,27 @@ int main() {
     //int i;
 
     hilolay_init();
-    struct hilolay_t th1;
-    struct hilolay_t th2;
 
-	hilolay_create(&th1, NULL, &test1, NULL);
-	hilolay_create(&th2, NULL, &test2, NULL);
+    hilolay_sem_t* sem_a = hilolay_sem_open("A");
+    hilolay_signal( sem_a );
+    hilolay_signal( sem_a );
+    hilolay_signal( sem_a );
 
-	hilolay_join(&th2);
-	hilolay_join(&th1);
-    return hilolay_return(0);
+    hilolay_wait( sem_a );
+    hilolay_wait( sem_a );
+    hilolay_wait( sem_a );
+
+    hilolay_signal( sem_a );
+    hilolay_signal( sem_a );
+
+    // struct hilolay_t th1;
+    // struct hilolay_t th2;
+
+	// hilolay_create(&th1, NULL, &test1, NULL);
+	// hilolay_create(&th2, NULL, &test2, NULL);
+    //
+	// hilolay_join(&th2);
+	// hilolay_join(&th1);
+    // return hilolay_return(0);
+    return 0;
 }

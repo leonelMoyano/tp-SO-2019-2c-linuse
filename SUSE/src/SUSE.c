@@ -19,10 +19,10 @@ void       esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cli
 void       inicializar_semaforos();
 t_paquete* armarPaqueteNumeroConOperacion( int numero, int codigo_op );
 
-int main(void)
-{
+int main(void) {
 	iniciar_logger();
 	iniciar_config("/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/SUSE/suseServer.cfg");
+	inicializar_estructuras();
 	inicializar_semaforos();
 	// TODO despues de levantar la config inicializar los semaforos de la config
 
@@ -106,6 +106,7 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 	t_client_thread_suse* nuevo_thread = malloc( sizeof( t_client_thread_suse ) );
 	nuevo_thread->tid = tid;
 	nuevo_thread->time_created = time( NULL );
+	nuevo_thread->proceso_padre = cliente_suse;
 	// TODO estimacion inicial en 0
 	if( is_main_thread == 1 ){ // Cuando llega el create del main thread ya esta corriendo
 		nuevo_thread->estado = RUNNING;
@@ -136,8 +137,9 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 * @DESC: Transiciona el thread de bloqueado a ready, moviendolo de la cola de bloqueados a su cola de ready correspondiente
 */
 void trancisionar_bloqueado_a_ready( t_client_thread_suse* thread ){
-	bool compare_thread( t_client_thread_suse* otro_thread ){
-		return otro_thread->tid == thread->tid;
+	bool compare_thread( void* otro_thread ){
+		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
+		return otro_thread_t->tid == thread->tid;
 	}
 
 	// TODO cambiar la cola de bloqueado que agarro si va a terminar siendo una global para tods los procs
@@ -164,10 +166,11 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 * @DESC: Retorna el semaforo con nombre sem_name, NULL en caso de no existir
 */
 t_semaforo_suse* find_sem_by_name( char* sem_name ){
-	bool compare_sem_name( t_semaforo_suse* sem ){
-		return strcmp( sem_name, sem->nombre ) == 0;
+	bool compare_sem_name( void* sem ){
+		t_semaforo_suse* sem_t = (t_semaforo_suse*) sem;
+		return strcmp( sem_name, sem_t->nombre ) == 0;
 	}
-	return list_find( g_semaforos, find_sem_by_name );
+	return list_find( g_semaforos, compare_sem_name );
 }
 
 /**
@@ -176,8 +179,9 @@ t_semaforo_suse* find_sem_by_name( char* sem_name ){
 * 	busco solo en RUNNING, READY, EXIT y BLOCKED, si esta en NEW no lo busco
 */
 t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proceso_padre ){
-	bool compare_thread_id( t_client_thread_suse* thread ){
-		return tid == thread->tid;
+	bool compare_thread_id( void* thread ){
+		t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
+		return tid == thread_t->tid;
 	}
 	// Lo busco en varios lados porque puede estar en cualquier estado
 	if( proceso_padre->running_thread->tid == tid)
@@ -185,37 +189,40 @@ t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proc
 
 	t_client_thread_suse* thread_buscado;
 
-	thread_buscado = list_find( proceso_padre->ready, find_sem_by_name );
+	thread_buscado = list_find( proceso_padre->ready, compare_thread_id );
 	if( thread_buscado != NULL )
 		return thread_buscado;
 
-	thread_buscado = list_find( proceso_padre->exit, find_sem_by_name );
+	thread_buscado = list_find( proceso_padre->exit, compare_thread_id );
 	if( thread_buscado != NULL )
 		return thread_buscado;
 
-	return list_find( proceso_padre->blocked, find_sem_by_name );
+	return list_find( proceso_padre->blocked, compare_thread_id );
 }
 
 t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
-	// TODO serializar y deserealizar el paquete para esto
+	// TODO poner semaforos ( de verdad ) dentro de cada operacion de suse_semaforo
 	t_semaforo_request_suse* sem_req_info = deserializarSemaforoRequest( paquete->buffer );
-	char* sem_name;
-	int tid;
+	log_info( g_logger, "Sem signal de %s, para tid %d", sem_req_info->name, sem_req_info->tid );
 
 	t_paquete * respuesta = NULL;
 
-	t_semaforo_suse* semaforo = find_sem_by_name( sem_name );
+	t_semaforo_suse* semaforo = find_sem_by_name( sem_req_info->name );
 
 	if( semaforo == NULL ){
+		log_warning( g_logger, "Sem %s no existe", sem_req_info->name );
 		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_SIGNAL );
 	} else if( semaforo->current_value == semaforo->max_value ) {
+		log_warning( g_logger, "Sem %s ya esta en su valor maximo %d", sem_req_info->name, semaforo->max_value );
 		respuesta = armarPaqueteNumeroConOperacion( -EOVERFLOW, SUSE_SIGNAL );
 	} else {
-		if( queue_is_empty( semaforo->threads_bloquedos ) )
+		if( queue_is_empty( semaforo->threads_bloquedos ) ) {
 			semaforo->current_value++;
-		else{
+			log_info( g_logger, "Sem %s nuevo valor %d", sem_req_info->name, semaforo->current_value );
+		} else {
 			t_client_thread_suse* thread_desbloqueado = queue_pop( semaforo->threads_bloquedos );
 			trancisionar_bloqueado_a_ready( thread_desbloqueado );
+			log_info( g_logger, "Sem signal en %s desbloqueo tid %d", sem_req_info->name, thread_desbloqueado->tid );
 		}
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_SIGNAL );
 	}
@@ -223,22 +230,27 @@ t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, in
 }
 
 t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
-	// TODO serializar y deserealizar el paquete para esto
-	char* sem_name;
-	int tid;
+	// TODO poner semaforos ( de verdad ) dentro de cada operacion de suse_semaforo
+	t_semaforo_request_suse* sem_req_info = deserializarSemaforoRequest( paquete->buffer );
+	log_info( g_logger, "Sem wait de %s, para tid %d", sem_req_info->name, sem_req_info->tid );
 
 	t_paquete * respuesta = NULL;
 
-	t_semaforo_suse* semaforo = find_sem_by_name( sem_name );
+	t_semaforo_suse* semaforo = find_sem_by_name( sem_req_info->name );
 	t_client_thread_suse* running_thread = cliente_suse->running_thread; // Porque si hizo un wait tiene que estar en running
 
 	if( semaforo == NULL ){
+		log_warning( g_logger, "Sem %s no existe", sem_req_info->name );
 		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_WAIT );
 	} else if( semaforo->current_value == 0 ) {
+		log_info( g_logger, "Sem %s esta en 0, se bloquea el tid %d", sem_req_info->name, sem_req_info->tid );
+		running_thread->estado = BLOCKED;
 		queue_push( semaforo->threads_bloquedos, running_thread );
 		list_add( cliente_suse->blocked, running_thread );
+		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
 	} else { // aca asumo que el semaforo puede ser restado porque no es 0
 		semaforo->current_value--;
+		log_info( g_logger, "Sem %s nuevo valor %d", sem_req_info->name, semaforo->current_value );
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
 	}
 	return respuesta;
@@ -252,7 +264,7 @@ t_paquete* armarPaqueteNumeroConOperacion( int numero, int codigo_op ){
 }
 
 void esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente ){
-	t_paquete *paqueteCreate = recibirArmarPaquete( socket );
+	t_paquete *paqueteCreate = recibirArmarPaquete( socket_cliente );
 	if( paqueteCreate->codigoOperacion == SUSE_CREATE ){
 		procesarThreadCreate( paqueteCreate, cliente_suse, 1, socket_cliente);
 	} else {
@@ -312,11 +324,16 @@ void inicializar_semaforos(){
 		nuevo_semaforo->current_value = atoi( list_get( g_config_server->sem_init, i ) );
 		nuevo_semaforo->max_value = atoi( list_get( g_config_server->sem_max, i ) );
 		nuevo_semaforo->threads_bloquedos = queue_create();
+
+		list_add( g_semaforos, nuevo_semaforo );
 	}
 }
 
-void iniciar_logger(void)
-{
-	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/logFiles/suseServer.log", "SUSE-Server", 1, LOG_LEVEL_INFO);
+void inicializar_estructuras(){
+	g_semaforos = list_create();
+}
+
+void iniciar_logger(void) {
+	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/logFiles/suseServer.log", "SUSE-Server", 1, LOG_LEVEL_TRACE);
 	log_info(g_logger, "Iniciando SuseServer");
 }

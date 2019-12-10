@@ -44,4 +44,6 @@ t_config* 	leer_config			(char*);
 char* 		getAddress			(t_config*);
 char* 		getPort				(t_config*);
 
+void serializarSemaforoRequest(t_paquete* paquete, int tid, char* nombre);
+
 #endif /* LIBSUSEUTILS_H_ */
