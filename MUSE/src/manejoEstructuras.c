@@ -35,12 +35,26 @@ t_list* crearTablaProgramas() {
 	return aux;
 }
 
-t_segmento* crearSegmento(int direccionBase, int tamanio, int tipoSegmento, bool tablaDePaginasCompartida ){
+t_segmento* crearSegmento(int direccionBase, int tamanio){
+	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
+	segmentoNuevo->tablaPaginas = crearTablaPaginas();
+	segmentoNuevo->baseLogica = direccionBase;
+	segmentoNuevo->limiteLogico = tamanio;
+	segmentoNuevo->idSegmento = idSegmento;
+	segmentoNuevo->tipoSegmento = 1;
+	//ver flag y caso en el que agregar puntero a mmap
+	idSegmento++;
+	return segmentoNuevo;
+}
+
+t_segmento* crearSegmentoMmap(int direccionBase, int tamanio, bool tablaDePaginasCompartida, t_mapAbierto* mapeo ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	if(!tablaDePaginasCompartida) segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	segmentoNuevo->baseLogica = direccionBase;
 	segmentoNuevo->limiteLogico = tamanio;
 	segmentoNuevo->idSegmento = idSegmento;
+	segmentoNuevo->tipoSegmento = 2;
+	segmentoNuevo->mmap = mapeo;
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -57,7 +71,7 @@ t_programa* crearPrograma(int socket){
 
 t_pagina* crearPagina(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
-	pagina->flagPresencia  = true; //si es mmap deberia ir en false
+	pagina->flagPresencia  = true; //TODO si es mmap deberia ir en false, agregar flag
 	pagina->flagModificado = false;
 	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
@@ -85,11 +99,11 @@ void agregarContenido(int nroFrame, void* contenido){
 	list_add(contenidoFrames, contenidoFrame);
 }
 
+//TODO:agregar map, no compartido, no lo va a agregar a la lista de archivos compartido
+
 void agregarMapCompartido(char* path, int socketPrograma, int idSegmento, t_list* tablaPaginas){
 	t_mapAbierto* map = malloc(sizeof(t_mapAbierto));
-	map->socketPrograma = socketPrograma;
 	map->path = path;
-	map->idSegmento = idSegmento;
 	map->tablaPaginas = tablaPaginas;
 	list_add(mapeosAbiertosCompartidos, map);
 }
@@ -97,6 +111,7 @@ void agregarMapCompartido(char* path, int socketPrograma, int idSegmento, t_list
 
 void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
 	t_pagina * paginaNuevo = crearPagina( numeroDeMarco, list_size( segmento->tablaPaginas) );
+	//TODO: flag de seteo de marco ocupado o no, lo aplicaria tambien en crear pagina
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
 	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas),numeroDeMarco));

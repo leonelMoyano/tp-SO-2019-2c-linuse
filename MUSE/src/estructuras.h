@@ -58,12 +58,21 @@ typedef struct{
 }t_programa;
 
 typedef struct{
+	char* path;
+	t_list* tablaPaginas;
+	void* contenido;
+	sem_t semaforoPaginas;
+	int cantProcesosUsando;
+}t_mapAbierto;
+
+typedef struct{
 	int idSegmento;
 	int baseLogica;
 	int limiteLogico;
 	t_list* tablaPaginas;
 	int tipoSegmento;
 	t_list* heapsSegmento;
+	t_mapAbierto* mmap;
 }t_segmento;
 
 
@@ -86,12 +95,6 @@ typedef struct{
 	void* contenido;
 }t_contenidoFrame;
 
-typedef struct{
-	int socketPrograma;
-	int idSegmento;
-	char* path;
-	t_list* tablaPaginas;
-}t_mapAbierto;
 
 //Tipos auxiliares
 

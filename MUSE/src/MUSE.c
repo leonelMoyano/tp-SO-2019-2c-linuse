@@ -24,8 +24,7 @@ int main(void) {
 	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
 	//abrirArchivoGral(&disco_swap);
 
-	void* asd = malloc(50);
-	escribirFrameSwap(1,g_configuracion->tamanioPagina,&disco_swap);
+
 
 
 	//char * puertoString = string_itoa(g_configuracion->puertoConexion);
@@ -37,12 +36,7 @@ int main(void) {
 		}
 	*/
 
-
 	iniciarServidor("4005", g_logger, attendConnection);
-
-
-
-
 
 	return prueba();
 

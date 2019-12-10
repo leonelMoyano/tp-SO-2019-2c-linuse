@@ -50,6 +50,7 @@ t_list * contenidoFrames;
 t_list* tablasDePaginas; // o TLB para hacer reemplazo global
 
 t_list* mapeosAbiertosCompartidos;
+t_list* mapeosAbiertos;
 
 void * g_granMalloc;
 

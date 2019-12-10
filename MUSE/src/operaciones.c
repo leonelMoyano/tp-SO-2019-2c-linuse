@@ -7,7 +7,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
-		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1,0 );
+		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 		direccionLogica = allocarEnPaginasNuevas(socket, segmentoElegido,tam);
 	}
 	else
@@ -18,11 +18,11 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 			t_segmento * ultimoSegmento =  ultimoSegmentoPrograma(programa);
 			if(ultimoSegmento->tipoSegmento == 2)//segmento mmap
 			{
-				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam, 1,0 );
+				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 			}
 			else segmentoElegido = ultimoSegmento;
 
-			direccionLogica = allocarEnPaginasNuevas(socket,segmentoElegido,tam);
+			direccionLogica = (socket,segmentoElegido,tam);
 		}
 	}
 
@@ -80,11 +80,16 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	if(flags == MAP_SHARED) {
 		t_mapAbierto* mapAbierto = buscarMapeoAbierto(path);
 		if(mapAbierto != NULL){
-			nuevoSegmento = crearSegmento(programa->segmentos_programa->limiteLogico,length,2,1);
+			nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
+			mapAbierto->cantProcesosUsando = mapAbierto->cantProcesosUsando + 1;
 		}
+		else agregarMapCompartido(path,socket,nuevoSegmento->idSegmento,nuevoSegmento->tablaPaginas);
+
 	}
-	else	nuevoSegmento = crearSegmento(programa->segmentos_programa->limiteLogico,length,2,0);
+	else	nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,length,0,NULL);
+	////TODO:agregar map, no compartido, no lo va a agregar a la lista de archivos compartidos, sacar el NULL
+
 
 	list_add(programa->segmentos_programa,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += tamanioSegmento;
@@ -98,14 +103,17 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 int procesarSync(uint32_t addr, size_t len, int socket){
 	t_programa * programa= buscarPrograma(socket);
+
 }
 
 uint32_t procesarUnMap(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(socket);
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dir);
 
-	//es segmento mmap?
-
+	//es segmento mmap
+	//TODO: sacar de la lista de mapeos abiertos , mapeosAbiertosCompartidos
+	//Verificar si otro proceso no tiene abierto el mismo archivo , liberar la tabla de paginas
+	//restar contador de procesos usando mapeo, si llega a cero, liberar las paginas
 
 }
 
@@ -122,7 +130,7 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 	{
 		segmentoBuscar = list_get(segmentos->lista_segmentos,j);
 		direccionHeap = segmentos->baseLogica;
-		if(segmentoBuscar->tipoSegmento)
+		if(segmentoBuscar->tipoSegmento == 1)
 		{ //es heap, para los mmap tengo que usar heaps igual?
 			for (int i = 0; i < list_size(segmentoBuscar->heapsSegmento) && !encontrado; i++) {
 				auxHeap = list_get(segmentoBuscar->heapsSegmento,i);
@@ -136,7 +144,7 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 	if(heapBuscado != NULL)	{
 		heapBuscado->isFree = false;
 		heapBuscado->t_size = cantidadBytesNecesarios;
-		//agregar nuevo heap libre si sobra espacio, verificar si el anterior o posterior esta free , compactar
+		//TODO: agregar nuevo heap libre si sobra espacio, verificar si el anterior o posterior esta free , compactar
 		direccionHeap += tamanio_heap;
 	}
 
@@ -154,7 +162,7 @@ uint32_t allocarEnPaginasNuevas(int socket, t_segmento* segmentoAExtender, uint3
 
 		int indiceFrame = buscarFrameLibre();
 
-		//si es de mmap solo debo cargar las paginas en el segmento,sin que esten presentes
+		//TODO si es de mmap solo debo cargar las paginas en el segmento,sin que esten presentes, flag
 		if(indiceFrame == -1) indiceFrame = ClockModificado();
 		else
 		agregarPaginaEnSegmento(socket, segmentoAExtender,indiceFrame);
@@ -166,6 +174,7 @@ uint32_t allocarEnPaginasNuevas(int socket, t_segmento* segmentoAExtender, uint3
 
 }
 
+//TODO, esta funcion podria abstraerla y reutilizarla varias veces, buscar heapValido
 int freeDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
 
@@ -179,7 +188,7 @@ int freeDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 		else auxHeap->isFree = true; //fijar si tengo que compactar heaps
 	}
 
-	if(!encontrado) return -1; //segmentation fault
+	if(!encontrado) return -1; //segmentation fault, TODO: buscar codigo syscall seg fault
 }
 
 
