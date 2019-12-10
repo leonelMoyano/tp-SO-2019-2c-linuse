@@ -144,7 +144,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 	filler(buffer, ".", NULL, 0); // Current Directory
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
-	if( parentNodeIndex != 0 )
+	if( strcmp( "/", path ) != 0 )
 		parentNodeIndex += g_node_table_block_index; // Convertir a indice absoluto
 
 	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
