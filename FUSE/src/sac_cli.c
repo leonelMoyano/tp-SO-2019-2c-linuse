@@ -486,7 +486,7 @@ int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFina
 	int proxDatablock = cantBlocksActuales == 0 ? 0 : datablockIndiceActual % 1024 + 1;
 	int proxIndirect = cantBlocksActuales == 0 ? 0 : datablockIndiceActual / 1024 + 1;
 
-	GPtrIndSimple * indirectBlock;
+	GPtrIndSimple* indirectBlock;
 	// tal vez valga la pena reescribir esto para no tener el proximo indice sino el actual y que sea menos confuso ?
 
 	for (int i = 0; i < bloquesFaltantes; i++) {
@@ -494,6 +494,7 @@ int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFina
 		if( proxDatablock % 1024 == 0 ){
 			// necesito un bloque indirecto
 			nuevoIndirect = get_avail_block();
+			memset( (GPtrIndSimple*)g_header + nuevoIndirect, 0, GBLOCKSIZE ); // para limpiar el bloque que voy a usar como ind
 			fileNode->blk_indirect[proxIndirect] = nuevoIndirect;
 			bitarray_set_bit(g_bitmap, nuevoIndirect);
 			proxIndirect++;
