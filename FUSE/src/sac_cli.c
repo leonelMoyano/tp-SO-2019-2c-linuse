@@ -20,6 +20,8 @@
 #include "sac.h"
 #include "fuse_utils.h"
 
+t_log* g_logger;
+
 ptrGBloque* g_first_block; // Puntero al inicio del primer bloque dentro del archivo
 long g_disk_size; // Tamanio en bytes del archivo
 GHeader* g_header; // Puntero al header del FS
@@ -68,18 +70,21 @@ int find_by_name_in_parent(const char *name, int parent_index){
 *
 */
 int find_by_path(const char *path){
-	// TODO liberar memoria de string_split
-	char **splitted_path = string_split( path, "/" );
 	int parent_node_index = get_parent_node( path );
+
 	int splitted_path_index = 0;
-	while( splitted_path[ splitted_path_index + 1 ] != NULL )
+	char **splitted_path = string_split( path, "/" );
+	while( splitted_path[ splitted_path_index + 1 ] != NULL ) {
+		free( splitted_path[ splitted_path_index ] );
 		splitted_path_index++;
-	return find_by_name_in_parent( splitted_path[ splitted_path_index ], parent_node_index );
+	}
+	int nodo_encontrado = find_by_name_in_parent( splitted_path[ splitted_path_index ], parent_node_index );
+	free( splitted_path[ splitted_path_index ] );
+	return nodo_encontrado;
 }
 
 static int do_getattr(const char *path, struct stat *st) {
-	printf("[getattr] Called\n");
-	printf("\tAttributes of %s requested\n", path);
+	log_info( g_logger, "[getattr]:%s", path );
 
 	// GNU's definitions of the attributes (http://www.gnu.org/software/libc/manual/html_node/Attribute-Meanings.html):
 	// 		st_uid: 	The user ID of the file’s owner.
@@ -120,7 +125,7 @@ static int do_getattr(const char *path, struct stat *st) {
 }
 
 static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
-	printf("--> Getting The List of Files of %s\n", path);
+	log_info( g_logger, "[readdir]:%s", path );
 
 	int parentNodeIndex;
 	if( strcmp( path, "/" ) == 0 ){
@@ -145,7 +150,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
 		GFile* currNode = g_node_table + currNodeIndex;
 		if( currNode->parent_dir_block == parentNodeIndex && currNode->state != 0 ){
-			// TODO logear algo aca ?
+			log_trace( g_logger, "Para %s, encontré: %s", path, currNode->fname );
 			filler(buffer, currNode->fname, NULL, 0);
 		}
 	}
@@ -154,7 +159,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 }
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
-	printf( "[read]: %s\n", path);
+	log_info( g_logger, "[read]:%s", path );
 	int currNodeIndex = find_by_path( path );
 	if(currNodeIndex == -1){
 		return -ENOENT;
@@ -252,6 +257,7 @@ void occupy_node( char *path, int nodeIndex, int parentNodeIndex, int state ){
 }
 
 static int do_mknod (const char *path, mode_t mode, dev_t device){
+	log_info( g_logger, "[mknod]:%s", path );
 	int currNode = check_existance_and_availability( path );
 	if( currNode < 0 )
 		return currNode;
@@ -260,8 +266,7 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 	if( parentNode == -ENOTDIR )
 		return -ENOENT;
 
-	// TODO pasar esto a log ?
-	printf( "[mknod][%d]: %s\n", currNode, path);
+	log_info( g_logger, "[mknod]:%s ocupa nodo %d", path, currNode );
 	occupy_node( path, currNode, parentNode, 1 );
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
@@ -271,6 +276,7 @@ static int do_mknod (const char *path, mode_t mode, dev_t device){
 
 
 static int do_mkdir(const char *path, mode_t mode){
+	log_info( g_logger, "[mkdir]:%s", path );
 	int currNode = check_existance_and_availability( path );
 	if( currNode < 0 )
 		return currNode;
@@ -279,8 +285,7 @@ static int do_mkdir(const char *path, mode_t mode){
 	if( parentNode == -ENOTDIR )
 		return -ENOTDIR;
 
-	// TODO pasar esto a log ?
-	printf( "[mkdir][%d]: %s\n", currNode, path);
+	log_info( g_logger, "[mkdir]:%s ocupa nodo %d", path, currNode );
 	occupy_node( path, currNode, parentNode, 2 );
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
@@ -289,13 +294,13 @@ static int do_mkdir(const char *path, mode_t mode){
 }
 
 static int do_unlink (const char *path){
+	log_info( g_logger, "[unlink]:%s", path );
 	int currNodeIndex = find_by_path(path);
 	if (currNodeIndex == -1)
 		return -ENOENT;
 	GFile* currNode = g_node_table + currNodeIndex;
 
 	currNode->state = 0;
-	// TODO capaz que loggear cantidad de lboques que libero ?
 	liberarBloques(currNode, get_occupied_datablocks_qty( currNode->file_size ), 0 );
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
@@ -303,6 +308,7 @@ static int do_unlink (const char *path){
 }
 
 static int do_rmdir( const char *path ){
+	log_info( g_logger, "[rmdir]:%s", path );
 	int currNode = find_by_path( path );
 	GFile *fileNode = g_node_table + currNode;
 	fileNode->state = 0;
@@ -401,7 +407,7 @@ int get_occupied_datablocks_qty(size_t size){
 }
 
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
-	printf( "[write]: %s\n", path);
+	log_info( g_logger, "[write]:%s", path );
 	int currNodeIndex = find_by_path( path );
 	if(currNodeIndex == -1){
 		return -ENOENT;
@@ -458,6 +464,7 @@ int liberarBloques(GFile* fileNode, int cantidadDatablocksActuales, int cantidad
 			indirIndex--;
 		}
 	}
+	log_debug( g_logger, "Libero %d bloques", freedDatablocks );
 	return freedDatablocks;
 }
 
@@ -505,6 +512,7 @@ int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFina
 }
 
 static int do_truncate(const char* path, off_t size){
+	log_info( g_logger, "[truncate]:%s a size %d", path, size );
 	int currNodeIndex = find_by_path(path);
 	if( currNodeIndex == -1 ){
 		return -ENOENT;
@@ -527,6 +535,7 @@ static int do_truncate(const char* path, off_t size){
 }
 
 static int do_utimens( const char *path, const struct timespec tv[2]){
+	log_info( g_logger, "[utimens]:%s", path );
 	// donde tv[ 0 ] es last access time y tv[ 1 ] es last modified time
 	int currNodeIndex = find_by_path(path);
 	if( currNodeIndex == -1 ){
@@ -586,7 +595,7 @@ long fileSize(char *fname) {
 // Dentro de los argumentos que recibe nuestro programa obligatoriamente
 // debe estar el path al directorio donde vamos a montar nuestro FS
 int main(int argc, char *argv[]) {
-	// TODO init logger
+	g_logger = log_create( "/home/utnso/logs/FUSE/cli.log", "SACCLI", 1, LOG_LEVEL_TRACE );
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
 	// Limpio la estructura que va a contener los parametros
@@ -595,14 +604,16 @@ int main(int argc, char *argv[]) {
 	// Esta funcion de FUSE lee los parametros recibidos y los intepreta
 	if (fuse_opt_parse(&args, &runtime_options, fuse_options, NULL) == -1){
 		/** error parsing options */
+		log_error( g_logger, "Invalid fuse arguments" );
 		perror("Invalid arguments!");
 		return EXIT_FAILURE;
 	}
 
 	if( runtime_options.disk != NULL ){
-		printf("Mounting disk path: %s\n", runtime_options.disk);
+		log_info( g_logger, "Montando disco en %s", runtime_options.disk );
 	} else {
-		perror("falta parametro --disk %s");
+		log_error( g_logger, "Falta parametro --disk");
+		perror("Falta parametro --disk");
 		exit(1);
 	}
 
@@ -616,12 +627,11 @@ int main(int argc, char *argv[]) {
 	char* name = calloc(4, 1);
 	memcpy(name, g_header->sac, 3);
 	g_block_count = g_disk_size / GBLOCKSIZE;
-	// TODO pasar esto a logs
-	printf("Nombre: %s\n", name);
-	printf("Version: %u\n", g_header->version);
-	printf("Tamanio bitmap %u\n", g_header->size_bitmap);
-	printf("Tamanio archivo %ld bytes\n", g_disk_size);
-	printf("Cantidad de bloques %d\n", g_block_count);
+	log_info( g_logger, "Nombre: %s", name);
+	log_info( g_logger, "Version: %u", g_header->version);
+	log_info( g_logger, "Tamanio bitmap %u", g_header->size_bitmap);
+	log_info( g_logger, "Tamanio archivo %ld bytes", g_disk_size);
+	log_info( g_logger, "Cantidad de bloques %d", g_block_count);
 
 	g_bitmap = bitarray_create_with_mode(((char *) g_first_block)+ g_header->blk_bitmap * GBLOCKSIZE, g_header->size_bitmap * GBLOCKSIZE, MSB_FIRST);
 	int occupied = 0, free = 0;
@@ -632,7 +642,7 @@ int main(int argc, char *argv[]) {
 			free ++ ;
 		}
 	}
-	printf( "%d libres con %d ocupados", free, occupied);
+	log_debug( g_logger, "%d libres con %d ocupados", free, occupied );
 
 	g_node_table_block_index = g_header->blk_bitmap + g_header->size_bitmap;
 	g_node_table = (GFile*) g_header + g_node_table_block_index;
