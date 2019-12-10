@@ -148,18 +148,35 @@ void trancisionar_bloqueado_a_ready( t_client_thread_suse* thread ){
 }
 
 t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
-	// TODO este deberia buscar el tid pasarlo a la lista de exit
-	// no hay que buscarlo realmente, siempre va a ser el que corriend, e.g. cliente_suse->running_thread
 
-	// TODO pasar a ready los threads que esten bloqueados esperando el join
-	// llamar a esto con la lista de thread_a_cerrar->threads_bloqueados
-	// void list_iterate(t_list *, void(*closure)(void*));
-	// usar esto para encontrar el tid del thread que desbloqueo dentro de los bloqueados
-	// en thread_a_cerrar->proceso_padre
-	// con un closure que los vaya moviendo de a uno
+	log_info( g_logger, "Recibi un close");
 
-	return NULL;
+	t_paquete* respuesta = NULL;
+
+	if( cliente_suse->main_tid < 0){
+		log_warning( g_logger, "Proceso %s inexistente", cliente_suse->main_tid );
+		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_CLOSE );
+	}
+	else if ( cliente_suse->running_thread == NULL){
+		log_warning( g_logger, "Proceso %s sin hilos en ejecucion", cliente_suse->main_tid );
+	}
+	else{
+		t_client_thread_suse* thread_a_cerrar = cliente_suse->running_thread;  	// obtengo el thread en ejecucion
+		list_add(cliente_suse->exit,thread_a_cerrar);							// se agregamos al proceso a la lista "exit"
+		cliente_suse->running_thread = NULL;									// dejamos al proceso SIN running_thread
+		thread_a_cerrar->estado = EXIT;											// cambio el estado a de *thread_a_cerrar* a EXIT.
+		thread_a_cerrar->time_last_run = time(NULL);							// actualizamos time_last_run de *thread_a_cerrar*
+		t_list* pasar_a_ready = thread_a_cerrar->threads_bloqueados;			// en el "proceso_padre" de thread_a_cerrar
+																				// muevo elementos de la lista "blocked" a "ready";
+		list_iterate(pasar_a_ready,(void*) trancisionar_bloqueado_a_ready(thread_a_cerrar)); // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
+		log_info( g_logger, "Close Ok para hilo en ejecucion del Proceso %d", cliente_suse->main_tid );
+
+		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
+	}
+return respuesta;
+
 }
+
 
 /**
 * @NAME: find_sem_by_name
