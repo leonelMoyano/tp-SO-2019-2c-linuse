@@ -512,6 +512,32 @@ int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFina
 	return reservedDatablocks;
 }
 
+static int do_rename(const char *old_path, const char *new_path){
+	log_info( g_logger, "[rename]:%s a %s", old_path, new_path );
+	int currNodeIndex = find_by_path( old_path );
+	if( currNodeIndex == -1 ){
+		return -ENOENT;
+	}
+
+	GFile* currNode = g_node_table + currNodeIndex;
+	int new_parent_node = get_parent_node( new_path );
+
+	currNode->parent_dir_block = new_parent_node;
+
+	char **splitted_path = string_split( new_path, "/" );
+	int splitted_path_index;
+	for(splitted_path_index = 0; splitted_path[ splitted_path_index + 1 ] != NULL; splitted_path_index++ ){
+		free(splitted_path[ splitted_path_index ]);
+	}
+
+	strcpy((char*) currNode->fname, splitted_path[ splitted_path_index ] );
+	free( splitted_path[ splitted_path_index ] );
+
+	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+
+	return 0;
+}
+
 static int do_truncate(const char* path, off_t size){
 	log_info( g_logger, "[truncate]:%s a size %d", path, size );
 	int currNodeIndex = find_by_path(path);
@@ -563,6 +589,7 @@ static struct fuse_operations operations = {
 		.truncate = do_truncate,
 		.mkdir = do_mkdir,
 		.rmdir = do_rmdir,
+		.rename = do_rename,
 };
 
 /** keys for FUSE_OPT_ options */
