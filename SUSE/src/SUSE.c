@@ -13,6 +13,7 @@ void       atenderConexion(int socketCliente);
 t_paquete* procesarPaqueteLibSuse( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente );
 t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
 t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 void       esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente );
@@ -84,6 +85,7 @@ t_paquete* procesarPaqueteLibSuse(t_paquete* paquete, t_client_suse* cliente_sus
 		response = procesarThreadClose( paquete, cliente_suse, socket_cliente);
 		break;
 	case SUSE_JOIN:
+		response = procesarThreadJoin( paquete, cliente_suse, socket_cliente);
 		break;
 	case SUSE_SCHEDULE_NEXT:
 		break;
@@ -168,13 +170,36 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 		thread_a_cerrar->time_last_run = time(NULL);							// actualizamos time_last_run de *thread_a_cerrar*
 		t_list* pasar_a_ready = thread_a_cerrar->threads_bloqueados;			// en el "proceso_padre" de thread_a_cerrar
 																				// muevo elementos de la lista "blocked" a "ready";
-		list_iterate(pasar_a_ready, trancisionar_bloqueado_a_ready); // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
+		list_iterate(pasar_a_ready, trancisionar_bloqueado_a_ready);            // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
+		list_clean(pasar_a_ready); // porque una vez que transicionan a ready los tenemos que sacar de la cola de bloqueados del thread
+		// solo llamar a trancisionar_bloqueado_a_ready con cada elemento de la lista los saca de la lista de bloqueados del proceso pero quedan
+		// dentro de la lista de bloqueados por el thread
 		log_info( g_logger, "Close Ok para hilo en ejecucion del Proceso %d", cliente_suse->main_tid );
 
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
 	}
-return respuesta;
+	return respuesta;
+}
 
+t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
+	/*
+	 * TODO
+	 * misma idea que en el close, si llaman un join ( o cualquier operacion ) sabes que el thread que hizo el request es el que esta corriendo
+	 * buscar si el threaad id al que hizo join esta en la lista de exit( threads que ya terminaron )
+	 *     -si el thread ya habia terminado entonces no tengo que hacer nada
+	 *     -si el thread no esta en exit
+	 *       muevo el thread que hizo el request a la lista de bloqueados de cliente_suse
+	 *       muevo el thread que hizo el request a la lista de bloqueados del thread al que haya hecho join,
+	 *         ese thread puede estar en la lista de bloqueado o en la lista de ready, tengo una funcion
+	 *         que todavia no probe para hacer eso
+	 *         t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proceso_padre )
+	 *         fijate si te parece bien lo que esta escrito ahi y se puede usar
+	 *
+	 *   lo que podemos hacer es que el cliente haga el request solo enviando el tid del thread al que quiere hacer join
+	 *   y desde aca ya sabemos quien lo pidio porque tiene que ser el que esta en running y nos ahorramos tener que codear
+	 *   una funcion mas de serializar y deserializar
+	 */
+	return NULL;
 }
 
 
