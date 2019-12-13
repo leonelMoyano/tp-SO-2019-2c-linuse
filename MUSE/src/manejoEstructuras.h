@@ -44,5 +44,7 @@ void       destruirSegmento             (t_segmento* segmento);
 void       destruirPagina               (t_pagina* pagina);
 void	   destruirPrograma				( t_programa* programa );
 void 	   destruirSegmentosPrograma	( t_segmentos_programa* segmentos );
+void	   destruirHeap					( t_heapSegmento* heap );
+void 	   destruirSegmentoMap			( t_segmento* segmento, bool borrarTodo );
 
 #endif /* MANEJOESTRUCTURAS_H_ */

@@ -160,6 +160,21 @@ t_mapAbierto* buscarMapeoAbierto(char* path) {
 	return mapAbiertoBuscado;
 }
 
+void borrarMapeoAbierto(char* path) {
+
+	bool existePath(void* mapAbierto){
+		t_mapAbierto* mapAbiertoBuscar = (t_mapAbierto*) mapAbierto;
+
+		if (path != NULL) return string_equals_ignore_case(mapAbiertoBuscar->path, path);
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	list_remove_by_condition(mapeosAbiertosCompartidos,existePath);
+	//sem_post(&g_mutex_tablas);
+}
+
 
 
 t_segmento* buscarSegmentoId(t_list* segmentos,int idSemgneto) {
@@ -350,6 +365,17 @@ void destruirSegmentosPrograma( t_segmentos_programa* segmentos ){
 void destruirSegmento( t_segmento* segmento ){
 	//free( segmento->nombreTabla ); free resto de campos?
 	list_destroy_and_destroy_elements( segmento->tablaPaginas, (void*) destruirPagina );
+	list_destroy_and_destroy_elements( segmento->heapsSegmento, (void*) destruirHeap );
+	free( segmento );
+}
+
+void destruirSegmentoMap( t_segmento* segmento, bool borrarTodo ){
+	if(borrarTodo)
+	{
+		list_destroy_and_destroy_elements( segmento->tablaPaginas, (void*) destruirPagina );
+		free(segmento->mmap);
+	}
+	list_destroy_and_destroy_elements( segmento->heapsSegmento, (void*) destruirHeap );
 	free( segmento );
 }
 
@@ -359,27 +385,30 @@ void destruirPagina( t_pagina* pagina ){
 	free( pagina );
 }
 
+void destruirHeap( t_heapSegmento* heap ){
+	free( heap );
+}
+
 
 t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);
 }
 
-t_heapDireccion* buscarHeapSegmento(uint32_t direccionABuscar, t_segmento* segmento){
-	t_heapSegmento* auxHeap = NULL;
-	uint32_t direccionHeap = 0;
-	bool encontrado = false;
+int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
-	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++) {
-		auxHeap = list_get(segmento->heapsSegmento,i);
-		direccionHeap += tamanio_heap;
-		if(direccionHeap == direccionABuscar) encontrado == true;
-		else direccionHeap += auxHeap->t_size;
+	int direccionLogicaAux = 0;
+	bool encontrado = false;
+	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++)
+	{
+		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
+		encontrado = (direccionLogicaAux + tamanio_heap == direccionLogica);
+		if(!encontrado) direccionLogicaAux += auxHeap->t_size + tamanio_heap;
+		else return i;
 	}
 
-	t_heapDireccion* heapBuscado = malloc(sizeof(t_heapDireccion));
-	heapBuscado->heap = auxHeap;
-	heapBuscado->direccionLogica = direccionHeap + tamanio_heap;
+	if(!encontrado) return -1; //segmentation fault, TODO: buscar codigo syscall seg fault
 }
+
 
 
 
