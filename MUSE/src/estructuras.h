@@ -99,7 +99,6 @@ typedef struct{
 //Tipos auxiliares
 
 typedef struct{
-	int nroFrame;
 	uint32_t direccionLogica;
 	t_heapSegmento* heap;
 }t_heapDireccion;

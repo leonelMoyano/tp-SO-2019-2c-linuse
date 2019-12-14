@@ -8,6 +8,7 @@
 	#define LIBMUSE 400
 
 	int socketConexion;
+	int pid;
 
 
 	typedef enum  {

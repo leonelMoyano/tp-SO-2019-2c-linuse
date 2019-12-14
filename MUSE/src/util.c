@@ -14,6 +14,8 @@ int deserializarUINT32(t_stream* buffer) {
 	return *(uint32_t*) (buffer->data);
 }
 
+//TODO verificar serializacion de void*
+
 void serializarGet(t_paquete* unPaquete, void* dst,uint32_t src, size_t n){ //size of tipo dst que
 
 	int desplazamiento = 0;
@@ -168,7 +170,7 @@ t_registrounmap* deserealizarUnmap(t_stream * buffer){
 
 //-----------------------------------Respuestas--------------------------------------
 
-void enviarRespuestaAlloc(int server_socket, uint32_t * tamanio) {
+void enviarRespuestaAlloc(int server_socket, uint32_t tamanio) {
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_ALLOC;
@@ -178,51 +180,51 @@ void enviarRespuestaAlloc(int server_socket, uint32_t * tamanio) {
 	enviarPaquetes(server_socket, unPaquete);
 }
 
-void enviarRespuestaGet(int server_socket, uint32_t * operacionSatisfactoria){
+void enviarRespuestaGet(int server_socket, int operacionSatisfactoria){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_GET;
 
-	serializarUINT32(unPaquete,operacionSatisfactoria);
+	serializarNumero(unPaquete, operacionSatisfactoria);
 
 	enviarPaquetes(server_socket,unPaquete);
 }
-void enviarRespuestaCopy(int server_socket, uint32_t * operacionSatisfactoria){
+void enviarRespuestaCopy(int server_socket, int operacionSatisfactoria){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_COPY;
 
-	serializarUINT32(unPaquete,operacionSatisfactoria);
+	serializarNumero(unPaquete, operacionSatisfactoria);
 
 	enviarPaquetes(server_socket,unPaquete);
 }
 
-void enviarRespuestaMap(int server_socket, uint32_t posicion){
+void enviarRespuestaMap(int server_socket, uint32_t posicionMemoriaMapeada){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_MAP;
 
-	serializarUINT32(unPaquete,posicion);
+	serializarUINT32(unPaquete, posicionMemoriaMapeada);
 
 	enviarPaquetes(server_socket,unPaquete);
 }
 
-void enviarRespuestaMsync(int server_socket, uint32_t operacionSatisfactoria){
+void enviarRespuestaMsync(int server_socket, int operacionSatisfactoria){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_SYNC;
 
-	serializarUINT32(unPaquete,operacionSatisfactoria);
+	serializarNumero(unPaquete, operacionSatisfactoria);
 
 	enviarPaquetes(server_socket,unPaquete);
 }
 
-void enviarRespuestaUnmap(int server_socket,uint32_t operacionSatisfactoria){
+void enviarRespuestaUnmap(int server_socket,int operacionSatisfactoria){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_UNMAP;
 
-	serializarUINT32(unPaquete,operacionSatisfactoria);
+	serializarUINT32(unPaquete, operacionSatisfactoria);
 
 	enviarPaquetes(server_socket,unPaquete);
 }

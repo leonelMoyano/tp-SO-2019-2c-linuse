@@ -41,6 +41,7 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 	segmentoNuevo->limiteLogico = tamanio;
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 1;
+	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -97,9 +98,6 @@ t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegm
 }
 
 
-void agregarTablaSegmento(t_list * lista, t_segmento* tabla) {
-	list_add(lista, tabla);
-}
 
 void agregarContenido(int nroFrame, void* contenido){
 	t_contenidoFrame* contenidoFrame = malloc( sizeof( t_contenidoFrame ) );
@@ -118,6 +116,14 @@ t_mapAbierto* crearMapeo(char* path, void* contenido){
 	sem_init(&map->semaforoPaginas, 0, 1);
 	map->cantProcesosUsando = 1;
 	return map;
+}
+
+
+t_heapSegmento* crearHeap(uint32_t tamanio, bool isFree){
+	t_heapSegmento* heap = malloc( sizeof( t_heapSegmento ) );
+	heap->isFree  = isFree;
+	heap->t_size = tamanio;
+	return heap;
 }
 
 void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
@@ -243,7 +249,7 @@ t_paginaAdministrativa* buscarPaginaAdministrativa(t_list* SwapOPrincipal, int n
 t_pagina* buscarFrameEnTablasDePaginas(t_paginaAdministrativa* paginaABuscar) {
 
 	t_programa * programa= buscarPrograma(paginaABuscar->socketPrograma);
-	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,paginaABuscar->idSegmento);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,paginaABuscar->idSegmento);
 	t_pagina* paginaBuscada = list_get(segmento->tablaPaginas,paginaABuscar->nroPagina);
 	return paginaBuscada;
 }
@@ -345,9 +351,9 @@ int framesNecesariosPorCantidadMemoria(int cantidadBytes){
 }
 
 int bytesNecesariosUltimoFrame(int cantidadBytes){
-
-	int framesCompletos = framesNecesariosPorCantidadMemoria(cantidadBytes) - 1;
-	return cantidadBytes - (framesCompletos * g_configuracion->tamanioPagina);
+	bool sinResto = (cantidadBytes %  g_configuracion->tamanioPagina) == 0 ;
+	int frames = framesNecesariosPorCantidadMemoria(cantidadBytes);
+	return sinResto ? 0 : cantidadBytes - (frames * g_configuracion->tamanioPagina);
 }
 
 void destruirPrograma( t_programa* programa ){
@@ -389,12 +395,13 @@ void destruirHeap( t_heapSegmento* heap ){
 	free( heap );
 }
 
-
 t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);
 }
 
 int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
+
+	if(segmento->tipoSegmento == 2) return -1;
 
 	int direccionLogicaAux = 0;
 	bool encontrado = false;
@@ -407,6 +414,24 @@ int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 	}
 
 	if(!encontrado) return -1; //segmentation fault, TODO: buscar codigo syscall seg fault
+}
+
+void cambiarContenidoFrameMemoria(int nroFrame, void* nuevoContenido){
+	t_contenidoFrame* contenidoCambiar = buscarContenidoFrameMemoria(nroFrame);
+	contenidoCambiar->contenido = nuevoContenido;
+}
+
+void modificarContenidoPagina(t_pagina* pagina ,void* nuevoContenido, bool presencia){  //cambiar aca tambien contenido nuevo?
+	pagina->flagPresencia = true;
+	pagina->flagModificado = true;
+	cambiarContenidoFrameMemoria(pagina->nroFrame, nuevoContenido);
+}
+
+void modificarPresencia(t_pagina* pagina , bool presencia, bool modifica){  //cambiar aca tambien contenido nuevo?
+	pagina->flagPresencia = presencia;
+	pagina->flagModificado = modifica;
+	if(presencia) bitarray_set_bit( g_bitarray_marcos, pagina->nroFrame);
+	else bitarray_clean_bit( g_bitarray_marcos, pagina->nroFrame );
 }
 
 

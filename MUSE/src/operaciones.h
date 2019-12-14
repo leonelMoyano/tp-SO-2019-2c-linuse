@@ -16,6 +16,9 @@ uint32_t		 procesarUnMap		(uint32_t dir, int socket);
 
 uint32_t		 allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_programa* segmentos);
 uint32_t		 allocarEnPaginasNuevas(int socket,t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios );
+int				 verificarCompactacionFree(t_list* heaps, int indiceHeap);
+void			 cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_t tamanio, bool cargo);
+
 
 void*			 sacarFrameSwap		(int nroMarco, FILE** archivo);
 void			 escribirFrameSwap	(int nroMarco, void* contenido,FILE** archivo);

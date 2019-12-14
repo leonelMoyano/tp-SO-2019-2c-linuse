@@ -189,8 +189,8 @@ void reservarEspacioMemoriaPrincipal(){
 
 	maxPaginasEnSwap =  ( int )( g_configuracion->tamanioSwap / g_configuracion->tamanioPagina );
 	char * dataSwap = malloc( maxPaginasEnSwap );
-	memset(data, 0, maxPaginasEnSwap); // Inicializo todos los marcos en 0 ( libres )
-	g_bitarray_swap = bitarray_create_with_mode(data, maxPaginasEnSwap, MSB_FIRST);
+	memset(dataSwap, 0, maxPaginasEnSwap); // Inicializo todos los marcos en 0 ( libres )
+	g_bitarray_swap = bitarray_create_with_mode(dataSwap, maxPaginasEnSwap, MSB_FIRST);
 
 }
 
