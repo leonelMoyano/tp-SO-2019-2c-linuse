@@ -60,7 +60,7 @@ typedef struct{
 typedef struct{
 	char* path;
 	t_list* tablaPaginas;
-	void* contenido;
+	void* contenidoArchivoMapeado;
 	sem_t semaforoPaginas;
 	int cantProcesosUsando;
 }t_mapAbierto;

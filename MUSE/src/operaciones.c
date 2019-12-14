@@ -100,19 +100,41 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 		nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,length,mapAbierto);
 		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 	}
+	//Es valido cuando se trata de un nuevo mapeo Privado o un Mapeo de un archivo que nuevo
+	int cantPaginas = length / g_configuracion->tamanioPagina;
+	//separo contenidomap en paginas y las agrego en la tabla del mapAbierto
+	int desplazamiento = 0;
+	t_pagina * ultimaPagina;
+	for(int i=0;i < cantPaginas;i++){
+		t_pagina * paginaNuevo = crearPaginaMap(i);
+
+		int frameElegido = buscarFrameLibre();
+		if(frameElegido == -1) frameElegido = ClockModificado();//Uso de clock modificacdo para frameLIbre OK?
+
+		void * paginaAux;
+		paginaNuevo->flagPresencia = 0;
+
+		memcpy(paginaAux,contenidoMap + desplazamiento,g_configuracion->tamanioPagina);
+		memcpy(mapAbierto->contenidoArchivoMapeado,contenidoMap + desplazamiento,g_configuracion->tamanioPagina);
+
+		agregarContenido(frameElegido,paginaAux); //TODO IVAN - malloc en contenido frame necesario?
+
+		desplazamiento += g_configuracion->tamanioPagina;//TODO IVAN - rellenar con '0' PADDING
+		list_add(mapAbierto->tablaPaginas, paginaNuevo);
+	};
+
 
 	list_add(programa->segmentos_programa,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += length;
 
-	//TODO: el flag para paginas no presentes
-	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
-
-	return nuevoSegmento->baseLogica;
+	return nuevoSegmento->baseLogica;//direccion logica donde comienza mi mapeo
 }
 
 int procesarSync(uint32_t addr, size_t len, int socket){
 	t_programa * programa= buscarPrograma(socket);
-
+	t_segmento segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos, addr);
+	msync(segmento->mmap->contenidoArchivoMapeado,len,MS_SYNC);
+	//TODO IVAN - Si len es menor al tamano de la pagina en donde se encuentra se debera incluir toda la pagina en la sincro
 }
 
 uint32_t procesarUnMap(uint32_t dir, int socket){
@@ -121,7 +143,7 @@ uint32_t procesarUnMap(uint32_t dir, int socket){
 
 	//es segmento mmap
 	//TODO: sacar de la lista de mapeos abiertos , mapeosAbiertosCompartidos
-	//Verificar si otro proceso no tiene abierto el mismo archivo , liberar la tabla de paginas
+	//Verificar si otro proceso no tiene abierto el mismo archivo CONTADOR DE ABIERTOS, liberar la tabla de paginas
 	//restar contador de procesos usando mapeo, si llega a cero, liberar las paginas
 
 }
@@ -328,7 +350,6 @@ void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, i
 
 	return dataArchivo;
 }
-
 
 
 

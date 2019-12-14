@@ -23,7 +23,7 @@ int main(void) {
 	size_t tamArch;
 	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
 	//abrirArchivoGral(&disco_swap);
-
+	procesarAlloc(23,123);
 
 
 

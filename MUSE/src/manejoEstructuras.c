@@ -87,6 +87,14 @@ t_pagina* crearPagina(int nroFrame, int nroPagina){
 	return pagina;
 }
 
+t_pagina* crearPaginaMap(int nroPagina){
+	t_pagina* pagina = malloc( sizeof( t_pagina ) );
+	pagina->flagPresencia  = false; //TODO si es mmap deberia ir en false, agregar flag
+	pagina->flagModificado = false;
+	pagina->nroFrame  = NULL;
+	pagina->nroPagina = nroPagina;
+	return pagina;
+}
 t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegmento,int nroPagina, int nroFrame){
 	t_paginaAdministrativa* paginaAdministrativa = malloc( sizeof( t_paginaAdministrativa ) );
 	paginaAdministrativa->socketPrograma  = socketPrograma;
@@ -110,23 +118,27 @@ void agregarContenido(int nroFrame, void* contenido){
 
 //TODO:agregar map, no compartido, no lo va a agregar a la lista de archivos compartido
 
+
 t_mapAbierto* crearMapeo(char* path, void* contenido){
 	t_mapAbierto* map = malloc(sizeof(t_mapAbierto));
 	map->path = path;
 	map->tablaPaginas = crearTablaPaginas();
-	map->contenido = contenido;
+	map->contenidoArchivoMapeado = contenido;
 	sem_init(&map->semaforoPaginas, 0, 1);
 	map->cantProcesosUsando = 1;
 	return map;
 }
 
+
 void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
 	t_pagina * paginaNuevo = crearPagina( numeroDeMarco, list_size( segmento->tablaPaginas) );
 	//TODO: flag de seteo de marco ocupado o no, lo aplicaria tambien en crear pagina
-	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
+	bitarray_set_bit( g_bitarray_marcos,numeroDeMarco);
 	list_add( segmento->tablaPaginas, paginaNuevo );
 	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas),numeroDeMarco));
 }
+
+
 
 t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 
