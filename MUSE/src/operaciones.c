@@ -82,7 +82,8 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	if(flags == MAP_SHARED) {
 		if(mapAbierto != NULL){
 			//mmap compartido apuntando a mapeo existente
-			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
+			nuevoSegmento = crearSegmentoMmap
+					Compartido(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 			mapAbierto->cantProcesosUsando = mapAbierto->cantProcesosUsando + 1;
 		}
@@ -112,7 +113,6 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 		if(frameElegido == -1) frameElegido = ClockModificado();//Uso de clock modificacdo para frameLIbre OK?
 
 		void * paginaAux;
-		paginaNuevo->flagPresencia = 0;
 
 		memcpy(paginaAux,contenidoMap + desplazamiento,g_configuracion->tamanioPagina);
 		memcpy(mapAbierto->contenidoArchivoMapeado,contenidoMap + desplazamiento,g_configuracion->tamanioPagina);
@@ -133,15 +133,26 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 int procesarSync(uint32_t addr, size_t len, int socket){
 	t_programa * programa= buscarPrograma(socket);
 	t_segmento segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos, addr);
-	msync(segmento->mmap->contenidoArchivoMapeado,len,MS_SYNC);
+	int resultado;
+	if(segmento->mmap != NULL){ //TODO IVAN - Se trata de un mapeo validacion correcta?
+		resultado = msync(segmento->mmap->contenidoArchivoMapeado,len,MS_SYNC);
+	}
+	else resultado = 0;
+
+	return resultado;
 	//TODO IVAN - Si len es menor al tamano de la pagina en donde se encuentra se debera incluir toda la pagina en la sincro
 }
 
 uint32_t procesarUnMap(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(socket);
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dir);
+	if(segmento->mmap =! NULL){
+		t_mapAbierto * mapeo = segmento->mmap;
+		//Destruir paginas de esta forma mapeo->tablaPaginas;
+		munmap(mapeo->contenidoArchivoMapeado);
+	}
+	return 0;
 
-	//es segmento mmap
 	//TODO: sacar de la lista de mapeos abiertos , mapeosAbiertosCompartidos
 	//Verificar si otro proceso no tiene abierto el mismo archivo CONTADOR DE ABIERTOS, liberar la tabla de paginas
 	//restar contador de procesos usando mapeo, si llega a cero, liberar las paginas

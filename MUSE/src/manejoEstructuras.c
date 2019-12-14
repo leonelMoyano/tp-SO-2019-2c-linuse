@@ -393,6 +393,10 @@ t_heapDireccion* buscarHeapSegmento(uint32_t direccionABuscar, t_segmento* segme
 	heapBuscado->direccionLogica = direccionHeap + tamanio_heap;
 }
 
+void quitarMapeoListas(t_mapAbierto unMapeo){
+
+}
+
 
 
 
