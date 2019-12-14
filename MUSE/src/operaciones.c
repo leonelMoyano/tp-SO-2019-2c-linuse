@@ -82,8 +82,8 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	if(flags == MAP_SHARED) {
 		if(mapAbierto != NULL){
 			//mmap compartido apuntando a mapeo existente
-			nuevoSegmento = crearSegmentoMmap
-					Compartido(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
+			nuevoSegmento = crearSegmentoMmap;
+			crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 			mapAbierto->cantProcesosUsando = mapAbierto->cantProcesosUsando + 1;
 		}
@@ -132,7 +132,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 int procesarSync(uint32_t addr, size_t len, int socket){
 	t_programa * programa= buscarPrograma(socket);
-	t_segmento segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos, addr);
+	t_segmento * segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos, addr);
 	int resultado;
 	if(segmento->mmap != NULL){ //TODO IVAN - Se trata de un mapeo validacion correcta?
 		resultado = msync(segmento->mmap->contenidoArchivoMapeado,len,MS_SYNC);
@@ -149,15 +149,15 @@ uint32_t procesarUnMap(uint32_t dir, int socket){
 	if(segmento->mmap =! NULL){
 		t_mapAbierto * mapeo = segmento->mmap;
 		//Destruir paginas de esta forma mapeo->tablaPaginas;
-		munmap(mapeo->contenidoArchivoMapeado);
+		//munmap(mapeo->contenidoArchivoMapeado);
 	}
 	return 0;
+}
 
 	//TODO: sacar de la lista de mapeos abiertos , mapeosAbiertosCompartidos
 	//Verificar si otro proceso no tiene abierto el mismo archivo CONTADOR DE ABIERTOS, liberar la tabla de paginas
 	//restar contador de procesos usando mapeo, si llega a cero, liberar las paginas
 
-}
 
 
 uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_programa* segmentos){
@@ -281,30 +281,31 @@ void TraerPaginaDeSwap(int socketPrograma, int nroPagina, int idSegmento){
 
 }
 
-void* sacarFrameSwap(int nroMarco, FILE ** archivo){
+void * sacarFrameSwap(int nroMarco, FILE ** archivo){
 
 	*archivo = fopen(RUTASWAP, "r+");
 
 	// Tamaño del archivo que voy a leer
-	size_t tamArc = g_configuracion->tamanioSwap;
 
 	int fd = fileno(*archivo);
 
-	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
+	int indicePaginaSwap = nroMarco * g_configuracion->tamanioPagina;
 
-	void* dataPagina = mmap(0, lengthPagina, PROT_READ, MAP_SHARED, fd, indiceArchivo);
+	void * direccion =escribirContenidoFrameEnMemoria(nroMarco,stringSwap[indicePaginaSwap]);
 
-	//meter pagina en blanco
-	void * paginaVacia = mmap( malloc(g_configuracion->tamanioPagina), lengthPagina, PROT_WRITE, MAP_SHARED, fd, indiceArchivo);
+	int desplazamiento = 0;
 
+	for(int i= 0; i <= g_configuracion->tamanioPagina;i++){
+		stringSwap[indicePaginaSwap + desplazamiento]='\0';
+	}
 	bitarray_clean_bit(g_bitarray_swap,nroMarco);
 
 	fclose(*archivo);
 
-	return dataPagina;
+	return direccion;
 }
 
-void escribirFrameSwap(int nroMarco, void* contenido, FILE ** archivo){
+void escribirFrameSwap(int  nroMarco, void* contenido, FILE ** archivo){
 
 	*archivo = fopen(RUTASWAP, "r+");
 
@@ -312,18 +313,25 @@ void escribirFrameSwap(int nroMarco, void* contenido, FILE ** archivo){
 	size_t tamArc = g_configuracion->tamanioSwap;
 
 	// Leo el total del archivo y lo asigno al buffer
-	void * dataArchivo = calloc( 1, tamArc + 1 );
+	//void * dataArchivo = calloc( 1, tamArc + 1 );
 
-	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
+	int indicePaginaSwap = nroMarco * g_configuracion->tamanioPagina;
 
 	int fd = fileno(*archivo);
 
-	void * dataPagina = mmap(0, lengthPagina, PROT_READ, MAP_SHARED, fd, indiceArchivo);
-	void * dataPaginaNueva = mmap(contenido, lengthPagina, PROT_WRITE, MAP_SHARED, fd, indiceArchivo);
+	//void * dataPagina = mmap(0, lengthPagina, PROT_READ, MAP_SHARED, fd, indiceArchivo);
+	//void * dataPaginaNueva = mmap(contenido, lengthPagina, PROT_WRITE, MAP_SHARED, fd, indiceArchivo);
+	stringSwap = mmap(0,tamArc,PROT_READ | PROT_WRITE,MAP_SHARED,fd,0);
+	escribirContenidoFrameEnMemoria(nroMarco,stringSwap[indicePaginaSwap]); //funca?
 
 	bitarray_set_bit(g_bitarray_swap,nroMarco);
 
 	fclose(*archivo);
+}
+
+void * escribirContenidoFrameEnMemoria(int  nroMarco, void * dir){
+	t_contenidoFrame * contenidoFrame = buscarContenidoFrameMemoria(nroMarco);
+	return memcpy(dir,contenidoFrame->contenido,g_configuracion->tamanioPagina);
 }
 
 void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSegmento){
@@ -361,6 +369,8 @@ void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, i
 
 	return dataArchivo;
 }
+
+
 
 
 

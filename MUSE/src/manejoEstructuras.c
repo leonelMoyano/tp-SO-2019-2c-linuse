@@ -7,6 +7,8 @@ t_list* crearDiccionarioConexiones() {
 	return aux;
 }
 
+char * stringSwap;
+
 t_list* crearTablaPaginas() {
 	t_list* aux = list_create();
 	return aux;
@@ -191,7 +193,7 @@ t_segmento* buscarSegmentoId(t_list* segmentos,int idSemgneto) {
 }
 
 
-t_contenidoFrame* buscarContenidoFrameMemoria(int nroFrame) {
+t_contenidoFrame* buscarContenidoFrameMemoria(int * nroFrame) {
 
 	bool existeContenidoFrame(void* contenidoFrame){
 		t_contenidoFrame* contenidoBuscar = (t_contenidoFrame*) contenidoFrame;
@@ -396,6 +398,8 @@ t_heapDireccion* buscarHeapSegmento(uint32_t direccionABuscar, t_segmento* segme
 void quitarMapeoListas(t_mapAbierto unMapeo){
 
 }
+
+
 
 
 

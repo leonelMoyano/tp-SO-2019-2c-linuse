@@ -3,6 +3,8 @@
 
 #include "estructuras.h"
 #include "manejoEstructuras.h"
+#include <unistd.h>
+#include <fcntl.h>
 
 
 uint32_t		 procesarAlloc		(uint32_t tam, int socket);
