@@ -1,6 +1,8 @@
 #include "operaciones.h"
 
 uint32_t procesarAlloc(uint32_t tam, int socket){
+
+	log_info( g_logger, "Alloqueo %n bytes",tam );
 	t_programa * programa = buscarPrograma(socket);
 	t_segmento * segmentoElegido;
 	uint32_t direccionLogica = 0;
@@ -84,26 +86,20 @@ int verificarCompactacionFree(t_list* heaps, int indiceHeap){
 int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 	t_programa * programa= buscarPrograma(socket);
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,src);
+	if(segmento == NULL) return -1;
 
 	bool segmentoUnico = segmento->limiteLogico > src + n;
 	//puede ser el caso que tenga que obtener memoria de mas de 1 segmento?
 
-	int nroPaginaInicial = nroPaginaSegmento(src, segmento->baseLogica);
-	int offsetInicial = desplazamientoPaginaSegmento(src, segmento->baseLogica);
-	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(n);
-	int bytesNecesariosUltimaPagina = bytesNecesariosUltimoFrame(n);
-
-	int indiceHeap = esDireccionLogicaValida(src,segmento);
-
-	//en heap, obtener solo MV, o tambien obtner lo grabado en el frame?
+	copiarContenidoDeFrames(segmento,src,n,dst);
 
 	return 0;
-
 }
 
 int procesarCopy(uint32_t dst, void* src, int n, int socket){
 	t_programa * programa= buscarPrograma(socket);
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,dst);
+	if(segmento == NULL) return -1;
 
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
 	if(dst + n > segmento->limiteLogico && !esExtendible){ return -1;}
@@ -122,11 +118,7 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 		}
 	}
 
-	else{
-		//cambiarFramesContenido(segmento, dst, n, src);
-	}
-
-
+	copiarContenidoAFrames(segmento,dst,n,src);
 
 	return 0;
 
@@ -434,7 +426,40 @@ void cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32
 
 }
 
-void cambiarFramesContenido(t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* contenido)
+int copiarContenidoDeFrames(t_segmento* segmento, uint32_t direccionLogica, size_t tamanio,void* contenidoDestino)
+{
+	int desplazamiento = 0;
+	int nroPaginaInicial = nroPaginaSegmento(direccionLogica, segmento->baseLogica);
+	int offsetInicial = desplazamientoPaginaSegmento(direccionLogica, segmento->baseLogica);
+	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
+
+	//tendria que verificar que si el frame esta libre o no tiene contenido
+	if(offsetInicial > 0){
+		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
+		tamanio = tamanio - desplazamiento;
+		t_pagina* pagina = list_get(segmento->tablaPaginas,nroPaginaInicial);
+		if(pagina == NULL) return -1;
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		if(frame == NULL) return -1;
+		memcpy(&contenidoDestino,&frame->contenido[offsetInicial],desplazamiento);
+		offsetInicial += desplazamiento;
+		tamanio = tamanio - desplazamiento;
+		nroPaginaInicial++;
+		cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
+	}
+
+	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
+		t_pagina* pagina = list_get(segmento->tablaPaginas,i);
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		memcpy(&contenidoDestino,&frame->contenido[offsetInicial],desplazamiento);
+		offsetInicial += desplazamiento;
+		tamanio = tamanio - desplazamiento;
+		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
+	}
+
+}
+
+void copiarContenidoAFrames(t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* porcionMemoria)
 {
 	int desplazamiento = 0;
 	int nroPaginaInicial = nroPaginaSegmento(direccionLogica, segmento->baseLogica);
@@ -442,21 +467,26 @@ void cambiarFramesContenido(t_segmento* segmento, uint32_t direccionLogica, int 
 	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
 
 
-	//memcpy();
-
+	//tendria que validar que las paginas esten libres, y no haya contenido cargado en el frame?
 	if(offsetInicial > 0){
 		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
-		//memcpy();
+		tamanio = tamanio - desplazamiento;
+		t_pagina* pagina = list_get(segmento->tablaPaginas,nroPaginaInicial);
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		memcpy( &frame->contenido[offsetInicial], &porcionMemoria[0],desplazamiento);
+		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 		nroPaginaInicial++;
 		cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
-		// si este de abajo es mayor a 0 y menor a la pagina, la ultima pagina no la ocupo
-		if(bytesNecesariosUltimoFrame(tamanio) != 0) cantPaginasAObtener = cantPaginasAObtener - 1;
 	}
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
-		t_pagina* pag = list_get(segmento->tablaPaginas,i);
-		modificarPresencia(pag,1,1); //TODO: ver si no modifica aca? creo que no
+		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
+		t_pagina* pagina = list_get(segmento->tablaPaginas,i);
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		memcpy(&frame->contenido[0],&porcionMemoria[desplazamiento],desplazamiento);
+		offsetInicial += desplazamiento;
+		tamanio = tamanio - desplazamiento;
 	}
 
 }

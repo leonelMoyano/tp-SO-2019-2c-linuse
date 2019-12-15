@@ -19,7 +19,7 @@
 
 
 typedef struct{
-	int puertoConexion;
+	char* puertoConexion;
 	int tamanioMemoria;
 	int tamanioSwap;
 	int tamanioPagina;

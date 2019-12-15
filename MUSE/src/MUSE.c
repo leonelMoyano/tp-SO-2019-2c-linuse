@@ -2,6 +2,7 @@
 
 int main(void) {
 
+
 	idSegmento = 0;
 	punteroClock = 0;
 	nroPrograma = 0;
@@ -9,40 +10,45 @@ int main(void) {
 	tamanio_heap = 5;
 
 	g_logger = log_create("MUSE.log", "MUSE", true, LOG_LEVEL_TRACE);
-	g_loggerDebug = log_create("MUSE.log", "MUSE", false, LOG_LEVEL_DEBUG);
+	g_loggerDebug = log_create("MUSEDebug.log", "MUSE", false, LOG_LEVEL_DEBUG);
 	log_info( g_logger, "Inicio proceso de MUSE" );
 
 	programas = crearTablaProgramas();
-	paginasEnSwap = crearTablaProgramas();
-	mapeosAbiertosCompartidos = crearTablaProgramas();
+	paginasEnSwap = crearListaPaginasSwap();
+	mapeosAbiertosCompartidos = crearListaMapeos();
 	tablasDePaginas = crearTablaPaginas();
 
 	armarConfigMemoria();
 
-	lengthPagina = g_configuracion->tamanioPagina;
+
+
+	//lengthPagina = g_configuracion->tamanioPagina;
 	size_t tamArch;
-	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
-	//abrirArchivoGral(&disco_swap);
+	//archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
 
+	//log_info( g_logger, "Levante archivo Swap: %s", RUTASWAP );
 
-
-
-	//char * puertoString = string_itoa(g_configuracion->puertoConexion);
-
-	/*if( pthread_create( &hiloServidor, NULL, (void*) arrancarServer ) < 0 ) {
-			log_error(g_logger, "No pude crear thread de servidor");
+	/*if( pthread_create( &hiloServidor, NULL, (void*) arrancarServer, (void*) g_configuracion->puertoConexion ) < 0 ) {
+			log_error(g_logger, "No pude crear thread de servidor MUSE");
 			destruirGlobales();
 			return EXIT_FAILURE;
-		}
-	*/
+	}*/
 
-	iniciarServidor("4005", g_logger, attendConnection);
+
+	InicializarNuevoPrograma(1);
+	procesarAlloc(80,1);
+
+	iniciarServidor(g_configuracion->puertoConexion,g_logger, (void*)attendConnection);
 
 	return prueba();
 
 }
 
-void arrancarServer(){}
+int arrancarServer(char* puertostring){
+
+	int ok = iniciarServidor(puertostring, g_logger, (void*)attendConnection);
+	return ok;
+}
 
 void attendConnection( int socketCliente) {
 	// int socketCliente = *(int *)socket_fd;
@@ -166,15 +172,19 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 
 
 void armarConfigMemoria() {
-	log_info( g_logger, "Leyendo config: %s", RUTACONFIG );
+	char* ruta = RUTACONFIG;
 
-	g_config = config_create(RUTACONFIG);
+	log_info( g_logger, "Leyendo config: %s", ruta );
+
+	g_config = config_create(ruta);
 	g_configuracion = malloc( sizeof( g_configuracion ) );
 
-	g_configuracion->puertoConexion    = config_get_int_value(g_config, "LISTEN_PORT");
+	g_configuracion->puertoConexion    = config_get_string_value(g_config, "LISTEN_PORT");
 	g_configuracion->tamanioMemoria    = config_get_int_value(g_config, "MEMORY_SIZE");
 	g_configuracion->tamanioSwap    = config_get_int_value(g_config, "PAGE_SIZE");
 	g_configuracion->tamanioPagina    = config_get_int_value(g_config, "SWAP_SIZE");
+
+	config_destroy(g_config);
 }
 
 void reservarEspacioMemoriaPrincipal(){
@@ -204,5 +214,6 @@ void FinalizarPrograma(int socket){
 	ActualizarLogMetricas();
 }
 
+void destruirGlobales(){}
 
 

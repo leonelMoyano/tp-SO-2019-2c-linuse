@@ -34,6 +34,16 @@ t_list* crearTablaProgramas() {
 	return aux;
 }
 
+t_list* crearListaMapeos() {
+	t_list* aux = list_create();
+	return aux;
+}
+
+t_list* crearListaPaginasSwap() {
+	t_list* aux = list_create();
+	return aux;
+}
+
 t_segmento* crearSegmento(int direccionBase, int tamanio){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
