@@ -2,7 +2,7 @@
 
 uint32_t procesarAlloc(uint32_t tam, int socket){
 
-	log_info( g_logger, "Alloqueo %n bytes",tam );
+	log_info( g_logger, "Alloqueo algunos bytes");
 	t_programa * programa = buscarPrograma(socket);
 	t_segmento * segmentoElegido;
 	uint32_t direccionLogica = 0;
@@ -449,12 +449,12 @@ int copiarContenidoDeFrames(t_segmento* segmento, uint32_t direccionLogica, size
 	}
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
+		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
 		t_pagina* pagina = list_get(segmento->tablaPaginas,i);
 		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
 		memcpy(&contenidoDestino,&frame->contenido[offsetInicial],desplazamiento);
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
-		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
 	}
 
 }

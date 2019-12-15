@@ -2,7 +2,6 @@
 
 int main(void) {
 
-
 	idSegmento = 0;
 	punteroClock = 0;
 	nroPrograma = 0;
@@ -20,11 +19,9 @@ int main(void) {
 
 	armarConfigMemoria();
 
-
-
-	//lengthPagina = g_configuracion->tamanioPagina;
+	lengthPagina = g_configuracion->tamanioPagina;
 	size_t tamArch;
-	//archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
+	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
 
 	//log_info( g_logger, "Levante archivo Swap: %s", RUTASWAP );
 
@@ -34,11 +31,11 @@ int main(void) {
 			return EXIT_FAILURE;
 	}*/
 
+	iniciarServidor(g_configuracion->puertoConexion,g_logger, (void*)attendConnection);
 
 	InicializarNuevoPrograma(1);
 	procesarAlloc(80,1);
 
-	iniciarServidor(g_configuracion->puertoConexion,g_logger, (void*)attendConnection);
 
 	return prueba();
 
@@ -177,7 +174,7 @@ void armarConfigMemoria() {
 	log_info( g_logger, "Leyendo config: %s", ruta );
 
 	g_config = config_create(ruta);
-	g_configuracion = malloc( sizeof( g_configuracion ) );
+	g_configuracion = malloc( sizeof( t_configuracion ) );
 
 	g_configuracion->puertoConexion    = config_get_string_value(g_config, "LISTEN_PORT");
 	g_configuracion->tamanioMemoria    = config_get_int_value(g_config, "MEMORY_SIZE");
