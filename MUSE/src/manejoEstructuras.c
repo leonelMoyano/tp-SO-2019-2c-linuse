@@ -41,6 +41,7 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 	segmentoNuevo->limiteLogico = tamanio;
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 1;
+	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -97,9 +98,6 @@ t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegm
 }
 
 
-void agregarTablaSegmento(t_list * lista, t_segmento* tabla) {
-	list_add(lista, tabla);
-}
 
 void agregarContenido(int nroFrame, void* contenido){
 	t_contenidoFrame* contenidoFrame = malloc( sizeof( t_contenidoFrame ) );
@@ -118,6 +116,14 @@ t_mapAbierto* crearMapeo(char* path, void* contenido){
 	sem_init(&map->semaforoPaginas, 0, 1);
 	map->cantProcesosUsando = 1;
 	return map;
+}
+
+
+t_heapSegmento* crearHeap(uint32_t tamanio, bool isFree){
+	t_heapSegmento* heap = malloc( sizeof( t_heapSegmento ) );
+	heap->isFree  = isFree;
+	heap->t_size = tamanio;
+	return heap;
 }
 
 void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
@@ -158,6 +164,21 @@ t_mapAbierto* buscarMapeoAbierto(char* path) {
 	t_mapAbierto* mapAbiertoBuscado = list_find(mapeosAbiertosCompartidos,existePath);
 	//sem_post(&g_mutex_tablas);
 	return mapAbiertoBuscado;
+}
+
+void borrarMapeoAbierto(char* path) {
+
+	bool existePath(void* mapAbierto){
+		t_mapAbierto* mapAbiertoBuscar = (t_mapAbierto*) mapAbierto;
+
+		if (path != NULL) return string_equals_ignore_case(mapAbiertoBuscar->path, path);
+		return false;
+
+	}
+
+	//sem_wait(&g_mutex_tablas);
+	list_remove_by_condition(mapeosAbiertosCompartidos,existePath);
+	//sem_post(&g_mutex_tablas);
 }
 
 
@@ -228,7 +249,7 @@ t_paginaAdministrativa* buscarPaginaAdministrativa(t_list* SwapOPrincipal, int n
 t_pagina* buscarFrameEnTablasDePaginas(t_paginaAdministrativa* paginaABuscar) {
 
 	t_programa * programa= buscarPrograma(paginaABuscar->socketPrograma);
-	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,paginaABuscar->idSegmento);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,paginaABuscar->idSegmento);
 	t_pagina* paginaBuscada = list_get(segmento->tablaPaginas,paginaABuscar->nroPagina);
 	return paginaBuscada;
 }
@@ -330,9 +351,9 @@ int framesNecesariosPorCantidadMemoria(int cantidadBytes){
 }
 
 int bytesNecesariosUltimoFrame(int cantidadBytes){
-
-	int framesCompletos = framesNecesariosPorCantidadMemoria(cantidadBytes) - 1;
-	return cantidadBytes - (framesCompletos * g_configuracion->tamanioPagina);
+	bool sinResto = (cantidadBytes %  g_configuracion->tamanioPagina) == 0 ;
+	int frames = framesNecesariosPorCantidadMemoria(cantidadBytes);
+	return sinResto ? 0 : cantidadBytes - (frames * g_configuracion->tamanioPagina);
 }
 
 void destruirPrograma( t_programa* programa ){
@@ -350,6 +371,17 @@ void destruirSegmentosPrograma( t_segmentos_programa* segmentos ){
 void destruirSegmento( t_segmento* segmento ){
 	//free( segmento->nombreTabla ); free resto de campos?
 	list_destroy_and_destroy_elements( segmento->tablaPaginas, (void*) destruirPagina );
+	list_destroy_and_destroy_elements( segmento->heapsSegmento, (void*) destruirHeap );
+	free( segmento );
+}
+
+void destruirSegmentoMap( t_segmento* segmento, bool borrarTodo ){
+	if(borrarTodo)
+	{
+		list_destroy_and_destroy_elements( segmento->tablaPaginas, (void*) destruirPagina );
+		free(segmento->mmap);
+	}
+	list_destroy_and_destroy_elements( segmento->heapsSegmento, (void*) destruirHeap );
 	free( segmento );
 }
 
@@ -359,27 +391,49 @@ void destruirPagina( t_pagina* pagina ){
 	free( pagina );
 }
 
+void destruirHeap( t_heapSegmento* heap ){
+	free( heap );
+}
 
 t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);
 }
 
-t_heapDireccion* buscarHeapSegmento(uint32_t direccionABuscar, t_segmento* segmento){
-	t_heapSegmento* auxHeap = NULL;
-	uint32_t direccionHeap = 0;
-	bool encontrado = false;
+int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
-	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++) {
-		auxHeap = list_get(segmento->heapsSegmento,i);
-		direccionHeap += tamanio_heap;
-		if(direccionHeap == direccionABuscar) encontrado == true;
-		else direccionHeap += auxHeap->t_size;
+	if(segmento->tipoSegmento == 2) return -1;
+
+	int direccionLogicaAux = 0;
+	bool encontrado = false;
+	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++)
+	{
+		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
+		encontrado = (direccionLogicaAux + tamanio_heap == direccionLogica);
+		if(!encontrado) direccionLogicaAux += auxHeap->t_size + tamanio_heap;
+		else return i;
 	}
 
-	t_heapDireccion* heapBuscado = malloc(sizeof(t_heapDireccion));
-	heapBuscado->heap = auxHeap;
-	heapBuscado->direccionLogica = direccionHeap + tamanio_heap;
+	if(!encontrado) return -1; //segmentation fault, TODO: buscar codigo syscall seg fault
 }
+
+void cambiarContenidoFrameMemoria(int nroFrame, void* nuevoContenido){
+	t_contenidoFrame* contenidoCambiar = buscarContenidoFrameMemoria(nroFrame);
+	contenidoCambiar->contenido = nuevoContenido;
+}
+
+void modificarContenidoPagina(t_pagina* pagina ,void* nuevoContenido, bool presencia){  //cambiar aca tambien contenido nuevo?
+	pagina->flagPresencia = true;
+	pagina->flagModificado = true;
+	cambiarContenidoFrameMemoria(pagina->nroFrame, nuevoContenido);
+}
+
+void modificarPresencia(t_pagina* pagina , bool presencia, bool modifica){  //cambiar aca tambien contenido nuevo?
+	pagina->flagPresencia = presencia;
+	pagina->flagModificado = modifica;
+	if(presencia) bitarray_set_bit( g_bitarray_marcos, pagina->nroFrame);
+	else bitarray_clean_bit( g_bitarray_marcos, pagina->nroFrame );
+}
+
 
 
 

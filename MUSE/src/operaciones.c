@@ -13,7 +13,8 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	else
 	{
 		direccionLogica = allocarEnHeapLibre(tam,programa->segmentos_programa);
-		if(direccionLogica == 0) //Si es direccion = 0 no encontro y hay que extender el ultimo segmento
+
+		if(direccionLogica == -1)
 		{
 			t_segmento * ultimoSegmento =  ultimoSegmentoPrograma(programa);
 			if(ultimoSegmento->tipoSegmento == 2)//segmento mmap
@@ -24,6 +25,13 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 
 			direccionLogica = (socket,segmentoElegido,tam);
 		}
+
+		else{
+
+			segmentoElegido = buscarSegmento(programa->segmentos_programa->lista_segmentos,direccionLogica);
+			cambiarFramesPorHeap(segmentoElegido, direccionLogica, tam, 1);
+
+		}
 	}
 
 	ActualizarLogMetricas();
@@ -32,37 +40,95 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 }
 void procesarFree(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(socket);
-	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dir);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,dir);
 
-	int nroPagina = nroPaginaSegmento(dir, segmento->baseLogica);
-	int offsetPagina = desplazamientoPaginaSegmento(dir, segmento->baseLogica);
+	int indiceHeap = esDireccionLogicaValida(dir, segmento);
+
+	if(indiceHeap != -1){
+		t_heapSegmento * heapLiberar = list_get(segmento->heapsSegmento, indiceHeap);
+		if(heapLiberar->isFree == false){
+			int sizeFreeAgregar = verificarCompactacionFree(segmento->heapsSegmento, indiceHeap);
+			//verificar liberacion frames;
+			heapLiberar-> isFree = true;
+			heapLiberar-> t_size = heapLiberar->t_size + sizeFreeAgregar;
+			cambiarFramesPorHeap(segmento,dir,0,0); //TODO: ver si no modifica aca? creo que no
+		}
+	}
 
 	//si es segmento mmap no debera liberar nada o error?
+	//no debo liberar memoria de las paginas ni del frame en cuestion porque es solo free de MV muse?
+}
 
-	//int cantPaginasALiberar = framesNecesariosPorCantidadMemoria();
+int verificarCompactacionFree(t_list* heaps, int indiceHeap){
 
-	//Buscar heap metadata a liberar - buscarHeapSegmento
+	//nose si rompe o devuelve nulo si paso un index mayor o uno menor a 0
+	t_heapSegmento * auxHeapAnterior = list_get(heaps, indiceHeap - 1);
+	t_heapSegmento * auxHeapPosterior = list_get(heaps, indiceHeap + 1);
 
-	free(dir);
+	int tamanioAgregar = 0;
 
+	if(auxHeapAnterior->isFree){
+		tamanioAgregar += auxHeapAnterior->t_size;
+		list_remove_and_destroy_element(heaps,indiceHeap - 1, (void*) destruirHeap);
+	}
+
+	if(auxHeapPosterior->isFree){
+			tamanioAgregar += auxHeapPosterior->t_size;
+			//cambia el indice porque destrui una posicion
+			list_remove_and_destroy_element(heaps,indiceHeap, (void*) destruirHeap);
+	}
+
+	return tamanioAgregar;
 }
 
 int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 	t_programa * programa= buscarPrograma(socket);
-	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,src);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,src);
 
 	bool segmentoUnico = segmento->limiteLogico > src + n;
+	//puede ser el caso que tenga que obtener memoria de mas de 1 segmento?
 
+	int nroPaginaInicial = nroPaginaSegmento(src, segmento->baseLogica);
+	int offsetInicial = desplazamientoPaginaSegmento(src, segmento->baseLogica);
 	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(n);
+	int bytesNecesariosUltimaPagina = bytesNecesariosUltimoFrame(n);
+
+	int indiceHeap = esDireccionLogicaValida(src,segmento);
+
+	//en heap, obtener solo MV, o tambien obtner lo grabado en el frame?
+
+	return 0;
+
 }
 
 int procesarCopy(uint32_t dst, void* src, int n, int socket){
 	t_programa * programa= buscarPrograma(socket);
-	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dst);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,dst);
 
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
-
 	if(dst + n > segmento->limiteLogico && !esExtendible){ return -1;}
+
+	if(segmento->tipoSegmento == 1){
+		int indiceHeap = esDireccionLogicaValida(dst,segmento);
+		t_heapSegmento * auxHeap = list_get(segmento->heapsSegmento, indiceHeap);
+
+		if(auxHeap->isFree){
+			if(auxHeap->t_size >= n){
+			//debo marcarlo como ocupado, y ademas cargar el frame?
+			}
+			else{
+			//agregar mas heaps, osea extender, debo pedir paginas y cargar en frame???
+			}
+		}
+	}
+
+	else{
+		//cambiarFramesContenido(segmento, dst, n, src);
+	}
+
+
+
+	return 0;
 
 }
 
@@ -101,10 +167,21 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 	}
 
+
 	list_add(programa->segmentos_programa,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += length;
 
 	//TODO: el flag para paginas no presentes
+
+	//int desplazamiento = 0
+
+	//for paginas que necesito
+	//pido un marco libre
+	//tengo que crear estructur contenidoframe y agregarla a la lista
+	//al contenido de ese frame asignarle contenidoMap(0-tamanioPagina)
+	//desplazamiento += tamanioṔagina
+
+
 	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
 
 	return nuevoSegmento->baseLogica;
@@ -112,18 +189,38 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 int procesarSync(uint32_t addr, size_t len, int socket){
 	t_programa * programa= buscarPrograma(socket);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,addr);
+
+	if(segmento->tipoSegmento == 2){
+		//syncronizar los contenidos del map o levantar el contenido actualizado de los frames de las paginas y volcarlo
+		//en una sola posicion de memoria?
+		msync(segmento->mmap->contenido,len,MS_SYNC);
+	}
+
+	return 0;
 
 }
 
 uint32_t procesarUnMap(uint32_t dir, int socket){
 	t_programa * programa= buscarPrograma(socket);
-	t_segmento* segmento = buscarSegmento(programa->segmentos_programa,dir);
+	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,dir);
 
-	//es segmento mmap
-	//TODO: sacar de la lista de mapeos abiertos , mapeosAbiertosCompartidos
-	//Verificar si otro proceso no tiene abierto el mismo archivo , liberar la tabla de paginas
-	//restar contador de procesos usando mapeo, si llega a cero, liberar las paginas
+	if(segmento == NULL || segmento->tipoSegmento == 1 || dir != segmento->baseLogica ) return -1;
 
+	//me parece que asi no contempla el verdadero largo del void*
+	int largoArchivo = segmento->limiteLogico - segmento->baseLogica;
+
+	if(segmento->mmap->cantProcesosUsando == 1){
+		borrarMapeoAbierto(segmento->mmap->path); //ver de usar id de segmento
+		destruirSegmentoMap(segmento,1);
+		munmap(segmento->mmap->contenido,largoArchivo);
+	}
+	else{
+		segmento->mmap->cantProcesosUsando = segmento->mmap->cantProcesosUsando - 1;
+		destruirSegmentoMap(segmento,0);
+	}
+
+	return 0;
 }
 
 
@@ -153,12 +250,17 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 	if(heapBuscado != NULL)	{
 		heapBuscado->isFree = false;
 		heapBuscado->t_size = cantidadBytesNecesarios;
-		//TODO: agregar nuevo heap libre si sobra espacio, verificar si el anterior o posterior esta free , compactar
+		int huecoGenerado =  heapBuscado->t_size - cantidadBytesNecesarios;
+		if(huecoGenerado > 0){
+			t_heapSegmento * heapHueco = crearHeap(huecoGenerado,true);
+			list_add_in_index(segmentoBuscar->heapsSegmento, i , heapHueco);
+		}
+
 		direccionHeap += tamanio_heap;
 	}
 
 
-	return direccionHeap;
+	return -1;
 }
 
 uint32_t allocarEnPaginasNuevas(int socket, t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios ){
@@ -181,23 +283,6 @@ uint32_t allocarEnPaginasNuevas(int socket, t_segmento* segmentoAExtender, uint3
 	uint32_t direccionHeap = 0;
 	return direccionHeap;
 
-}
-
-//TODO, esta funcion podria abstraerla y reutilizarla varias veces, buscar heapValido
-int freeDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
-
-
-	int direccionLogicaAux = 0;
-	bool encontrado = false;
-	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++)
-	{
-		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
-		encontrado = !auxHeap->isFree && (direccionLogicaAux + tamanio_heap == direccionLogica);
-		if(!encontrado) direccionLogicaAux += auxHeap->t_size + tamanio_heap;
-		else auxHeap->isFree = true; //fijar si tengo que compactar heaps
-	}
-
-	if(!encontrado) return -1; //segmentation fault, TODO: buscar codigo syscall seg fault
 }
 
 
@@ -301,10 +386,6 @@ void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSeg
 
 }
 
-void* leerArchivoCompartido(){}
-
-void* escribirEnArchivoCompartido(){}
-
 void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, int flags) {
 	//Abro el archivo
 	*archivo = fopen(rutaArchivo, "r");
@@ -327,6 +408,57 @@ void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, i
 	void * dataArchivo = mmap(0, *tamArc, PROT_READ, flags, fd, 0);
 
 	return dataArchivo;
+}
+
+
+void cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_t tamanio, bool cargo) //el bool es para cargar u ocupar
+{
+	int desplazamiento = 0;
+	int nroPaginaInicial = nroPaginaSegmento(direccionLogica, segmento->baseLogica);
+	int offsetInicial = desplazamientoPaginaSegmento(direccionLogica, segmento->baseLogica);
+	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
+
+	if(offsetInicial > 0){
+		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
+		tamanio = tamanio - desplazamiento;
+		nroPaginaInicial++;
+		cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
+		// si este de abajo es mayor a 0 y menor a la pagina, la ultima pagina no la ocupo
+		if(bytesNecesariosUltimoFrame(tamanio) != 0) cantPaginasAObtener = cantPaginasAObtener - 1;
+	}
+
+	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
+				t_pagina* pag = list_get(segmento->tablaPaginas,i);
+				modificarPresencia(pag,cargo,0); //TODO: ver si no modifica aca? creo que no
+	}
+
+}
+
+void cambiarFramesContenido(t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* contenido)
+{
+	int desplazamiento = 0;
+	int nroPaginaInicial = nroPaginaSegmento(direccionLogica, segmento->baseLogica);
+	int offsetInicial = desplazamientoPaginaSegmento(direccionLogica, segmento->baseLogica);
+	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
+
+
+	//memcpy();
+
+	if(offsetInicial > 0){
+		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
+		//memcpy();
+		tamanio = tamanio - desplazamiento;
+		nroPaginaInicial++;
+		cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
+		// si este de abajo es mayor a 0 y menor a la pagina, la ultima pagina no la ocupo
+		if(bytesNecesariosUltimoFrame(tamanio) != 0) cantPaginasAObtener = cantPaginasAObtener - 1;
+	}
+
+	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
+		t_pagina* pag = list_get(segmento->tablaPaginas,i);
+		modificarPresencia(pag,1,1); //TODO: ver si no modifica aca? creo que no
+	}
+
 }
 
 

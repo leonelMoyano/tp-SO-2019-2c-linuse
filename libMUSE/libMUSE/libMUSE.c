@@ -7,7 +7,11 @@ int main(void) {
 	return prueba();
 }
 
+//TODO: para los casos en que las api retornen -1, simular llamada a muse_close y lanzar syscall SIG_SET(SEGFAULT)
+
 int muse_init(int id, char* ip, int puerto){
+
+	pid = id;
 
 	printf("Entro a la funcon init de LibMuse");
 
@@ -31,7 +35,7 @@ uint32_t muse_alloc(uint32_t tam){
 
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 
-	uint32_t * direccionLogica = deserializarUINT32(paquete->buffer);
+	uint32_t direccionLogica = deserializarUINT32(paquete->buffer);
 
 	return direccionLogica;
 
@@ -39,7 +43,7 @@ uint32_t muse_alloc(uint32_t tam){
 
 void muse_free(uint32_t dir){
 
-	enviarFree(socketConexion, dir);//CI: Deberia pasatle a MUSE la pocision del frame a liberar o Muse debe encontrarlo
+	enviarFree(socketConexion, dir);
 }
 
 int muse_get(void* dst, uint32_t src, size_t n){
@@ -48,24 +52,22 @@ int muse_get(void* dst, uint32_t src, size_t n){
 
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 
-	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+	int operacionSatisfactoria = deserializarNumero(paquete->buffer);
+
+	VerificoOperacion(operacionSatisfactoria);
 
 	return operacionSatisfactoria;
 }
 
 int muse_cpy(uint32_t dst, void* src, int n){
 
-	void * misBytes= malloc(n);
-
-	memcpy(misBytes,src,n);
-
-	enviarCopy(socketConexion, misBytes);
-
-	free(misBytes);
+	enviarCopy(socketConexion,dst, src,n);
 
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 
-	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+	int operacionSatisfactoria = deserializarNumero(paquete->buffer);
+
+	VerificoOperacion(operacionSatisfactoria);
 
 	return operacionSatisfactoria;
 }
@@ -87,7 +89,9 @@ int muse_sync(uint32_t addr, size_t len){
 
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 
-	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+	int operacionSatisfactoria = deserializarNumero(paquete->buffer);
+
+	VerificoOperacion(operacionSatisfactoria);
 
 	return operacionSatisfactoria;
 }
@@ -98,10 +102,11 @@ int muse_unmap(uint32_t dir){
 
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 
-	uint32_t operacionSatisfactoria = deserializarUINT32(paquete->buffer);
+	int operacionSatisfactoria = deserializarNumero(paquete->buffer);
+
+	VerificoOperacion(operacionSatisfactoria);
 
 	return operacionSatisfactoria;
-
 }
 
 
