@@ -34,6 +34,16 @@ t_list* crearTablaProgramas() {
 	return aux;
 }
 
+t_list* crearListaMapeos() {
+	t_list* aux = list_create();
+	return aux;
+}
+
+t_list* crearListaPaginasSwap() {
+	t_list* aux = list_create();
+	return aux;
+}
+
 t_segmento* crearSegmento(int direccionBase, int tamanio){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
@@ -230,12 +240,12 @@ int traerFrameDePaginaEnSwap(int socketPrograma,int idSegmento, int nroPagina) {
 	return paginaBuscada->nroFrame;
 }
 
-t_paginaAdministrativa* buscarPaginaAdministrativa(t_list* SwapOPrincipal, int nroFrame){
+t_paginaAdministrativa* buscarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal){
 
 	bool existeFrame(void* frame){
 		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
 
-		if (nroFrame != NULL) return frameBuscar->nroFrame == nroFrame;
+		if (nroFrameSwapOPrincipal != NULL) return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
 		return false;
 	}
 	//sem_wait(&g_mutex_tablas);
@@ -243,7 +253,22 @@ t_paginaAdministrativa* buscarPaginaAdministrativa(t_list* SwapOPrincipal, int n
 	//sem_post(&g_mutex_tablas);
 
 	return paginaAdministrativa;
+}
 
+t_paginaAdministrativa* buscarPaginaAdministrativaPorPagina(t_list* SwapOPrincipal, int socketPrograma, int idSegmento, int nroPagina){
+
+	bool existeFrame(void* frame){
+		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
+
+		if (socketPrograma != NULL && idSegmento != NULL && nroPagina != NULL)
+			return frameBuscar->idSegmento == idSegmento && frameBuscar->socketPrograma == socketPrograma && frameBuscar->nroPagina == nroPagina ;
+		return false;
+	}
+	//sem_wait(&g_mutex_tablas);
+	t_paginaAdministrativa* paginaAdministrativa = list_find(SwapOPrincipal,existeFrame);
+	//sem_post(&g_mutex_tablas);
+
+	return paginaAdministrativa;
 }
 
 t_pagina* buscarFrameEnTablasDePaginas(t_paginaAdministrativa* paginaABuscar) {
@@ -316,7 +341,7 @@ int ClockModificado() {
 	if (punteroClock ==  g_cantidadFrames) punteroClock = 0;
 		for (int j = punteroClock; j < g_cantidadFrames; j++) {
 			punteroClock = j;
-			t_paginaAdministrativa* paginaGloblal = buscarPaginaAdministrativa(tablasDePaginas, j);
+			t_paginaAdministrativa* paginaGloblal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
 			aux = buscarFrameEnTablasDePaginas(paginaGloblal);
 			if ( aux->flagPresencia == true && aux->flagModificado == true) {
 				 aux->flagModificado = false;

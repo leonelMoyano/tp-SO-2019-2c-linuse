@@ -12,6 +12,8 @@ t_list*			crearListaHeapsMetadata			();
 t_list*			crearTablaProgramas				();
 t_list*			crearTablaPaginas				();
 t_list*         crearTablaSegmentos             ();
+t_list* 		crearListaPaginasSwap			();
+t_list* 		crearListaMapeos				();
 
 
 //SEGMENTOS
