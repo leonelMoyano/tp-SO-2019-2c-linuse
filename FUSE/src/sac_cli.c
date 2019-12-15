@@ -254,6 +254,8 @@ void occupy_node( char *path, int nodeIndex, int parentNodeIndex, int state ){
 	nodeToSet->file_size = 0;
 	nodeToSet->parent_dir_block = parentNodeIndex;
 	nodeToSet->c_date = time( NULL );
+
+	memset( nodeToSet->blk_indirect, 0, BLKINDIRECT );
 }
 
 static int do_mknod (const char *path, mode_t mode, dev_t device){
@@ -382,10 +384,13 @@ void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t 
 	while (pendingSize) {
 		copySize = min(min( GBLOCKSIZE, spaceLeftOnBlock), pendingSize);
 
-		if(read_mode == 1)
+		if(read_mode == 1) {
+			// read, copio del archivo al buffer
 			memcpy((char *)(buffer + size - pendingSize), (void*)filePointer, copySize);
-		else
+		} else {
+			// write, copio del buffer al archivo
 			memcpy((void*)filePointer, buffer + size - pendingSize, copySize);
+		}
 
 		spaceLeftOnBlock = GBLOCKSIZE; // porque el proximo bloque lo voy a tener desde el principio
 		pendingSize -= copySize;
@@ -404,6 +409,49 @@ void copy_file_contents(GFile* fileNode, const char *buffer, size_t size, off_t 
 */
 int get_occupied_datablocks_qty(size_t size){
 	return size == 0 ? 0 : get_datablock_index(size - 1) + 1;
+}
+
+/**
+* @NAME: get_occupied_ind_blocks_qty
+* @DESC: Devuelve la cantidad de bloques indirectos que necesito para guardar size bytes
+*
+*/
+int get_occupied_ind_blocks_qty(size_t size){
+	return size == 0 ? 0 : get_indirect_block_index(size - 1) + 1;
+}
+
+/**
+* @NAME: get_occupied_total_blocks_qty
+* @DESC: Devuelve la cantidad de bloques totales que necesito para guardar size bytes
+*
+*/
+int get_occupied_total_blocks_qty(size_t size){
+	return get_occupied_datablocks_qty( size ) + get_occupied_ind_blocks_qty( size );
+}
+
+/**
+* @NAME: get_free_blocks
+* @DESC: Devuelve la cantidad de bloques vacios en el FS
+*
+*/
+int get_free_blocks(){
+	int free = 0;
+	for( int i  = 0; i < g_block_count; i++ ){
+		if( !bitarray_test_bit(g_bitmap, i))
+			free ++ ;
+	}
+	return free;
+}
+
+/**
+* @NAME: is_enough_blocks
+* @DESC: Devuelve 1 si tengo la cantidad de bloques suficiente para agrandar un archivo de size,
+*        0 si no tengo bloques suficientes
+*
+*/
+bool is_enough_blocks( size_t current_size, size_t new_size ){
+	int needed_blocks = get_occupied_total_blocks_qty( new_size ) - get_occupied_total_blocks_qty( current_size );
+	return get_free_blocks() >= needed_blocks ? 1 : 0;
 }
 
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
@@ -435,7 +483,6 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
 	return size;
-
 }
 
 /**
@@ -539,13 +586,18 @@ static int do_rename(const char *old_path, const char *new_path){
 }
 
 static int do_truncate(const char* path, off_t size){
-	log_info( g_logger, "[truncate]:%s a size %d", path, size );
+	log_info( g_logger, "[truncate]:%s a size %ld", path, size );
 	int currNodeIndex = find_by_path(path);
 	if( currNodeIndex == -1 ){
 		return -ENOENT;
 	}
 
 	GFile* currNode = g_node_table + currNodeIndex;
+
+	if( !is_enough_blocks( currNode->file_size, size ) ){
+		// errno()
+		return -EFBIG;
+	}
 
 	int cantidadDatablocksActuales   = get_occupied_datablocks_qty( currNode->file_size );
 	int cantidadDatablocksNecesarios = get_occupied_datablocks_qty( size );

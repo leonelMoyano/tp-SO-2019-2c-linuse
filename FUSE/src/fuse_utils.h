@@ -22,5 +22,6 @@ int liberarBloques(GFile* file, int cantidadDatablosActuales, int cantidadDatabl
 int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFinales );
 int get_occupied_datablocks_qty(size_t size);
 int get_parent_node(const char *path);
+int get_free_blocks();
 
 #endif /* FUSE_UTILS_H_ */
