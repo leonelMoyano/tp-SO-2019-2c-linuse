@@ -198,9 +198,7 @@ uint32_t allocarEnPaginasNuevas(int socket, t_segmento* segmentoAExtender, uint3
 
 	int cantPaginasNecesarias = framesNecesariosPorCantidadMemoria(cantidadBytesNecesarios);
 
-	int i;
-
-	for (i = 0; cantPaginasNecesarias > i ; ++i){
+	for (int i = 0; cantPaginasNecesarias > i ; ++i){
 
 		int indiceFrame = buscarFrameLibre();
 
@@ -291,13 +289,18 @@ void * sacarFrameSwap(int nroMarco, FILE ** archivo){
 
 	int indicePaginaSwap = nroMarco * g_configuracion->tamanioPagina;
 
-	void * direccion =escribirContenidoFrameEnMemoria(nroMarco,stringSwap[indicePaginaSwap]);
+	char * indice = stringSwap[indicePaginaSwap];
+
+	void * direccion =escribirContenidoFrameEnMemoria(nroMarco,indice);
 
 	int desplazamiento = 0;
 
 	for(int i= 0; i <= g_configuracion->tamanioPagina;i++){
 		stringSwap[indicePaginaSwap + desplazamiento]='\0';
 	}
+
+	msync(stringSwap,g_configuracion->tamanioSwap,MS_SYNC);//update al archivo SWAP
+
 	bitarray_clean_bit(g_bitarray_swap,nroMarco);
 
 	fclose(*archivo);
@@ -323,6 +326,7 @@ void escribirFrameSwap(int  nroMarco, void* contenido, FILE ** archivo){
 	//void * dataPaginaNueva = mmap(contenido, lengthPagina, PROT_WRITE, MAP_SHARED, fd, indiceArchivo);
 	stringSwap = mmap(0,tamArc,PROT_READ | PROT_WRITE,MAP_SHARED,fd,0);
 	escribirContenidoFrameEnMemoria(nroMarco,stringSwap[indicePaginaSwap]); //funca?
+	msync(stringSwap,g_configuracion->tamanioSwap,MS_SYNC); //unpdate al archivo swap
 
 	bitarray_set_bit(g_bitarray_swap,nroMarco);
 
@@ -339,7 +343,6 @@ void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSeg
 	int nroFrame = buscarFrameLibreSwap();
 	escribirFrameSwap(nroFrame,bytes,&disco_swap);
 	list_add(paginasEnSwap, crearPaginaAdministrativa(socketPrograma, idSegmento, nroPagina, nroFrame));
-
 }
 
 void* leerArchivoCompartido(){}

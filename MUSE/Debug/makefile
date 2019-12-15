@@ -26,7 +26,7 @@ endif
 all: MUSE
 
 dependents:
-	-cd /home/utnso/git/TP-NoCNada/tp-2019-2c-No-C-Nada/biblioNOC/Debug && $(MAKE) all
+	-cd /home/utnso/git/TP-NoCNada/tp-2019-2c-No-C-Nada/biblioNOC/Debug && $(MAKE) clean all
 
 # Tool invocations
 MUSE: $(OBJS) $(USER_OBJS) /home/utnso/git/TP-NoCNada/tp-2019-2c-No-C-Nada/biblioNOC/Debug/libbiblioNOC.so
