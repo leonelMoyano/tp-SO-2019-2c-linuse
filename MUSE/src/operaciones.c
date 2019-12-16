@@ -131,8 +131,6 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	void* contenidoMap = mapearArchivoMUSE(path,length,&archivoMap,flags);
 
-	//TODO: optimizar funcion, evitar repeticion codigo
-
 	t_segmento * nuevoSegmento;
 
 	t_mapAbierto* mapAbierto = buscarMapeoAbierto(path);
@@ -141,40 +139,39 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 		if(mapAbierto != NULL){
 			//mmap compartido apuntando a mapeo existente
 			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,length,1,mapAbierto);
+
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
+
 			mapAbierto->cantProcesosUsando = mapAbierto->cantProcesosUsando + 1;
 		}
 		else{
 			//Mmap compartido nuevo
 			mapAbierto = crearMapeo(path,contenidoMap);
+
 			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,length,0,mapAbierto);
+
+			paginasDeMapASwap(mapAbierto,length,contenidoMap,nuevoSegmento,socket);
+
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
+
 			list_add(mapeosAbiertosCompartidos,mapAbierto);
 		}
 
 	}
 	else{ //mapeo privado
 		mapAbierto = crearMapeo(path,contenidoMap);
+
 		nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,length,mapAbierto);
+
+		paginasDeMapASwap(mapAbierto,length,contenidoMap);
+
 		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 	}
 
 
 	list_add(programa->segmentos_programa,nuevoSegmento);
+
 	programa->segmentos_programa->limiteLogico += length;
-
-	//TODO: el flag para paginas no presentes
-
-	//int desplazamiento = 0
-
-	//for paginas que necesito
-	//pido un marco libre
-	//tengo que crear estructur contenidoframe y agregarla a la lista
-	//al contenido de ese frame asignarle contenidoMap(0-tamanioPagina)
-	//desplazamiento += tamanioṔagina
-
-
-	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
 
 	return nuevoSegmento->baseLogica;
 }
@@ -348,27 +345,6 @@ void* sacarFrameSwap(int nroMarco, FILE ** archivo){
 	return dataPagina;
 }
 
-void escribirFrameSwap(int nroMarco, void* contenido, FILE ** archivo){
-
-	*archivo = fopen(RUTASWAP, "r+");
-
-	// Tamaño del archivo que voy a leer
-	size_t tamArc = g_configuracion->tamanioSwap;
-
-	// Leo el total del archivo y lo asigno al buffer
-	void * dataArchivo = calloc( 1, tamArc + 1 );
-
-	int indiceArchivo = nroMarco * g_configuracion->tamanioPagina;
-
-	int fd = fileno(*archivo);
-
-	void * dataPagina = mmap(0, lengthPagina, PROT_READ, MAP_SHARED, fd, indiceArchivo);
-	void * dataPaginaNueva = mmap(contenido, lengthPagina, PROT_WRITE, MAP_SHARED, fd, indiceArchivo);
-
-	bitarray_set_bit(g_bitarray_swap,nroMarco);
-
-	fclose(*archivo);
-}
 
 void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSegmento){
 
@@ -381,22 +357,19 @@ void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSeg
 void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, int flags) {
 	//Abro el archivo
 	*archivo = fopen(rutaArchivo, "r");
-
 	if (*archivo == NULL) {
 		printf("%s: No existe el archivo o el directorio", rutaArchivo);
 		return NULL;
 	}
 
-	//Copio informacion del archivo
 	struct stat statArch;
 
 	stat(rutaArchivo, &statArch);
 
-	//Tamaño del archivo que voy a leer
 	*tamArc = statArch.st_size;
 
-	//Leo el total del archivo y lo asigno al buffer
 	int fd = fileno(*archivo);
+
 	void * dataArchivo = mmap(0, *tamArc, PROT_READ, flags, fd, 0);
 
 	return dataArchivo;
@@ -488,6 +461,41 @@ void copiarContenidoAFrames(t_segmento* segmento, uint32_t direccionLogica, int 
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
+
+}
+
+void paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * contenidoMap,t_segmento unSegmento,int socket){
+	//En el momento de hacer un mapeo dejo la tabla de paginas en swap con el contenido
+
+	int desplazamiento = 0;
+	int cantPaginasAMover = framesNecesariosPorCantidadMemoria(tamanioMap);
+
+	for(int i=0;i < cantPaginasAMover;i++){
+			t_pagina * paginaNuevo = crearPaginaMap(i);
+
+			int frameSwapElegido = buscarFrameLibreSwap(); //modifico bitaray de swap
+
+			if(frameSwapElegido == -1) perror("Memoria Swap completa"); //es correcto?
+
+			escribirContenidoEnSwap(paginaNuevo,frameSwapElegido,contenidoMap,desplazamiento);
+
+			desplazamiento += g_configuracion->tamanioPagina;
+
+			list_add(paginasEnSwap,crearPaginaAdministrativa(socket,unSegmento->idSegmento,paginaNuevo->nroPagina,NULL));
+
+			t_paginaAdministrativa paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
+
+			paginaAdmin->indiceEnSwap = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
+
+			list_add(mapAbierto->tablaPaginas, paginaNuevo);
+		}
+}
+
+void escribirContenidoEnSwap(t_pagina * unaPagina,int indiceLibre,void * contenido,int desplazamiento){
+	//contenido debe ser una direccion Libre
+	int indiceSwap = indiceLibre * g_configuracion->tamanioPagina;
+
+	memcpy(archivoSwap[indiceSwap], contenido[desplazamiento],g_configuracion->tamanioPagina);
 
 }
 
