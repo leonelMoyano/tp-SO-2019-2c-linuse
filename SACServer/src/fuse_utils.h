@@ -10,14 +10,6 @@
 
 #include <commons/config.h>
 
-typedef struct fuse_client_config{
-	char* ip;
-	char* puerto;
-} t_fuse_config;
-
-t_config* commons_config;
-t_fuse_config* fuse_config;
-
 int get_datablock_index(off_t);
 int get_indirect_block_index(off_t);
 int get_datablock_index_inside_indirect_block(off_t);
@@ -35,7 +27,5 @@ int get_parent_node(const char *path);
 int get_free_blocks();
 
 void armar_config( char* path );
-
-t_paquete* send_request( t_paquete* request, char* ip, char* puerto );
 
 #endif /* FUSE_UTILS_H_ */

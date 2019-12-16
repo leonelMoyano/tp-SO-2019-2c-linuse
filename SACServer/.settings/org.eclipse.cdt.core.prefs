@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.2021595110/LD_LIBRARY_PATH/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.2021595110/LD_LIBRARY_PATH/operation=append
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.2021595110/LD_LIBRARY_PATH/value=/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.2021595110/append=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.2021595110/appendContributed=true
