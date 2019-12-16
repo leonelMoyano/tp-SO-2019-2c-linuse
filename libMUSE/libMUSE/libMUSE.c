@@ -17,7 +17,7 @@ int muse_init(int id, char* ip, int puerto){
 
 	socketConexion = conectarCliente(ip,puerto,LIBMUSE);
 
-	enviarMensaje(socketConexion, "");
+	enviarMuseInit(socketConexion);
 
 	return socketConexion;
 

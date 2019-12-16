@@ -16,27 +16,21 @@ int suse_create(int tid) {
 }
 
 int suse_schedule_next(void) {
-	// int next = g_max_multiprog;
-	// printf("Scheduling next item %i...\n", next);
-	// sendMssgSuse("Proximo hilo a ejecutar");
 	log_debug( g_logger, "Suse schedule next devuelvo siempre 0");
-	return 0;
+	enviarThreadScheduleNext( g_server_socket );
+	return esperarRespuestaThreadScheduleNext( g_server_socket );
 }
 
 int suse_join(int tid) {
-	if (tid > g_max_multiprog) {
-		g_max_multiprog = tid;
-	}
 	printf("Esperando se cierra el hilo:%d \n", tid);
-	sendMssgSuse("Esperando se cierra el hilo: %d");
-	return 0;
+	enviarThreadJoin( g_server_socket, tid );
+	return esperarRespuestaThreadJoin( g_server_socket );
 }
 
 int suse_close(int tid){
 	printf("Haciendo close del hilo: %i\n", tid);
-	//sendMssgSuse("Haciendo close del hilo");
-	g_max_multiprog--;
-	return 0;
+	enviarThreadClose( g_server_socket, tid );
+	return esperarRespuestaThreadClose( g_server_socket );
 }
 
 int suse_wait(int tid, char *sem_name){
@@ -80,13 +74,31 @@ void init_config(char *path){
 
 void enviarThreadCreate(int socket_dst, int tid) {
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
-
 	unPaquete->codigoOperacion = SUSE_CREATE;
-
 	serializarNumero(unPaquete, tid);
-
 	enviarPaquetes(socket_dst, unPaquete);
 }
+
+void enviarThreadJoin(int socket, int tid) {
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+	unPaquete->codigoOperacion = SUSE_JOIN;
+	serializarNumero(unPaquete, tid);
+	enviarPaquetes(socket, unPaquete);
+}
+
+void enviarThreadClose(int socket, int tid) {
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+	unPaquete->codigoOperacion = SUSE_CLOSE;
+	serializarNumero(unPaquete, tid);
+	enviarPaquetes(socket, unPaquete);
+}
+
+void enviarThreadScheduleNext( int socket ) {  // No le envío TID al SUSE Server, pero el Server Si envía el próximo Thread a ejecutar en la rta.
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+	unPaquete->codigoOperacion = SUSE_SCHEDULE_NEXT;
+	enviarPaquetes(socket, unPaquete);
+}
+
 
 void enviarSemWait( int socket_dst, int tid, char* nombre ){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
@@ -108,25 +120,61 @@ void enviarSemPost( int socket_dst, int tid, char* nombre ){
 	enviarPaquetes(socket_dst, unPaquete);
 }
 
+
+
 void esperarRespuestaConfig( int socket ){
-	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
-	if( respuetaMultiprog->codigoOperacion == SUSE_GRADO_MULTIPROG ){
-		g_max_multiprog = deserializarNumero( respuetaMultiprog->buffer );
-		// TODO free de este paquete ?
+	t_paquete *respuestaMultiprog = recibirArmarPaquete( socket );
+	if( respuestaMultiprog->codigoOperacion == SUSE_GRADO_MULTIPROG ){
+		g_max_multiprog = deserializarNumero( respuestaMultiprog->buffer );
 		log_info( g_logger, "Recibi este grado de multiprog: %d", g_max_multiprog );
 	} else {
 		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
 	}
+	destruirPaquete( respuestaMultiprog );
 }
 
+int esperarRespuestaThreadClose( int socket ){
+	t_paquete *respuestaMultiprog = recibirArmarPaquete( socket );
+	if( respuestaMultiprog->codigoOperacion != SUSE_CLOSE ){
+		log_error( g_logger, "Recibi algo que no es respuesta de close");
+	}
+	int respuesta = deserializarNumero( respuestaMultiprog->buffer );
+	log_info( g_logger, "Suse_Close recibio esta respuesta %d", respuesta );
+	destruirPaquete( respuestaMultiprog );
+	return respuesta;
+}
+
+int esperarRespuestaThreadJoin( int socket ){
+	t_paquete *respuestaMultiprog = recibirArmarPaquete( socket );
+	if( respuestaMultiprog->codigoOperacion != SUSE_JOIN ){
+		log_error( g_logger, "Recibi algo que no es respuesta de join");
+	}
+	int respuesta = deserializarNumero( respuestaMultiprog->buffer );
+	log_info( g_logger, "Suse_Join recibio esta respuesta %d", respuesta );
+	destruirPaquete( respuestaMultiprog );
+	return respuesta;
+}
+
+int  esperarRespuestaThreadScheduleNext( int socket ){
+	t_paquete *respuestaMultiprog = recibirArmarPaquete( socket );
+	if( respuestaMultiprog->codigoOperacion != SUSE_SCHEDULE_NEXT ){
+		log_error( g_logger, "Recibi algo que no es respuesta de schedule_next");
+	}
+	int tid_to_exec = deserializarNumero( respuestaMultiprog->buffer );
+	log_info( g_logger, "Suse_Schedule_Next:entra en ejecucion el TID %d", tid_to_exec );
+	destruirPaquete( respuestaMultiprog );
+	return tid_to_exec;
+}
+
+
 int esperarRespuestaSemWait( int socket ){
-	t_paquete *respuetaMultiprog = recibirArmarPaquete( socket );
-	if( respuetaMultiprog->codigoOperacion != SUSE_WAIT ){
+	t_paquete *respuestaMultiprog = recibirArmarPaquete( socket );
+	if( respuestaMultiprog->codigoOperacion != SUSE_WAIT ){
 		log_error( g_logger, "Recibi algo que no es respuesta de sem wait");
 	}
-	int respuesta = deserializarNumero( respuetaMultiprog->buffer );
+	int respuesta = deserializarNumero( respuestaMultiprog->buffer );
 	log_info( g_logger, "Sem wait recibio esta respuesta %d", respuesta );
-	destruirPaquete( respuetaMultiprog );
+	destruirPaquete( respuestaMultiprog );
 	return respuesta;
 }
 
@@ -139,16 +187,6 @@ int esperarRespuestaSemPost( int socket ){
 	log_info( g_logger, "Sem signal recibio esta respuesta %d", respuesta );
 	destruirPaquete( respuetaMultiprog );
 	return respuesta;
-}
-
-void sendMssgSuse(char* mssg) {
-	char* ip = g_config->ip;
-	char* port = g_config->puerto;
-	int  socketServer =	crear_conexion(ip, port);
-	enviar_mensaje(mssg , socketServer);
-	log_info(g_logger, "Socket servidor creado %d", socketServer);
-	log_destroy(g_logger);
-	close(socketServer);
 }
 
 void iniciar_log(void) {

@@ -19,7 +19,7 @@
 
 
 typedef struct{
-	int puertoConexion;
+	char* puertoConexion;
 	int tamanioMemoria;
 	int tamanioSwap;
 	int tamanioPagina;
@@ -108,6 +108,7 @@ typedef struct{
 	int nroPagina;
 	int socketPrograma;
 	int idSegmento;
+	int indiceEnSwap;
 }t_paginaAdministrativa;
 
 typedef struct{

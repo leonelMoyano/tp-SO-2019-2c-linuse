@@ -14,11 +14,14 @@ t_paquete* procesarPaqueteLibSuse( t_paquete* paquete, t_client_suse* cliente_su
 t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
 t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
 void       esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente );
 void       inicializar_semaforos();
 t_paquete* armarPaqueteNumeroConOperacion( int numero, int codigo_op );
+t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proceso_padre );
+double indice_sjf(t_client_thread_suse* thread_to_compare);
 
 int main(void) {
 	iniciar_logger();
@@ -55,7 +58,7 @@ void atenderConexion(int socketCliente) {
 			log_debug(g_logger, "Recibo paquete");
 
 			if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ) {
-				log_warning(g_logger, "Cierro esta conexion del LibMuse %d", socketCliente);
+				log_warning(g_logger, "Cierro esta conexion del cliente_suse %d", socketCliente);
 				break;
 			};
 
@@ -88,6 +91,7 @@ t_paquete* procesarPaqueteLibSuse(t_paquete* paquete, t_client_suse* cliente_sus
 		response = procesarThreadJoin( paquete, cliente_suse, socket_cliente);
 		break;
 	case SUSE_SCHEDULE_NEXT:
+		response = procesarThreadScheduleNext( paquete, cliente_suse, socket_cliente);
 		break;
 	case SUSE_SIGNAL:
 		response = procesarSemSignal( paquete, cliente_suse, socket_cliente );
@@ -151,6 +155,19 @@ void trancisionar_bloqueado_a_ready( void* thread ){
 	list_add( thread_t->proceso_padre->ready, thread );
 }
 
+void trancisionar_ready_a_bloqueado( void* thread ){
+	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
+	bool compare_thread( void* otro_thread ){
+
+		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
+		return otro_thread_t->tid == thread_t->tid;
+	}
+
+	// TODO cambiar la cola de bloqueado que agarro si va a terminar siendo una global para tods los procs
+	list_remove_by_condition( thread_t->proceso_padre->ready, compare_thread);
+	list_add( thread_t->proceso_padre->blocked, thread );
+}
+
 t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
 
 	log_info( g_logger, "Recibi un close");
@@ -168,9 +185,8 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 	else{
 		t_client_thread_suse* thread_a_cerrar = cliente_suse->running_thread;  	// obtengo el thread en ejecucion
 		list_add(cliente_suse->exit,thread_a_cerrar);							// se agregamos al proceso a la lista "exit"
-		cliente_suse->running_thread = NULL;									// dejamos al proceso SIN running_thread
 		thread_a_cerrar->estado = EXIT;											// cambio el estado a de *thread_a_cerrar* a EXIT.
-		thread_a_cerrar->time_last_run = time(NULL);							// actualizamos time_last_run de *thread_a_cerrar*
+		thread_a_cerrar->time_last_yield = time(NULL);							// actualizamos "time_last_yield" porque deja de ejecutarse
 		t_list* pasar_a_ready = thread_a_cerrar->threads_bloqueados;			// en el "proceso_padre" de thread_a_cerrar
 																				// muevo elementos de la lista "blocked" a "ready";
 		list_iterate(pasar_a_ready, trancisionar_bloqueado_a_ready);            // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
@@ -179,8 +195,7 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 		// dentro de la lista de bloqueados por el thread
 		// TODO buscar en la cola EXIT el TID del thread en running del proceso que realizó el request SUSE_JOIN.
 		// Por ejemplo: int tid_en_cola(t_queue* cola_exit, int tid_a_buscar);
-		log_info( g_logger, "Close Ok para hilo en ejecucion del Proceso %d", cliente_suse->main_tid );
-
+		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion del Proceso %d", cliente_suse->main_tid );
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
 	}
 	return respuesta;
@@ -189,54 +204,84 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
 
 	log_info( g_logger, "Recibi un join");
-
+	int tid_to_join = deserializarNumero( paquete->buffer );
 	t_paquete* respuesta = NULL;
 
 	if( cliente_suse->main_tid < 0){
 		log_warning( g_logger, "Proceso %s inexistente", cliente_suse->main_tid );
 		respuesta = armarPaqueteNumeroConOperacion( -ECHILD, SUSE_JOIN );
 	}
-	else if ( cliente_suse->running_thread == NULL){
+	if ( cliente_suse->running_thread == NULL){
 		log_warning( g_logger, "Proceso %s sin hilos en ejecucion", cliente_suse->main_tid );
 		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_JOIN );
 	}
 	else{
-		int tid_a_join = cliente_suse->running_thread->tid; // doy por hecho que el proceso que hizo el request quiere enviar su running_thread a join
-		t_client_thread_suse* thread_buscado_en_exit,thread_buscado_en_blocked,thread_buscado_en_ready;
-		bool compare_thread_id( void* thread ){
+		t_client_thread_suse* thread_buscado_en_exit;
+		bool compare_thread_in_thread_lists( void* thread ){
 			t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
-			return tid_a_join == thread_t->tid;
+			return tid_to_join == thread_t->tid;
 		}
-		thread_buscado_en_exit = list_find( cliente_suse->exit, compare_thread_id ); 		//busco el running_thread  en la lista "cliente_suse->exit" del proceso que hizo el request
-		thread_buscado_en_blocked = list_find( cliente_suse->blocked, compare_thread_id ); 	//busco el running_thread  en la lista "cliente_suse->blocked" del proceso que hizo el request
-		thread_buscado_en_ready = list_find( cliente_suse->ready, compare_thread_id ); 		//busco el running_thread  en la lista "cliente_suse->ready" del proceso que hizo el request
+		thread_buscado_en_exit = list_find( cliente_suse->exit, compare_thread_in_thread_lists ); 		//busco el running_thread  en la lista "cliente_suse->exit" del proceso que hizo el request
 		// TODO buscar en la Cola Global EXIT el TID del thread en running del proceso que realizó el request SUSE_JOIN.
-		// TODO buscar en la Cola Global BLOCKED el TID del thread en running del proceso que realizó el request SUSE_JOIN.
-		// Por ejemplo: int tid_en_cola(t_queue* cola_exit, int tid_a_buscar);
-		int tid_en_cola_exit = 1; 				// Cambiar--!!
-		int tid_en_cola_blocked =1;				// Cambiar--!!
-		if (thread_buscado_en_exit != NULL && tid_en_cola_exit == thread_buscado_en_exit->tid) { //encontré al running_thread en "cliente_suse->exit"
-			thread_buscado_en_exit->estado = EXIT; 					// le seteamos el estado EXIT definitivo al thread
-			thread_buscado_en_exit->time_last_run = time(NULL); 	// Actualizamos métricas
-			cliente_suse->running_thread = NULL; 					// Quitamos el "running_thread" del proceso "cliente_suse"
-			log_info( g_logger, "Operacion Suse_Join Ok, El hilo %d del Proceso %d ya estaba finalizado", tid_a_join, cliente_suse->main_tid );
-			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
-		}
-		if (thread_buscado_en_exit == NULL && thread_buscado_en_blocked != NULL && tid_en_cola_blocked == thread_buscado_en_blocked->tid) { //encontré al running_thread en "cliente_suse->exit"
-
-
-			log_info( g_logger, "Operacion Suse_Join Ok, El hilo %d del Proceso %d ya estaba finalizado", tid_a_join, cliente_suse->main_tid );
+		// Por ejemplo: int tid_en_cola(t_queue* cola_exit, int tid_to_join);
+		if (thread_buscado_en_exit != NULL) { //encontré al thread requested to join en "cliente_suse->exit"
+			log_info( g_logger, "Operacion Suse_Join Ok, El hilo %d del Proceso %d ya estaba finalizado", tid_to_join, cliente_suse->running_thread->tid );
 			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
 		}
 		else {
+			cliente_suse->running_thread->estado = BLOCKED;													// le seteamos el estado BLOCKED al thread
+			cliente_suse->running_thread->time_last_yield = time(NULL);										// actualizamos "time_last_yield" porque va a dejar de ejecutarse
+			list_add(cliente_suse->blocked,cliente_suse->running_thread);									// agregamos al thread en ejecución a la lista "cliente_suse->blocked" del proceso que hizo el request
+			t_client_thread_suse* thread_to_join = find_thread_by_tid_in_parent(tid_to_join, cliente_suse); // busco el thread que fue requerido a hacer Join
+			list_add(thread_to_join->threads_bloqueados,cliente_suse->running_thread); 						// agregamos a la lista "thread_bloqueados" del thread solicitado a hacer Join el running_thread al thread
+			log_info( g_logger, "Operacion Suse_Join Ok, Hilo en ejecucion %d a BLOCKED, add en lista Bloqueados del Proceso Principal %d", cliente_suse->running_thread->tid, cliente_suse->main_tid );
 
+			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
 		}
 
 	}
 	return respuesta;
 }
 
-	/*
+t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
+
+	log_info( g_logger, "Recibi un Schedule_Next");
+	t_paquete* respuesta = NULL;
+
+	if( cliente_suse->main_tid < 0){
+		log_warning( g_logger, "Proceso %s inexistente", cliente_suse->main_tid );
+		respuesta = armarPaqueteNumeroConOperacion( -ECHILD, SUSE_SCHEDULE_NEXT);
+	}
+	if ( cliente_suse->running_thread == NULL){
+		log_warning( g_logger, "Proceso %s sin hilos en ejecucion", cliente_suse->main_tid );
+		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_SCHEDULE_NEXT );
+	}
+	else {
+		t_client_thread_suse* next_running_thread;
+		t_client_thread_suse* prev_running_thread = cliente_suse->running_thread;
+
+		bool comparo_threads_por_indice_sjf( void* thread, void* otro_thread ){
+			t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
+			t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
+			return indice_sjf(thread_t) <= indice_sjf(otro_thread_t);
+		}
+
+		list_sort(cliente_suse->ready,comparo_threads_por_indice_sjf); 	// ordeno la lista Ready del proceso que envió el request, los threads por indice_sjf, el de menor indice en 1° lugar
+		next_running_thread = list_get(cliente_suse->ready, 0);			// obtengo el 1° thread de la lista Ready,
+		list_remove(cliente_suse->ready, 0);							// quitamos el 1° thread de la lista Ready,
+		list_add(cliente_suse->ready, prev_running_thread);				// agregamos el running_thread actual a la lista de Ready, se dejará de ejecutar,
+		prev_running_thread->time_last_yield = time(NULL);				// actualizamos time_last_yield del thread que se dejará de ejecutar,
+		cliente_suse->running_thread = next_running_thread;				// ponemos a ejecutar el thread seleccionado de la lista Ready,
+		next_running_thread->time_last_run = time(NULL);				// actualizamos time_last_run del thread que entrará en ejecucion,
+		int next_running_tid = next_running_thread->tid;
+
+		log_info( g_logger, "Operacion suse_schedule_next Ok para Proceso %d, proximo TID a ejecutar %d", cliente_suse->main_tid , next_running_tid);
+		respuesta = armarPaqueteNumeroConOperacion( next_running_tid , SUSE_SCHEDULE_NEXT ); // en la respuesta al request envío el TID del nuevo running thread,
+	}
+	return respuesta;
+}
+
+/*
 	 * TODO
 	 * misma idea que en el close, si llaman un join ( o cualquier operacion )
 	 * sabes que el thread que hizo el request es el que esta corriendo
@@ -440,4 +485,13 @@ void inicializar_estructuras(){
 void iniciar_logger(void) {
 	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/logFiles/suseServer.log", "SUSE-Server", 1, LOG_LEVEL_TRACE);
 	log_info(g_logger, "Iniciando SuseServer");
+}
+
+double indice_sjf(t_client_thread_suse* thread_to_compare) {
+	long ready_time = thread_to_compare->time_last_run - thread_to_compare->time_created;
+	long exec_time = thread_to_compare->time_last_yield - thread_to_compare->time_last_run;
+	double alfa = g_config_server->alpha_sjf;
+	double comp_alfa = 1 - g_config_server->alpha_sjf;
+	double valor_calculado = alfa * ready_time + comp_alfa * exec_time;
+	return valor_calculado;
 }

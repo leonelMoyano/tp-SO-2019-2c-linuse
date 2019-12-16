@@ -114,20 +114,21 @@ void serializarUnmap(t_paquete* paquete, uint32_t dir){
 
 //-----------------------------------Solicitudes--------------------------------------
 
-void enviarMuseClose(int server_socket) {
-	t_paquete * unPaquete = malloc(sizeof(t_paquete));
-
-	unPaquete->codigoOperacion = MUSE_CLOSE;
-
-	serializarMensaje(unPaquete, "Cerrate Loro");
-
-	enviarPaquetes(server_socket, unPaquete);
-}
-
 void enviarMuseInit(int server_socket) {
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_INIT;
+
+	serializarMensaje(unPaquete, "Abrite Loro");
+
+	enviarPaquetes(server_socket, unPaquete);
+}
+
+
+void enviarMuseClose(int server_socket) {
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+
+	unPaquete->codigoOperacion = MUSE_CLOSE;
 
 	serializarMensaje(unPaquete, "Cerrate Loro");
 

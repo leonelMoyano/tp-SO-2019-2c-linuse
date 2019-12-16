@@ -58,12 +58,15 @@ t_list* programas;
 int tamanio_heap;
 
 /*------------------------Funciones-------------------------*/
+int				arrancarServer					(char* puertostring);
 void 			attendConnection				(int socketCliente);
 void			reservarEspacioMemoriaPrincipal	();
 void            destruirGlobales                ();
 void 			armarConfigMemoria				();
 t_paquete* 		procesarPaqueteLibMuse			(t_paquete* paquete, int cliente_fd);
-void 			abrirArchivoGral					(FILE ** archivo);
+void 			abrirArchivoGral				(FILE ** archivo);
+void 			InicializarNuevoPrograma		(int socket);
+void 			FinalizarPrograma				(int socket);
 
 #endif
 
