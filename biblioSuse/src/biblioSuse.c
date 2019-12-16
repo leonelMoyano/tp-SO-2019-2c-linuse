@@ -12,7 +12,7 @@ int suse_create(int tid) {
 	 */
 	printf("Se creo un nuevo hilo: %d...\n", tid);
 	enviarThreadCreate( g_server_socket, tid );
-	return esperarRespuestaThreadCreate( g_server_socket );
+	return 0;
 }
 
 int suse_schedule_next(void) {
@@ -131,17 +131,6 @@ void esperarRespuestaConfig( int socket ){
 		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
 	}
 	destruirPaquete( respuestaMultiprog );
-}
-
-int esperarRespuestaThreadCreate( int socket ){
-	t_paquete *respuestaMultiprog = recibirArmarPaquete( socket );
-	if( respuestaMultiprog->codigoOperacion != SUSE_CREATE ){
-		log_error( g_logger, "Recibi algo que no es respuesta de close");
-	}
-	int respuesta = deserializarNumero( respuestaMultiprog->buffer );
-	log_info( g_logger, "Suse_Create recibio esta respuesta %d", respuesta );
-	destruirPaquete( respuestaMultiprog );
-	return respuesta;
 }
 
 int esperarRespuestaThreadClose( int socket ){

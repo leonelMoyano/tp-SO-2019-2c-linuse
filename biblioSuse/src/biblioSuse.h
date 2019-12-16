@@ -39,7 +39,6 @@ void hilolay_init(void);
 void iniciar_log(void);
 
 void enviarThreadCreate(int socket, int tid);
-int esperarRespuestaThreadCreate( int socket );
 
 void enviarThreadJoin(int socket, int tid);
 int  esperarRespuestaThreadJoin( int socket );
