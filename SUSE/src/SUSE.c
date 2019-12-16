@@ -145,27 +145,25 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 void trancisionar_bloqueado_a_ready( void* thread ){
 	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
 	bool compare_thread( void* otro_thread ){
-
 		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
-		return otro_thread_t->tid == thread_t->tid;
+		bool condition_1 = otro_thread_t->tid == thread_t->tid;
+		bool condition_2 = otro_thread_t->proceso_padre->main_tid == thread_t->proceso_padre->main_tid;
+		return condition_1 && condition_2;
 	}
-
 	// TODO cambiar la cola de bloqueado que agarro si va a terminar siendo una global para tods los procs
-	list_remove_by_condition( thread_t->proceso_padre->blocked, compare_thread);
+	list_remove_by_condition( g_blocked_threads, compare_thread);
 	list_add( thread_t->proceso_padre->ready, thread );
 }
 
 void trancisionar_ready_a_bloqueado( void* thread ){
 	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
 	bool compare_thread( void* otro_thread ){
-
 		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
 		return otro_thread_t->tid == thread_t->tid;
 	}
-
-	// TODO cambiar la cola de bloqueado que agarro si va a terminar siendo una global para tods los procs
 	list_remove_by_condition( thread_t->proceso_padre->ready, compare_thread);
-	list_add( thread_t->proceso_padre->blocked, thread );
+	list_add( g_blocked_threads, thread );
+	// pasamos el thread a la lista Global Blocked Threads
 }
 
 t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
@@ -175,27 +173,28 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 	t_paquete* respuesta = NULL;
 
 	if( cliente_suse->main_tid < 0){
-		log_warning( g_logger, "Proceso %s inexistente", cliente_suse->main_tid );
+		log_warning( g_logger, "Proceso %d inexistente en socket %d", cliente_suse->main_tid, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( -ECHILD, SUSE_CLOSE );
 	}
 	else if ( cliente_suse->running_thread == NULL){
-		log_warning( g_logger, "Proceso %s sin hilos en ejecucion", cliente_suse->main_tid );
+		log_warning( g_logger, "Proceso %d sin hilos en ejecucion en socket %d", cliente_suse->main_tid, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_CLOSE );
 	}
 	else{
 		t_client_thread_suse* thread_a_cerrar = cliente_suse->running_thread;  	// obtengo el thread en ejecucion
-		list_add(cliente_suse->exit,thread_a_cerrar);							// se agregamos al proceso a la lista "exit"
+		list_add(g_exit_threads,thread_a_cerrar);								// se agregó el running thread la lista Global EXIT Threads.
 		thread_a_cerrar->estado = EXIT;											// cambio el estado a de *thread_a_cerrar* a EXIT.
 		thread_a_cerrar->time_last_yield = time(NULL);							// actualizamos "time_last_yield" porque deja de ejecutarse
 		t_list* pasar_a_ready = thread_a_cerrar->threads_bloqueados;			// en el "proceso_padre" de thread_a_cerrar
 																				// muevo elementos de la lista "blocked" a "ready";
 		list_iterate(pasar_a_ready, trancisionar_bloqueado_a_ready);            // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
-		list_clean(pasar_a_ready); // porque una vez que transicionan a ready los tenemos que sacar de la cola de bloqueados del thread
-		// solo llamar a trancisionar_bloqueado_a_ready con cada elemento de la lista los saca de la lista de bloqueados del proceso pero quedan
-		// dentro de la lista de bloqueados por el thread
-		// TODO buscar en la cola EXIT el TID del thread en running del proceso que realizó el request SUSE_JOIN.
-		// Por ejemplo: int tid_en_cola(t_queue* cola_exit, int tid_a_buscar);
-		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion del Proceso %d", cliente_suse->main_tid );
+		list_clean(pasar_a_ready);
+		/* porque una vez que transicionan a ready
+		 * los tenemos que sacar de la cola de bloqueados del thread
+		 * solo llamar a trancisionar_bloqueado_a_ready con cada elemento
+		 * de la lista los saca de la lista de bloqueados del proceso pero quedan
+		 * dentro de la lista de bloqueados por el thread */
+		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion %d del socket %d", cliente_suse->running_thread, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
 	}
 	return respuesta;
@@ -208,33 +207,37 @@ t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, i
 	t_paquete* respuesta = NULL;
 
 	if( cliente_suse->main_tid < 0){
-		log_warning( g_logger, "Proceso %s inexistente", cliente_suse->main_tid );
+		log_warning( g_logger, "Proceso %d inexistente en socket %d", cliente_suse->main_tid, socket_cliente);
 		respuesta = armarPaqueteNumeroConOperacion( -ECHILD, SUSE_JOIN );
 	}
 	if ( cliente_suse->running_thread == NULL){
-		log_warning( g_logger, "Proceso %s sin hilos en ejecucion", cliente_suse->main_tid );
+		log_warning( g_logger, "Proceso %d sin hilos en ejecucionen socket %d", cliente_suse->main_tid, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_JOIN );
 	}
 	else{
 		t_client_thread_suse* thread_buscado_en_exit;
 		bool compare_thread_in_thread_lists( void* thread ){
 			t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
-			return tid_to_join == thread_t->tid;
+			bool condition_1 = tid_to_join == thread_t->tid;
+			bool condition_2 = cliente_suse->main_tid == thread_t->proceso_padre->main_tid;
+			return condition_1 && condition_2;
 		}
-		thread_buscado_en_exit = list_find( cliente_suse->exit, compare_thread_in_thread_lists ); 		//busco el running_thread  en la lista "cliente_suse->exit" del proceso que hizo el request
-		// TODO buscar en la Cola Global EXIT el TID del thread en running del proceso que realizó el request SUSE_JOIN.
-		// Por ejemplo: int tid_en_cola(t_queue* cola_exit, int tid_to_join);
-		if (thread_buscado_en_exit != NULL) { //encontré al thread requested to join en "cliente_suse->exit"
-			log_info( g_logger, "Operacion Suse_Join Ok, El hilo %d del Proceso %d ya estaba finalizado", tid_to_join, cliente_suse->running_thread->tid );
+		thread_buscado_en_exit = list_find( g_exit_threads, compare_thread_in_thread_lists );
+		// busco en la Lista Global de EXIT threads el TID enviado por el request SUSE_JOIN (diferente al TID del running_thread).
+
+		if (thread_buscado_en_exit != NULL) {
+		//encontré al thread requested to join la Lista Global de EXIT threads
+			log_info( g_logger, "Operacion Suse_Join Ok, Hilo %d de socket %d ya en EXIT", tid_to_join, socket_cliente );
 			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
 		}
 		else {
 			cliente_suse->running_thread->estado = BLOCKED;													// le seteamos el estado BLOCKED al thread
-			cliente_suse->running_thread->time_last_yield = time(NULL);										// actualizamos "time_last_yield" porque va a dejar de ejecutarse
-			list_add(cliente_suse->blocked,cliente_suse->running_thread);									// agregamos al thread en ejecución a la lista "cliente_suse->blocked" del proceso que hizo el request
+			cliente_suse->running_thread->time_last_yield = time(NULL);									// actualizamos "time_last_yield" porque va a dejar de ejecutarse
+			void* runningThread = cliente_suse->running_thread;
+			list_add(g_blocked_threads,runningThread);														// agregamos al thread en ejecución a la lista "cliente_suse->blocked" del proceso que hizo el request
 			t_client_thread_suse* thread_to_join = find_thread_by_tid_in_parent(tid_to_join, cliente_suse); // busco el thread que fue requerido a hacer Join
-			list_add(thread_to_join->threads_bloqueados,cliente_suse->running_thread); 						// agregamos a la lista "thread_bloqueados" del thread solicitado a hacer Join el running_thread al thread
-			log_info( g_logger, "Operacion Suse_Join Ok, Hilo en ejecucion %d a BLOCKED, add en lista Bloqueados del Proceso Principal %d", cliente_suse->running_thread->tid, cliente_suse->main_tid );
+			list_add(thread_to_join->threads_bloqueados,runningThread); 									// agregamos a la lista "thread_bloqueados" del thread solicitado a hacer Join el running_thread al thread
+			log_info( g_logger, "Operacion Suse_Join Ok, Hilo en ejecucion %d a BLOCKED del socket %d", cliente_suse->running_thread, socket_cliente );
 
 			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
 		}
@@ -395,7 +398,7 @@ t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int 
 		log_info( g_logger, "Sem %s esta en 0, se bloquea el tid %d", sem_req_info->name, sem_req_info->tid );
 		running_thread->estado = BLOCKED;
 		queue_push( semaforo->threads_bloquedos, running_thread );
-		list_add( cliente_suse->blocked, running_thread );
+		list_add( cliente_suse->blocked, running_thread );//TODO
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
 	} else { // aca asumo que el semaforo puede ser restado porque no es 0
 		semaforo->current_value--;

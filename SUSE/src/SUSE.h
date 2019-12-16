@@ -20,9 +20,12 @@
 
 #define LIBSUSE 10
 
-t_log* g_logger;
-t_config *g_config;
-t_list* g_semaforos;
+t_log* 		g_logger;
+t_config* 	g_config;
+t_list* 	g_semaforos;
+t_queue* 	g_new_threads;
+t_list* 	g_blocked_threads;
+t_list* 	g_exit_threads;
 
 void iniciar_logger	(void);
 void inicializar_estructuras();
