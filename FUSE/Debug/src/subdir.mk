@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../src/fuse_serializaciones.c \
 ../src/sac_cli.c 
 
 OBJS += \
+./src/fuse_serializaciones.o \
 ./src/sac_cli.o 
 
 C_DEPS += \
+./src/fuse_serializaciones.d \
 ./src/sac_cli.d 
 
 

@@ -1,5 +1,11 @@
+/*
+ * sac_fs_handlers.c
+ *
+ *  Created on: 16 dic. 2019
+ *      Author: utnso
+ */
+
 // -- FUSE import y boilerplate
-#include <fuse.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -12,15 +18,15 @@
 #include <fcntl.h>
 
 // -- SAC-CLI imports
-#include <commons/temporal.h>
 #include <commons/log.h>
 #include <commons/bitarray.h>
-#include <commons/string.h>
 #include <biblioNOC/paquetes.h>
 #include "sac.h"
 #include "fuse_utils.h"
+
 #include "sac_cod_ops.h"
-#include "fuse_serializaciones.h"
+#include "sac_fs_handlers.h"
+#include "sac_server_serializaciones.h"
 
 t_log* g_logger;
 
@@ -31,21 +37,6 @@ GFile* g_node_table; // Puntero al primer nodo del FS
 int g_node_table_block_index; // Indice de comienzo de la tabla de nodos
 u_int32_t g_block_count; // Cantidad de bloques en el archivo
 t_bitarray* g_bitmap; // Puntero al bitmap del FS
-
-/*
- * Esta es una estructura auxiliar utilizada para almacenar parametros
- * que nosotros le pasemos por linea de comando a la funcion principal
- * de FUSE
- */
-struct t_runtime_options {
-} runtime_options;
-
-/*
- * Esta Macro sirve para definir nuestros propios parametros que queremos que
- * FUSE interprete. Esta va a ser utilizada mas abajo para completar el campos
- * welcome_msg de la variable runtime_options
- */
-#define CUSTOM_FUSE_OPT_KEY(t, p, v) { t, offsetof(struct t_runtime_options, p), v }
 
 
 /**
@@ -84,47 +75,28 @@ int find_by_path(const char *path){
 	return nodo_encontrado;
 }
 
-static int do_getattr(const char *path, struct stat *st) {
+t_paquete* procesar_getattr( t_paquete* request ) {
+	char* path = deserializarMensaje( request->buffer );
+
 	log_info( g_logger, "[getattr]:%s", path );
 
-	// GNU's definitions of the attributes (http://www.gnu.org/software/libc/manual/html_node/Attribute-Meanings.html):
-	// 		st_uid: 	The user ID of the file’s owner.
-	//		st_gid: 	The group ID of the file.
-	//		st_atime: 	This is the last access time for the file.
-	//		st_mtime: 	This is the time of the last modification to the contents of the file.
-	//		st_mode: 	Specifies the mode of the file. This includes file type information (see Testing File Type) and the file permission bits (see Permission Bits).
-	//		st_nlink: 	The number of hard links to the file. This count keeps track of how many directories have entries for this file. If the count is ever decremented to zero, then the file itself is discarded as soon
-	//						as no process still holds it open. Symbolic links are not counted in the total.
-	//		st_size:	This specifies the size of a regular file in bytes. For files that are really devices this field isn’t usually meaningful. For symbolic links this specifies the length of the file name the link refers to.
-
-	st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
-	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
-	st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
-
 	if (strcmp(path, "/") == 0) {
-		st->st_mode = S_IFDIR | 0755;
-		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
-		st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
-		return 0;
+		free( path );
+		return armarPaqueteGetattr( 2, time( NULL ), 0, SAC_getattr );
 	}
 
-	// path aca es por ej "/testFoo"
 	int currNodeIndex = find_by_path(path);
+	free( path );
+
 	if (currNodeIndex != -1) {
 		GFile* currNode = g_node_table + currNodeIndex;
-		if( currNode->state == 1 )
-			st->st_mode = S_IFREG | 0644;
-		else
-			st->st_mode = S_IFDIR | 0755;
-		st->st_nlink = 1;
-		st->st_mtime = currNode->m_date;
-		st->st_size = currNode->file_size;
-		return 0;
+
+		return armarPaqueteGetattr( currNode->state, currNode->m_date, currNode->file_size, SAC_getattr );
 	}
 
-	return -ENOENT;
+	return armarPaqueteGetattr( 0, 0, 0, SAC_getattr );
 }
-
+/*
 static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
 	log_info( g_logger, "[readdir]:%s", path );
 
@@ -158,6 +130,7 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 
 	return 0;
 }
+*/
 
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	log_info( g_logger, "[read]:%s", path );
@@ -259,94 +232,29 @@ void occupy_node( char *path, int nodeIndex, int parentNodeIndex, int state ){
 	memset( nodeToSet->blk_indirect, 0, BLKINDIRECT );
 }
 
-static int do_centralized_getattr(const char *path, struct stat *st) {
-	log_info( g_logger, "[getattr]:%s", path );
+t_paquete* procesar_mknod ( t_paquete* request ){
+	char* path = deserializarMensaje( request->buffer );
 
-	t_paquete* request = armarPaquetePathConOperacion( path, SAC_getattr );
-	t_paquete* response = send_request( request, "127.0.0.1", "54660" );
-
-	t_getattr_response* getattr_response = deserializarGetattr( response->buffer );
-	destruirPaquete( response ); // este se puede free de una porque solo saca valores
-
-	if( getattr_response->type == 0 ){
-		free( getattr_response );
-		errno = ENOENT;
-		return -ENOENT;
-	}
-
-	st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
-	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
-	st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
-
-	if( getattr_response->type == 1 )
-		st->st_mode = S_IFREG | 0644;
-	else
-		st->st_mode = S_IFDIR | 0755;
-
-	st->st_nlink = 1;
-	st->st_mtime = getattr_response->last_mod_time; // The last "m"odification of the file/directory is right now
-	st->st_size = getattr_response->size;
-
-	free( getattr_response );
-	return 0;
-}
-
-static int do_centralized_mknod(const char *path, mode_t mode, dev_t device){
-	log_info( g_logger, "[mknod]:%s", path );
-
-	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_mknod );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
-
-	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
-
-	if( errno_response->return_value < 0 )
-		errno = errno_response->errno_value;
-
-	int return_value = errno_response->return_value;
-
-	destruirPaquete( response );
-	free( errno_response );
-
-	return return_value;
-}
-
-static int do_centralized_utimens( const char *path, const struct timespec tv[2]){
-	log_info( g_logger, "[utimens]:%s", path );
-
-	// donde tv[ 0 ] es last access time y tv[ 1 ] es last modified time
-	// solo existe last modified time en SAC asi que no tengo fecha de ultimo acceso que actualizar
-	t_paquete* paquete = armarPaqueteUtimens( path, tv[0].tv_sec, SAC_utimens );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
-
-	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
-
-	if( errno_response->return_value < 0 )
-		errno = errno_response->errno_value;
-
-	int return_value = errno_response->return_value;
-
-	destruirPaquete( response );
-	free( errno_response );
-
-	return return_value;
-}
-
-static int do_mknod (const char *path, mode_t mode, dev_t device){
 	log_info( g_logger, "[mknod]:%s", path );
 	int currNode = check_existance_and_availability( path );
-	if( currNode < 0 )
-		return currNode;
+	if( currNode < 0 ) {
+		free( path );
+		return armarPaqueteReturnErrnoConOperacion( currNode, currNode, SAC_mknod );
+	}
 
 	int parentNode = get_parent_node( path );
-	if( parentNode == -ENOTDIR )
-		return -ENOENT;
+	if( parentNode == -ENOTDIR ){
+		free( path );
+		return armarPaqueteReturnErrnoConOperacion( -ENOENT, -ENOENT, SAC_mknod );
+	}
 
 	log_info( g_logger, "[mknod]:%s ocupa nodo %d", path, currNode );
 	occupy_node( path, currNode, parentNode, 1 );
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
-	return 0;
+	free( path );
+	return armarPaqueteReturnErrnoConOperacion( 0, 0, SAC_mknod );
 }
 
 
@@ -686,91 +594,60 @@ static int do_truncate(const char* path, off_t size){
 	return 0;
 }
 
-static int do_utimens( const char *path, const struct timespec tv[2]){
-	log_info( g_logger, "[utimens]:%s", path );
-	// donde tv[ 0 ] es last access time y tv[ 1 ] es last modified time
-	int currNodeIndex = find_by_path(path);
+t_paquete* procesar_utimens ( t_paquete* request ){
+	t_utimens_request* utimens_req = deserializarUtimensReq( request->buffer );
+	log_info( g_logger, "[utimens]:%s", utimens_req->path );
+
+	int currNodeIndex = find_by_path(utimens_req->path);
 	if( currNodeIndex == -1 ){
-		return -ENOENT;
+		destruirUtimensReq( utimens_req );
+		return armarPaqueteReturnErrnoConOperacion( -ENOENT, -ENOENT, SAC_utimens );
 	}
 
 	GFile* currNode = g_node_table + currNodeIndex;
-	currNode->m_date = tv[0].tv_sec;
+	currNode->m_date = utimens_req->modified_time;
 	// solo existe last modified time en SAC asi que no tengo fecha de ultimo acceso que actualizar
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
-	return 0;
+	destruirUtimensReq( utimens_req );
+	return armarPaqueteReturnErrnoConOperacion( 0, 0, SAC_utimens );
 }
 
-static struct fuse_operations operations = {
-	.mknod   = do_centralized_mknod,
-	.utimens = do_centralized_utimens,
-	.getattr = do_centralized_getattr,
-	/*
-	.readdir = do_readdir,
-	.read = do_read,
-	.unlink = do_unlink,
-	.write = do_write,
-	.truncate = do_truncate,
-	.mkdir = do_mkdir,
-	.rmdir = do_rmdir,
-	.rename = do_rename,
-	*/
-};
+long fileSize(char *fname) {
+    struct stat stat_buf;
+    int rc = stat(fname, &stat_buf);
+    return rc == 0 ? stat_buf.st_size : -1;
+}
 
-/** keys for FUSE_OPT_ options */
-enum {
-	KEY_VERSION,
-	KEY_HELP,
-};
+void init_fs(char* disc_path) {
+	int fd = open( disc_path, O_RDWR );
 
-/*
- * Esta estructura es utilizada para decirle a la biblioteca de FUSE que
- * parametro puede recibir y donde tiene que guardar el valor de estos
- */
-static struct fuse_opt fuse_options[] = {
-		// Estos son parametros por defecto que ya tiene FUSE
-		FUSE_OPT_KEY("-V", KEY_VERSION),
-		FUSE_OPT_KEY("--version", KEY_VERSION),
-		FUSE_OPT_KEY("-h", KEY_HELP),
-		FUSE_OPT_KEY("--help", KEY_HELP),
-		FUSE_OPT_END,
-};
+	g_disk_size = fileSize( disc_path );
+	g_first_block = mmap( NULL, g_disk_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-// Dentro de los argumentos que recibe nuestro programa obligatoriamente
-// debe estar el path al directorio donde vamos a montar nuestro FS
-int main(int argc, char *argv[]) {
-	g_logger = log_create( "/home/utnso/logs/FUSE/cli.log", "SACCLI", 1, LOG_LEVEL_TRACE );
-	// TODO levantar config, crear struct y var global
-	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+	g_header = (GHeader*) g_first_block;
 
-	// Limpio la estructura que va a contener los parametros
-	memset(&runtime_options, 0, sizeof(struct t_runtime_options));
+	char* name = calloc(4, 1);
+	memcpy(name, g_header->sac, 3);
+	g_block_count = g_disk_size / GBLOCKSIZE;
+	log_info( g_logger, "Nombre: %s", name);
+	log_info( g_logger, "Version: %u", g_header->version);
+	log_info( g_logger, "Tamanio bitmap %u", g_header->size_bitmap);
+	log_info( g_logger, "Tamanio archivo %ld bytes", g_disk_size);
+	log_info( g_logger, "Cantidad de bloques %d", g_block_count);
 
-	// Esta funcion de FUSE lee los parametros recibidos y los intepreta
-	if (fuse_opt_parse(&args, &runtime_options, fuse_options, NULL) == -1){
-		/** error parsing options */
-		log_error( g_logger, "Invalid fuse arguments" );
-		perror("Invalid arguments!");
-		return EXIT_FAILURE;
+	g_bitmap = bitarray_create_with_mode(((char *) g_first_block)+ g_header->blk_bitmap * GBLOCKSIZE, g_header->size_bitmap * GBLOCKSIZE, MSB_FIRST);
+	int occupied = 0, free = 0;
+	for( int i  = 0; i < g_block_count; i++){
+		if( bitarray_test_bit(g_bitmap, i)){
+			occupied ++;
+		} else {
+			free ++ ;
+		}
 	}
+	log_debug( g_logger, "%d libres con %d ocupados", free, occupied );
 
-	// Esta es la funcion principal de FUSE, es la que se encarga
-	// de realizar el montaje, comuniscarse con el kernel, delegar todx
-	// en varios threads
-	return fuse_main(args.argc, args.argv, &operations, NULL);
-}
-
-// Funciones para conectar una sola ves por socket, request y, liberar
-
-t_paquete* send_request( t_paquete* request, char* ip, char* puerto ){
-	int server_socket = conectarCliente( ip, atoi( puerto ), SAC_CLI );
-
-	enviarPaquetes( server_socket, request );
-	t_paquete* respuesta = recibirArmarPaquete( server_socket );
-
-	enviarAvisoDesconexion( server_socket );
-	close( server_socket );
-	return respuesta;
+	g_node_table_block_index = g_header->blk_bitmap + g_header->size_bitmap;
+	g_node_table = (GFile*) g_header + g_node_table_block_index;
 }
