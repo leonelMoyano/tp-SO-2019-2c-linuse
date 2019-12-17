@@ -19,7 +19,7 @@
 #include "suseDefs.h"
 
 #define LIBSUSE 10
-
+/*-----------variables globales------ */
 t_log* 		g_logger;
 t_config* 	g_config;
 t_list* 	g_semaforos;
@@ -27,7 +27,19 @@ t_queue* 	g_new_threads;
 t_list* 	g_blocked_threads;
 t_list* 	g_exit_threads;
 
-void iniciar_logger	(void);
-void inicializar_estructuras();
+/*--------------definiciones--------- */
+void				atenderConexion					( int socketCliente );
+void 				enviarMultiProg					( int socket_dst );
+void 				iniciar_logger					( void );
+void 				inicializar_estructuras			( );
+void 				iniciar_config					(char* path);
+void				inicializar_semaforos			( );
+
+/*
+ * @NAME: trancisionar_bloqueado_a_ready
+ * @DESC: Transiciona el thread de bloqueado a ready, moviendolo de la cola de bloqueados a su cola de ready correspondiente
+ */
+void 				trancisionar_bloqueado_a_ready	( void* thread );
+void 				trancisionar_ready_a_bloqueado	( void* thread );
 
 #endif /* SUSESERVER_H_ */

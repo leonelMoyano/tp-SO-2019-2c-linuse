@@ -9,19 +9,30 @@
 
 #include "SUSE.h"
 
-void       atenderConexion(int socketCliente);
-t_paquete* procesarPaqueteLibSuse( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente );
-t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
-t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-void       esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente );
-void       inicializar_semaforos();
-t_paquete* armarPaqueteNumeroConOperacion( int numero, int codigo_op );
-t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proceso_padre );
-double indice_sjf(t_client_thread_suse* thread_to_compare);
+/*--------------------------------definiciones-------------------------------*/
+t_paquete* 				procesarPaqueteLibSuse			( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente );
+t_paquete* 				procesarThreadCreate			( t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
+t_paquete* 				procesarThreadClose				( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarThreadJoin				( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarThreadScheduleNext		( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarSemSignal				( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarSemWait					( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				armarPaqueteNumeroConOperacion	( int numero, int codigo_op );
+void					esperarPaqueteCreateMain		( t_client_suse* cliente_suse, int socket_cliente );
+/*
+ * @NAME: find_thread_by_tid_in_parent
+ * @DESC: Retorna el thread con el tid buscando dentro del proceso padre, NULL en caso de no existir
+ * busco solo en RUNNING, READY, y en las Listas Globles EXIT y BLOCKED, si esta en NEW no lo busco
+ */
+t_client_thread_suse* 	find_thread_by_tid_in_parent	( int tid, t_client_suse* proceso_padre );
+
+/*
+ *  @NAME: find_sem_by_name
+ *  @DESC: Retorna el semaforo con nombre sem_name, NULL en caso de no existir
+ */
+t_semaforo_suse* 		find_sem_by_name 				( char* sem_name );
+double 					indice_sjf						(t_client_thread_suse* thread_to_compare);
+/*----------------------------------------------------------------------------*/
 
 int main(void) {
 	iniciar_logger();
@@ -36,7 +47,6 @@ int main(void) {
 	config_destroy( g_config );
 	return EXIT_SUCCESS;
 }
-
 
 void atenderConexion(int socketCliente) {
 	log_debug(g_logger, "Attend connection con este socket %d", socketCliente);
@@ -121,50 +131,19 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 
 		cliente_suse->main_tid = tid;
 		cliente_suse->running_thread = nuevo_thread;
-		cliente_suse->new = queue_create();
 		cliente_suse->ready = list_create();
-		cliente_suse->exit = list_create();
-		cliente_suse->blocked = list_create();
-	} else {
-		// Le pongo 0 para simbolizar que nunca corrio
+	}
+	else {						// Le pongo 0 para simbolizar que nunca corrio
 		nuevo_thread->estado = NEW;
 		nuevo_thread->time_last_run = 0;
 		nuevo_thread->time_last_yield = 0;
-
 		// TODO revisar nivel max de multiprog y ponerlo a waiting y no a new ?
-		queue_push( cliente_suse->new, nuevo_thread );
+		queue_push( g_new_threads, nuevo_thread ); // en la cola Global New Threads
 	}
-
 	return NULL;
 }
 
-/**
-* @NAME: trancisionar_bloqueado_a_ready
-* @DESC: Transiciona el thread de bloqueado a ready, moviendolo de la cola de bloqueados a su cola de ready correspondiente
-*/
-void trancisionar_bloqueado_a_ready( void* thread ){
-	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
-	bool compare_thread( void* otro_thread ){
-		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
-		bool condition_1 = otro_thread_t->tid == thread_t->tid;
-		bool condition_2 = otro_thread_t->proceso_padre->main_tid == thread_t->proceso_padre->main_tid;
-		return condition_1 && condition_2;
-	}
-	// TODO cambiar la cola de bloqueado que agarro si va a terminar siendo una global para tods los procs
-	list_remove_by_condition( g_blocked_threads, compare_thread);
-	list_add( thread_t->proceso_padre->ready, thread );
-}
 
-void trancisionar_ready_a_bloqueado( void* thread ){
-	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
-	bool compare_thread( void* otro_thread ){
-		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
-		return otro_thread_t->tid == thread_t->tid;
-	}
-	list_remove_by_condition( thread_t->proceso_padre->ready, compare_thread);
-	list_add( g_blocked_threads, thread );
-	// pasamos el thread a la lista Global Blocked Threads
-}
 
 t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
 
@@ -189,11 +168,11 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 																				// muevo elementos de la lista "blocked" a "ready";
 		list_iterate(pasar_a_ready, trancisionar_bloqueado_a_ready);            // contenidos en la lista "thread_bloqueados" de *thread_a_cerrar*
 		list_clean(pasar_a_ready);
-		/* porque una vez que transicionan a ready
-		 * los tenemos que sacar de la cola de bloqueados del thread
-		 * solo llamar a trancisionar_bloqueado_a_ready con cada elemento
-		 * de la lista los saca de la lista de bloqueados del proceso pero quedan
-		 * dentro de la lista de bloqueados por el thread */
+		/*
+		 * porque una vez que transicionan a ready los tenemos que sacar de la lista global bloqueados
+		 * solo llamar a trancisionar_bloqueado_a_ready con cada elemento de la lista los saca de la lista de bloqueados
+		 * del proceso pero quedan dentro de la lista de bloqueados por el thread
+		 */
 		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion %d del socket %d", cliente_suse->running_thread, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
 	}
@@ -232,9 +211,9 @@ t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, i
 		}
 		else {
 			cliente_suse->running_thread->estado = BLOCKED;													// le seteamos el estado BLOCKED al thread
-			cliente_suse->running_thread->time_last_yield = time(NULL);									// actualizamos "time_last_yield" porque va a dejar de ejecutarse
+			cliente_suse->running_thread->time_last_yield = time(NULL);										// actualizamos "time_last_yield" porque va a dejar de ejecutarse
 			void* runningThread = cliente_suse->running_thread;
-			list_add(g_blocked_threads,runningThread);														// agregamos al thread en ejecución a la lista "cliente_suse->blocked" del proceso que hizo el request
+			list_add(g_blocked_threads,runningThread);														// agregamos al thread en ejecución a la lista Global Blocked Threeads
 			t_client_thread_suse* thread_to_join = find_thread_by_tid_in_parent(tid_to_join, cliente_suse); // busco el thread que fue requerido a hacer Join
 			list_add(thread_to_join->threads_bloqueados,runningThread); 									// agregamos a la lista "thread_bloqueados" del thread solicitado a hacer Join el running_thread al thread
 			log_info( g_logger, "Operacion Suse_Join Ok, Hilo en ejecucion %d a BLOCKED del socket %d", cliente_suse->running_thread, socket_cliente );
@@ -284,57 +263,14 @@ t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente
 	return respuesta;
 }
 
-/*
-	 * TODO
-	 * misma idea que en el close, si llaman un join ( o cualquier operacion )
-	 * sabes que el thread que hizo el request es el que esta corriendo
-	 * buscar si el thread id al que hizo join esta en la lista de exit
-	 * ( threads que ya terminaron )
-	 * - si el thread ya habia terminado entonces no tengo que hacer nada
-	 * - si el thread no esta en exit:
-	 *   muevo el thread que hizo el request a la lista de bloqueados
-	 *   de cliente_suse
-	 *   muevo el thread que hizo el request a la lista de bloqueados
-	 *   del thread al que haya hecho join,
-	 *   ese thread puede estar en la lista de bloqueado o en la lista de ready
-	 *   tengo una funcion que todavia no probe para hacer eso
-	 *   t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proceso_padre )
-	 *   fijate si te parece bien lo que esta escrito ahi y se puede usar
-	 *   lo que podemos hacer es que el cliente haga el request solo enviando
-	 *   el tid del thread al que quiere hacer join y desde aca ya sabemos quien lo pidio
-	 *   porque tiene que ser el que esta en running y nos ahorramos tener que codear
-	 *   una funcion mas de serializar y deserializar
-	 */
-
-
-
-
-/**
-* @NAME: find_sem_by_name
-* @DESC: Retorna el semaforo con nombre sem_name, NULL en caso de no existir
-*/
-t_semaforo_suse* find_sem_by_name( char* sem_name ){
-	bool compare_sem_name( void* sem ){
-		t_semaforo_suse* sem_t = (t_semaforo_suse*) sem;
-		return strcmp( sem_name, sem_t->nombre ) == 0;
-	}
-	return list_find( g_semaforos, compare_sem_name );
-}
-
-
-/**
-* @NAME: find_thread_by_tid_in_parent
-* @DESC: Retorna el thread con el tid buscando dentro del proceso padre, NULL en caso de no existir
-* 	busco solo en RUNNING, READY, EXIT y BLOCKED, si esta en NEW no lo busco
-*/
-
 t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proceso_padre ){
 
 	bool compare_thread_id( void* thread ){
 		t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
-		return tid == thread_t->tid;
+		bool condition_1 = tid == thread_t->tid;
+		bool condition_2 = proceso_padre->main_tid == thread_t->proceso_padre->main_tid;
+		return condition_1 && condition_2;
 	}
-
 	// Lo busco en varios lados porque puede estar en cualquier estado
 	if( proceso_padre->running_thread->tid == tid)
 		return proceso_padre->running_thread;
@@ -345,11 +281,11 @@ t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proc
 	if( thread_buscado != NULL )
 		return thread_buscado;
 
-	thread_buscado = list_find( proceso_padre->exit, compare_thread_id );
+	thread_buscado = list_find( g_exit_threads, compare_thread_id );
 	if( thread_buscado != NULL )
 		return thread_buscado;
 
-	return list_find( proceso_padre->blocked, compare_thread_id );
+	return list_find( g_blocked_threads, compare_thread_id );
 }
 
 t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
@@ -398,7 +334,8 @@ t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int 
 		log_info( g_logger, "Sem %s esta en 0, se bloquea el tid %d", sem_req_info->name, sem_req_info->tid );
 		running_thread->estado = BLOCKED;
 		queue_push( semaforo->threads_bloquedos, running_thread );
-		list_add( cliente_suse->blocked, running_thread );//TODO
+		list_add( g_blocked_threads, running_thread );
+		// agrego al thread en ejecución a la lista Global Blocked Threads,
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
 	} else { // aca asumo que el semaforo puede ser restado porque no es 0
 		semaforo->current_value--;
@@ -413,6 +350,39 @@ t_paquete* armarPaqueteNumeroConOperacion( int numero, int codigo_op ){
 	paquete->codigoOperacion = codigo_op;
 	serializarNumero(paquete, numero);
 	return paquete;
+}
+
+void trancisionar_bloqueado_a_ready( void* thread ){
+	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
+	bool compare_thread( void* otro_thread ){
+		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
+		bool condition_1 = otro_thread_t->tid == thread_t->tid;
+		bool condition_2 = otro_thread_t->proceso_padre->main_tid == thread_t->proceso_padre->main_tid;
+		return condition_1 && condition_2;
+	}
+	list_remove_by_condition( g_blocked_threads, compare_thread);
+	// Quitamos al thread de la lista Global Blocked Threads,
+	list_add( thread_t->proceso_padre->ready, thread );
+	// Agregamos al thread en la lista Ready Threads de su Proceso Padre,
+}
+
+void trancisionar_ready_a_bloqueado( void* thread ){
+	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
+	bool compare_thread( void* otro_thread ){
+		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
+		return otro_thread_t->tid == thread_t->tid;
+	}
+	list_remove_by_condition( thread_t->proceso_padre->ready, compare_thread);
+	list_add( g_blocked_threads, thread );
+	// pasamos el thread a la lista Global Blocked Threads
+}
+
+t_semaforo_suse* find_sem_by_name( char* sem_name ){
+	bool compare_sem_name( void* sem ){
+		t_semaforo_suse* sem_t = (t_semaforo_suse*) sem;
+		return strcmp( sem_name, sem_t->nombre ) == 0;
+	}
+	return list_find( g_semaforos, compare_sem_name );
 }
 
 void esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente ){
@@ -458,14 +428,6 @@ void iniciar_config(char* path){
 	for( int i = 0; array[ i ] != NULL; i++ ){
 		list_add( g_config_server->sem_max, array[ i ] );
 	}
-
-	/*
-	 * print (char *)list_get(configServer->sem_ids, 0 )
-		$3 = 0x804ec20 "A"
-		print atoi(list_get(g_config_server->sem_init, 0 ))
-		$4 = 0
-	 *
-	 */
 }
 
 void inicializar_semaforos(){
@@ -482,7 +444,10 @@ void inicializar_semaforos(){
 }
 
 void inicializar_estructuras(){
-	g_semaforos = list_create();
+	g_semaforos 		= list_create();
+	g_blocked_threads 	= list_create();
+	g_exit_threads		= list_create();
+	g_new_threads		= queue_create();
 }
 
 void iniciar_logger(void) {
@@ -492,7 +457,7 @@ void iniciar_logger(void) {
 
 double indice_sjf(t_client_thread_suse* thread_to_compare) {
 	long ready_time = thread_to_compare->time_last_run - thread_to_compare->time_created;
-	long exec_time = thread_to_compare->time_last_yield - thread_to_compare->time_last_run;
+	long exec_time 	= thread_to_compare->time_last_yield - thread_to_compare->time_last_run;
 	double alfa = g_config_server->alpha_sjf;
 	double comp_alfa = 1 - g_config_server->alpha_sjf;
 	double valor_calculado = alfa * ready_time + comp_alfa * exec_time;
