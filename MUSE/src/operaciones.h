@@ -17,13 +17,17 @@ uint32_t		 procesarUnMap		(uint32_t dir, int socket);
 uint32_t		 allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_programa* segmentos);
 uint32_t		 allocarEnPaginasNuevas(int socket,t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios );
 int				 verificarCompactacionFree(t_list* heaps, int indiceHeap);
-void			 cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_t tamanio, bool cargo);
+int			 	 cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_t tamanio, bool cargo);
 
 
+int 			 copiarContenidoDeFrames(t_segmento* segmento, uint32_t direccionLogica, size_t tamanio,void* contenidoDestino);
+int 			 copiarContenidoAFrames(t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* porcionMemoria);
 void*			 sacarFrameSwap		(int nroMarco, FILE** archivo);
 void			 escribirFrameSwap	(int nroMarco, void* contenido,FILE** archivo);
 void			 TraerPaginaDeSwap	(int socketPrograma, int nroPagina, int idSegmento);
 void			 cargarPaginaEnSwap	(void* bytes,int nroPagina, int socketPrograma, int idSegmento);
+void 			 escribirContenidoEnSwap(t_pagina * unaPagina,int indiceLibre,void* contenido,int desplazamiento);
+void 			 paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * contenidoMap,t_segmento* unSegmento,int socket);
 
 void*			 leerArchivoCompartido();
 void*			 escribirEnArchivoCompartido();

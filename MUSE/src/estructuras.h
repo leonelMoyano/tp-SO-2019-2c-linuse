@@ -108,7 +108,6 @@ typedef struct{
 	int nroPagina;
 	int socketPrograma;
 	int idSegmento;
-	int indiceEnSwap;
 }t_paginaAdministrativa;
 
 typedef struct{
