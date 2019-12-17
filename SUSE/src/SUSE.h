@@ -26,6 +26,7 @@ t_list* 	g_semaforos;
 t_queue* 	g_new_threads;
 t_list* 	g_blocked_threads;
 t_list* 	g_exit_threads;
+int 		g_multiprog_max;
 
 /*--------------definiciones--------- */
 void				atenderConexion					( int socketCliente );

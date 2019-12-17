@@ -17,4 +17,4 @@ clean:
 
 
 example:
-	$(CC) -L./$(BUILD)/ -Wall $(CFLAGS) -o $(BUILD)/$(NAME) src/example_program.c -lhilolay
+	$(CC) src/example_program.c -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug" -Wall $(CFLAGS) -o $(BUILD)/$(NAME) -lhilolay -lbiblioSuse

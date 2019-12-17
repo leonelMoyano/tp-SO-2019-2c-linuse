@@ -124,7 +124,9 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 	nuevo_thread->time_created = time( NULL );
 	nuevo_thread->proceso_padre = cliente_suse;
 	// TODO estimacion inicial en 0
-	if( is_main_thread == 1 ){ // Cuando llega el create del main thread ya esta corriendo
+	if( is_main_thread == 1 && g_multiprog_max > 0){
+		// Cuando llega el create del main thread ya esta corriendo
+		// Valido si el grado de multiprogramación permite ejecutar al nuevo thread,
 		nuevo_thread->estado = RUNNING;
 		nuevo_thread->time_last_run = time( NULL );
 		nuevo_thread->time_last_yield = time( NULL );
@@ -132,6 +134,8 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 		cliente_suse->main_tid = tid;
 		cliente_suse->running_thread = nuevo_thread;
 		cliente_suse->ready = list_create();
+
+		g_multiprog_max--;
 	}
 	else {						// Le pongo 0 para simbolizar que nunca corrio
 		nuevo_thread->estado = NEW;
@@ -143,10 +147,7 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 	return NULL;
 }
 
-
-
 t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
-
 	log_info( g_logger, "Recibi un close");
 
 	t_paquete* respuesta = NULL;
@@ -173,7 +174,19 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 		 * solo llamar a trancisionar_bloqueado_a_ready con cada elemento de la lista los saca de la lista de bloqueados
 		 * del proceso pero quedan dentro de la lista de bloqueados por el thread
 		 */
+		if (g_multiprog_max < g_config_server->max_multiprog) {
+			g_multiprog_max++;
+		}
+		// al hacer close de un thread aumento en "1" el grado de multiprogramación
+		void* to_ready_thread = queue_pop(g_new_threads);
+		// quito al 1° thread de la cola Global New Threads,
+		t_client_thread_suse* thread_to_ready = (t_client_thread_suse*) to_ready_thread;
+		thread_to_ready->estado = READY;
+		list_add(cliente_suse->ready, to_ready_thread);
+		// habilito al thread a estar entre los próximos a ejecutar
+		// lo agregamos a la lista ready del proceso que realizó el request
 		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion %d del socket %d", cliente_suse->running_thread, socket_cliente );
+		log_info( g_logger, "Nuevo hilo %d en la lista Ready del socket %d", thread_to_ready->tid, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
 	}
 	return respuesta;
@@ -398,8 +411,8 @@ void enviarMultiProg( int socket_dst ){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 	unPaquete->codigoOperacion = SUSE_GRADO_MULTIPROG;
 
-	log_debug(g_logger, "Envio este grado de multiprogramacion %d", g_config_server->max_multiprog);
-	serializarNumero(unPaquete, g_config_server->max_multiprog);
+	log_debug(g_logger, "Envio este grado de multiprogramacion %d", g_multiprog_max);
+	serializarNumero(unPaquete, g_multiprog_max);
 	enviarPaquetes(socket_dst, unPaquete);
 }
 
@@ -448,6 +461,7 @@ void inicializar_estructuras(){
 	g_blocked_threads 	= list_create();
 	g_exit_threads		= list_create();
 	g_new_threads		= queue_create();
+	g_multiprog_max 	= g_config_server->max_multiprog;
 }
 
 void iniciar_logger(void) {
