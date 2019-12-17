@@ -91,7 +91,7 @@ t_programa* crearPrograma(int socket){
 
 t_pagina* crearPagina(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
-	pagina->flagPresencia  = true;
+	pagina->flagPresencia  = true; //TODO si es mmap deberia ir en false, agregar flag
 	pagina->flagModificado = false;
 	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;

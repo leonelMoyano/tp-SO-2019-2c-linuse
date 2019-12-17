@@ -21,6 +21,8 @@ int main(void) {
 
 	lengthPagina = g_configuracion->tamanioPagina;
 	size_t tamArch;
+
+	//archivoSwap = malloc(g_configuracion->tamanioSwap);
 	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
 
 	//log_info( g_logger, "Levante archivo Swap: %s", RUTASWAP );
