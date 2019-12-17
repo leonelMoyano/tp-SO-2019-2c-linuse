@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdarg.h>
-#include <signal.h>
+#include <signal.h>s
 #include "estructuras.h"
 #include "operaciones.h"
 #include "util.h"
@@ -22,6 +22,7 @@
 #define RUTACONFIG "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/muse.cfg"
 #define RUTASWAP "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/swap.txt"
 #define LIBMUSE 400
+#define DIRECCIONAMIENTO 4294967296‬
 
 int idSegmento;
 int nroPrograma;

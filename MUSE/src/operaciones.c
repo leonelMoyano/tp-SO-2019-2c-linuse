@@ -10,7 +10,8 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
 		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
-		direccionLogica = allocarEnPaginasNuevas(socket, segmentoElegido,tam);
+		list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
+		int auxNoUsar = allocarHeapNuevo(programa , segmentoElegido, tam);
 	}
 	else
 	{
@@ -22,12 +23,17 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 			if(ultimoSegmento->tipoSegmento == 2)//segmento mmap
 			{
 				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
+				list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
+				programa->segmentos_programa->limiteLogico += tam;
+
 			}
-			else segmentoElegido = ultimoSegmento;
+			else{
+				segmentoElegido = ultimoSegmento;
+				direccionLogica = allocarHeapNuevo(socket,segmentoElegido, tam);
+				int cantPaginas = framesNecesariosPorCantidadMemoria(tam);
 
-			direccionLogica = (socket,segmentoElegido,tam);
+			}
 		}
-
 		else{
 
 			segmentoElegido = buscarSegmento(programa->segmentos_programa->lista_segmentos,direccionLogica);
@@ -105,18 +111,21 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 	if(!segmentoUnico) return -1;
 
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
-	if(dst + n > segmento->limiteLogico && !esExtendible){ return -1;}
+	if(dst + n > segmento->limiteLogico){ return -1;}
 
 	if(segmento->tipoSegmento == 1){
 		int indiceHeap = esDireccionLogicaValida(dst,segmento);
 		t_heapSegmento * auxHeap = list_get(segmento->heapsSegmento, indiceHeap);
 
 		if(auxHeap->isFree){
-			if(auxHeap->t_size >= n){
-			//debo marcarlo como ocupado, y ademas cargar el frame?
+			if(auxHeap->t_size > n){
+				auxHeap->isFree = false;
+				auxHeap->t_size = n;
+				t_heapSegmento* heapHueco = crearHeap(auxHeap->t_size - n,true);
+				cambiarFramesPorHeap(segmento,dst,n,true);
 			}
 			else{
-			//agregar mas heaps, osea extender, debo pedir paginas y cargar en frame???
+				//voy a pisar otro heap metadata ...que despues va a romper
 			}
 		}
 	}
@@ -164,22 +173,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 	}
 
-
-	list_add(programa->segmentos_programa,nuevoSegmento);
-	programa->segmentos_programa->limiteLogico += length;
-
-	//TODO: el flag para paginas no presentes
-
-	//int desplazamiento = 0
-
-	//for paginas que necesito
-	//pido un marco libre
-	//tengo que crear estructur contenidoframe y agregarla a la lista
-	//al contenido de ese frame asignarle contenidoMap(0-tamanioPagina)
-	//desplazamiento += tamanioṔagina
-
-
-	allocarEnPaginasNuevas(socket, nuevoSegmento, length);
+	list_add(programa->segmentos_programa->lista_segmentos,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += length;
 
 	return nuevoSegmento->baseLogica;
@@ -261,26 +255,45 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 	return -1;
 }
 
-uint32_t allocarEnPaginasNuevas(int socket, t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios ){
-
-	int cantPaginasNecesarias = framesNecesariosPorCantidadMemoria(cantidadBytesNecesarios);
-
+void allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias ){
 	int i;
 
 	for (i = 0; cantPaginasNecesarias > i ; ++i){
-
 		int indiceFrame = buscarFrameLibre();
-
-		//TODO si es de mmap solo debo cargar las paginas en el segmento,sin que esten presentes, flag
 		if(indiceFrame == -1) indiceFrame = ClockModificado();
 		else
-		agregarPaginaEnSegmento(socket, segmentoAExtender,indiceFrame);
+		agregarPaginaEnSegmento(programa->socket, segmentoAExtender,indiceFrame);
 	}
 
+	segmentoAExtender->limiteLogico += cantPaginasNecesarias * lengthPagina;
+	programa->segmentos_programa->limiteLogico += segmentoAExtender->limiteLogico;	
+}
 
-	uint32_t direccionHeap = 0;
-	return direccionHeap;
+int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNecesarios){
 
+	uint32_t direccionLogica = segmento->limiteLogico;
+
+	t_heapSegmento* ultimoHeap = list_get(segmento->heapsSegmento, list_size(segmento->heapsSegmento));
+	if(ultimoHeap != NULL && ultimoHeap->isFree){
+		cantBytesNecesarios = cantBytesNecesarios - ultimoHeap->t_size;
+		ultimoHeap->isFree = false;
+		direccionLogica = direccionLogica - ultimoHeap->t_size;
+		ultimoHeap->t_size = cantBytesNecesarios;
+	}
+	else{
+		t_heapSegmento* heapNuevo = crearHeap(cantBytesNecesarios,false);
+		list_add(segmento->heapsSegmento,heapNuevo);
+	}
+	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios);
+	int huecoLibre = cantBytesNecesarios - (cantPaginas * lengthPagina);
+	if(huecoLibre > 0) {
+		t_heapSegmento* heapNuevoHueco = crearHeap(huecoLibre,true);
+		list_add(segmento->heapsSegmento,heapNuevoHueco);
+	}
+
+	allocarEnPaginasNuevas(programa,segmento,cantPaginas);
+
+	return direccionLogica;
 }
 
 

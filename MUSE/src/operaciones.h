@@ -14,8 +14,9 @@ int 			 procesarSync		(uint32_t addr, size_t len, int socket);
 uint32_t		 procesarUnMap		(uint32_t dir, int socket);
 
 
-uint32_t		 allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_programa* segmentos);
-uint32_t		 allocarEnPaginasNuevas(int socket,t_segmento* segmentoAExtender, uint32_t cantidadBytesNecesarios );
+uint32_t		 allocarEnHeapLibre	(uint32_t cantidadBytesNecesarios, t_segmentos_programa* segmentos);
+int 			 allocarHeapNuevo	(t_programa* programa, t_segmento* segmento, int cantBytesNecesarios);
+void 		     allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias );
 int				 verificarCompactacionFree(t_list* heaps, int indiceHeap);
 int			 	 cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_t tamanio, bool cargo);
 
