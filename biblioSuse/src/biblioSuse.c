@@ -1,7 +1,7 @@
 /* Lib implementation: It'll only schedule the last thread that was created */
 #include "biblioSuse.h"
 
-#define CONFIG_PATH "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/biblioSuse"
+#define CONFIG_PATH "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/biblioSuse/biblioSuse.cfg"
 int g_max_multiprog; // Esta es la respuesta de grado de multiprogramacion en el server SUSE
 int g_server_socket; // Esta es la referencia global al socket conectado al server SUSE
 
