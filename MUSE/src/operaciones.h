@@ -21,13 +21,14 @@ int				 verificarCompactacionFree(t_list* heaps, int indiceHeap);
 int			 	 cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_t tamanio, bool cargo);
 
 
-int 			 copiarContenidoDeFrames(t_segmento* segmento, uint32_t direccionLogica, size_t tamanio,void* contenidoDestino);
-int 			 copiarContenidoAFrames(t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* porcionMemoria);
+int 			 copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, size_t tamanio,void* contenidoDestino);
+int 			 copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* porcionMemoria);
 void*			 sacarFrameSwap		(int nroMarco, FILE** archivo);
 void			 escribirFrameSwap	(int nroMarco, void* contenido,FILE** archivo);
-void			 TraerPaginaDeSwap	(int socketPrograma, int nroPagina, int idSegmento);
+void* 			 traerContenidoSwap(int indiceBuscado);
+void 			 TraerPaginaDeSwap	(int socketPrograma, t_pagina* pagina, int idSegmento);
 void			 cargarPaginaEnSwap	(void* bytes,int nroPagina, int socketPrograma, int idSegmento);
-void 			 escribirContenidoEnSwap(t_pagina * unaPagina,int indiceLibre,void* contenido,int desplazamiento);
+void 			 escribirContenidoEnSwap(int indiceLibre,void* contenido,int desplazamiento);
 void 			 paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * contenidoMap,t_segmento* unSegmento,int socket);
 
 void*			 leerArchivoCompartido();

@@ -249,6 +249,20 @@ int traerFrameDePaginaEnSwap(int socketPrograma,int idSegmento, int nroPagina) {
 	return paginaBuscada->nroFrame;
 }
 
+
+void borrarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal){
+
+	bool existeFrame(void* frame){
+		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
+
+		if (nroFrameSwapOPrincipal != NULL) return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
+		return false;
+	}
+	//sem_wait(&g_mutex_tablas);
+	list_remove_by_condition(SwapOPrincipal,existeFrame);
+	//sem_post(&g_mutex_tablas);	
+}
+
 t_paginaAdministrativa* buscarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal){
 
 	bool existeFrame(void* frame){
