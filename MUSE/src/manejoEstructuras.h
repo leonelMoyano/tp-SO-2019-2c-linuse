@@ -32,6 +32,7 @@ t_pagina*       crearPagina                     (int numeroDeMarco, int nroPagin
 void 			agregarPaginaEnSegmento		    (int socket, t_segmento * segmento, int numeroDeMarco);
 void			modificarPagina					(t_pagina* pagina ,void* nuevoContenido, bool presencia);
 t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegmento,int nroPagina, int nroFrame);
+t_paginaAdministrativa* buscarPaginaAdministrativaPorPagina(t_list* SwapOPrincipal, int socketPrograma, int idSegmento, int nroPagina);
 t_paginaAdministrativa* buscarPaginaAdministrativa(t_list* SwapOPrincipal, int nroFrame);
 int				nroPaginaSegmento				(uint32_t direccionVirtual, int baseLogica);
 int				desplazamientoPaginaSegmento	(uint32_t direccionVirtual, int baseLogica);

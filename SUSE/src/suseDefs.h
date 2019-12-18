@@ -78,24 +78,19 @@ typedef struct suse_cliente_thread{
 typedef struct suse_cliente{
 	int main_tid;
 	t_client_thread_suse* running_thread;
-	t_queue* new;
 	t_list* ready;
-	t_list* blocked; // TODO blocked tiene que ser comun a todos los programas ?
-	t_list* exit; // TODO exit tiene que ser comun a todos los programas ?
 } t_client_suse;
 
 t_config_suse* g_config_server;
 
-void        iniciar_config      (char* path);
-void 		esperarClientes		(int);
-void        enviarMultiProg     ( int socket_dst );
-// int 		getSocketCliente	(int);
-void* 		recibir_buffer		(int*,int);
-int 		recibir_operacion	(int);
-char* 		recibir_mensaje		(int);
-t_semaforo_request_suse* deserializarSemaforoRequest( t_stream* buffer );
+void 						esperarClientes				( int );
+// int 						getSocketCliente			( int );
+void* 						recibir_buffer				( int*,int );
+int 						recibir_operacion			( int );
+char* 						recibir_mensaje				( int );
+t_semaforo_request_suse* 	deserializarSemaforoRequest	( t_stream* buffer );
 
 /*********** algunas utils ***********/
-int tamanio_array(char** array);
+int 						tamanio_array				( char** array );
 
 #endif /* SUSEDEFS_H_ */

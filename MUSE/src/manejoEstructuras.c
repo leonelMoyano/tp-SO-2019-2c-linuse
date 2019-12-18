@@ -91,7 +91,7 @@ t_programa* crearPrograma(int socket){
 
 t_pagina* crearPagina(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
-	pagina->flagPresencia  = true;
+	pagina->flagPresencia  = true; //TODO si es mmap deberia ir en false, agregar flag
 	pagina->flagModificado = false;
 	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
@@ -249,6 +249,20 @@ int traerFrameDePaginaEnSwap(int socketPrograma,int idSegmento, int nroPagina) {
 	return paginaBuscada->nroFrame;
 }
 
+
+void borrarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal){
+
+	bool existeFrame(void* frame){
+		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
+
+		if (nroFrameSwapOPrincipal != NULL) return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
+		return false;
+	}
+	//sem_wait(&g_mutex_tablas);
+	list_remove_by_condition(SwapOPrincipal,existeFrame);
+	//sem_post(&g_mutex_tablas);	
+}
+
 t_paginaAdministrativa* buscarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal){
 
 	bool existeFrame(void* frame){
@@ -350,8 +364,8 @@ int ClockModificado() {
 	if (punteroClock ==  g_cantidadFrames) punteroClock = 0;
 		for (int j = punteroClock; j < g_cantidadFrames; j++) {
 			punteroClock = j;
-			t_paginaAdministrativa* paginaGloblal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
-			aux = buscarFrameEnTablasDePaginas(paginaGloblal);
+			t_paginaAdministrativa* paginaGlobal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
+			aux = buscarFrameEnTablasDePaginas(paginaGlobal);
 			if ( aux->flagPresencia == true && aux->flagModificado == true) {
 				 aux->flagModificado = false;
 			}
@@ -359,19 +373,18 @@ int ClockModificado() {
 				 aux->flagPresencia = false;
 			}
 			else{
+
 				paginaVictima = aux;
-				//TODO: buscar contenido de void* a estructuca de contenidoframe
-				void* unosBytes;
-				if( aux->flagModificado == true) cargarPaginaEnSwap(unosBytes,paginaGloblal->nroPagina,paginaGloblal->socketPrograma,paginaGloblal->idSegmento);
+
+				cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
 			}
 		}
 	// Libero el frame, destruyo pagina y devuelvo indice
 	if( paginaVictima != NULL ){
+
 		indiceDeMarco = paginaVictima->nroFrame;
 
-		//aca me parece que deberua modificarla nada mas la pagina
 		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco);
-		destruirPagina( paginaVictima );
 
 		return indiceDeMarco;
 	}

@@ -16,93 +16,38 @@ int deserializarUINT32(t_stream* buffer) {
 
 //TODO verificar serializacion de void*
 
-void serializarGet(t_paquete* unPaquete, void* dst,uint32_t src, size_t n){ //size of tipo dst que
-
-	int desplazamiento = 0;
-
-	unPaquete->buffer = malloc(sizeof(t_stream));
-	int tamanioDatos = sizeof(sizeof(void) + sizeof(uint32_t) + sizeof(size_t));
-	unPaquete->buffer->size = tamanioDatos;
-
-	unPaquete->buffer->data = malloc(tamanioDatos);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &dst,sizeof(void));
-	desplazamiento += sizeof(void);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &src,sizeof(uint32_t));
-	desplazamiento += sizeof(uint32_t);
-
-	memcpy(unPaquete->buffer->data + desplazamiento,&n,sizeof(size_t));
-	desplazamiento += sizeof(size_t);
-	//CI: Analizar como quedaron los parametros que toma y is es necesario anotrarlos como punteros
-}
-
 t_registromget* deserializarGet(t_stream * buffer){
 	t_registromget * registro = malloc(sizeof(t_registromget));
 	int desplazamiento = 0;
 
-	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(void));
-	desplazamiento += sizeof(void);
+	memcpy(&registro->n,buffer->data + desplazamiento, sizeof(size_t));
+	desplazamiento += sizeof(size_t);
 
 	memcpy(&registro->src,buffer->data + desplazamiento,sizeof(uint32_t));
 	desplazamiento += sizeof(uint32_t);
 
-	memcpy(&registro->n,buffer->data + desplazamiento, sizeof(size_t));
+	registro->dst = malloc(registro->n);
+	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(void));
+	desplazamiento += registro->n;
+
 	return registro;
 }
-void serialzarCopy(t_paquete* unPaquete, void* src,uint32_t dst, int n){
-	int desplazamiento = 0;
-
-	unPaquete->buffer = malloc(sizeof(t_stream));
-	int tamanioDatos = sizeof(sizeof(void *) + sizeof(uint32_t) + sizeof(size_t));
-	unPaquete->buffer->size = tamanioDatos;
-
-	unPaquete->buffer->data = malloc(tamanioDatos);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &dst,sizeof(void));
-	desplazamiento += sizeof(uint32_t);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &src,sizeof(uint32_t));
-	desplazamiento += sizeof(void *);
-
-	memcpy(unPaquete->buffer->data + desplazamiento,&n,sizeof(int));
-	desplazamiento += sizeof(int);
-}
-
 t_registromcopy* deserializarCopy(t_stream * buffer){
 	t_registromcopy * registro = malloc(sizeof(t_registromcopy));
 
 	int desplazamiento = 0;
 
-	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(void *));
-	desplazamiento += sizeof(uint32_t);
-
-	memcpy(&registro->src,buffer->data + desplazamiento,sizeof(uint32_t));
-	desplazamiento += sizeof(void *);
-
 	memcpy(&registro->n,buffer->data + desplazamiento, sizeof(int));
 
+	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(uint32_t));
+	desplazamiento += sizeof(uint32_t);
+
+	void * porcionMemoria = malloc(registro->n);
+	memcpy(porcionMemoria ,buffer->data + desplazamiento, registro->n);
+	desplazamiento += registro->n;
+
+
 	return registro;
-}
-
-void serializarMap(t_paquete * unPaquete, char * path, size_t length, int flags){
-
-	unPaquete->buffer = malloc(sizeof(t_stream));
-	int tamDatos= sizeof(char *)+ sizeof(size_t) + sizeof(int);
-	unPaquete->buffer->size = tamDatos;
-
-	unPaquete->buffer->data = malloc(tamDatos);
-
-	int desplazamiento = 0;
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &path, sizeof(char *)); // CI: modificar el n bytes
-	desplazamiento += sizeof(char *);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &length, sizeof(size_t));
-	desplazamiento += sizeof(size_t);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &flags, sizeof(int));
-	desplazamiento = sizeof(int);
 }
 
 t_registromap* deserealizarMap(t_stream * buffer){
@@ -122,22 +67,6 @@ t_registromap* deserealizarMap(t_stream * buffer){
 	return registro;
 }
 
-void serializarMsync(t_paquete * unPaquete,uint32_t addr, size_t len){
-	unPaquete->buffer = malloc(sizeof(t_stream));
-	int tamanioDatos = sizeof(uint32_t) + sizeof(size_t);
-	unPaquete->buffer->size = tamanioDatos;
-
-	unPaquete->buffer->data = malloc(tamanioDatos);
-
-	int desplazamiento = 0;
-
-	memcpy(unPaquete->buffer->data + desplazamiento,&addr,sizeof(uint32_t));
-	desplazamiento += sizeof(uint32_t);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &len,sizeof(size_t));
-	desplazamiento += sizeof(size_t);
-}
-
 t_registrosync* deserealizarMsync(t_stream * buffer){
 	t_registrosync* registro = malloc(sizeof(t_registrosync));
 	int desplazamiento = 0;
@@ -149,15 +78,6 @@ t_registrosync* deserealizarMsync(t_stream * buffer){
 	desplazamiento += sizeof(size_t);
 
 	return registro;
-}
-
-void serializarUnmap(t_paquete* paquete, uint32_t dir){
-	paquete->buffer = malloc(sizeof(t_stream));
-	paquete->buffer->size = sizeof(uint32_t);
-
-	paquete->buffer->data = malloc(sizeof(uint32_t));
-
-	memcpy(paquete->buffer->data,&dir,sizeof(uint32_t));
 }
 
 t_registrounmap* deserealizarUnmap(t_stream * buffer){

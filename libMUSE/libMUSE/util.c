@@ -29,41 +29,47 @@ void serializarGet(t_paquete* unPaquete, void* dst,uint32_t src, size_t n){ //si
 	int desplazamiento = 0;
 
 	unPaquete->buffer = malloc(sizeof(t_stream));
-	int tamanioDatos = sizeof(sizeof(void) + sizeof(uint32_t) + sizeof(size_t));
+
+	void* porcionMemoria = malloc(n);
+	memcpy(porcionMemoria + desplazamiento, dst, n);
+
+	int tamanioDatos = n + sizeof(uint32_t) + sizeof(size_t);
 	unPaquete->buffer->size = tamanioDatos;
 
 	unPaquete->buffer->data = malloc(tamanioDatos);
 
-	memcpy(unPaquete->buffer->data + desplazamiento, &dst,sizeof(void));
-	desplazamiento += sizeof(void);
+	memcpy(unPaquete->buffer->data + desplazamiento,&n,sizeof(size_t));
+	desplazamiento += sizeof(size_t);
 
 	memcpy(unPaquete->buffer->data + desplazamiento, &src,sizeof(uint32_t));
 	desplazamiento += sizeof(uint32_t);
 
-	memcpy(unPaquete->buffer->data + desplazamiento,&n,sizeof(size_t));
-	desplazamiento += sizeof(size_t);
-	//CI: Analizar como quedaron los parametros que toma y is es necesario anotrarlos como punteros
+	memcpy(unPaquete->buffer->data + desplazamiento, porcionMemoria , n);
+	desplazamiento += n;
 }
 
 void serialzarCopy(t_paquete* unPaquete, void* src,uint32_t dst, int n){
 	int desplazamiento = 0;
 
+	int cantBytes = n;
 	//TODO revisar el malloc de tamanioDatosy void* de src
 
 	unPaquete->buffer = malloc(sizeof(t_stream));
-	int tamanioDatos = sizeof(sizeof(void *) + sizeof(uint32_t) + sizeof(size_t));
+	int tamanioDatos = cantBytes + sizeof(uint32_t) + sizeof(int);
 	unPaquete->buffer->size = tamanioDatos;
 
 	unPaquete->buffer->data = malloc(tamanioDatos);
 
-	memcpy(unPaquete->buffer->data + desplazamiento, &dst,sizeof(void));
-	desplazamiento += sizeof(uint32_t);
-
-	memcpy(unPaquete->buffer->data + desplazamiento, &src,sizeof(uint32_t));
-	desplazamiento += sizeof(void *);
-
 	memcpy(unPaquete->buffer->data + desplazamiento,&n,sizeof(int));
 	desplazamiento += sizeof(int);
+
+	memcpy(unPaquete->buffer->data + desplazamiento, &dst,sizeof(uint32_t));
+	desplazamiento += sizeof(uint32_t);
+
+	memcpy(unPaquete->buffer->data + desplazamiento, src, cantBytes);
+	desplazamiento += cantBytes;
+
+
 }
 
 void serializarMap(t_paquete * unPaquete, char * path, size_t length, int flags){
