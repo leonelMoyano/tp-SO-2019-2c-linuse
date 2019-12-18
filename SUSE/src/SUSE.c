@@ -55,7 +55,10 @@ void atenderConexion(int socketCliente) {
 
 	log_debug(g_logger, "Checkeo que el paquete sea handshake");
 	// Espero recibir el handshake y trato segun quien se conecte
-	switch (recibirHandshake(package)) {
+	int handshake_code = recibirHandshake(package);
+
+	destruirPaquete( package );
+	switch (handshake_code) {
 	case BIBLIO_SUSE_CLIENT_ID:
 		;
 		log_debug(g_logger, "Recibi el handshake del cliente");
@@ -422,6 +425,7 @@ void esperarPaqueteCreateMain( t_client_suse* cliente_suse, int socket_cliente )
 	} else {
 		log_error( g_logger, "Recibi algo que no es el grado del multiprog");
 	}
+	destruirPaquete( paqueteCreate );
 }
 
 void enviarMultiProg( int socket_dst ){
@@ -446,18 +450,21 @@ void iniciar_config(char* path){
 	for( int i = 0; array[ i ] != NULL; i++ ){
 		list_add( g_config_server->sem_ids, array[ i ] );
 	}
+	free( array );
 
 	array = config_get_array_value( g_config, "SEM_INIT" );
 	g_config_server->sem_init = list_create();
 	for( int i = 0; array[ i ] != NULL; i++ ){
 		list_add( g_config_server->sem_init, array[ i ] );
 	}
+	free( array );
 
 	array = config_get_array_value( g_config, "SEM_MAX" );
 	g_config_server->sem_max = list_create();
 	for( int i = 0; array[ i ] != NULL; i++ ){
 		list_add( g_config_server->sem_max, array[ i ] );
 	}
+	free( array );
 }
 
 void inicializar_semaforos(){
