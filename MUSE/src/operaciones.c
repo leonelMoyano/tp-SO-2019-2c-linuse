@@ -525,6 +525,24 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 }
 
+void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
+
+	t_contenidoFrame * miFrame = buscarContenidoFrameMemoria(nroFrame);
+
+	void * contenido = miFrame->contenido;
+
+	int indiceFrame = buscarFrameLibreSwap() * g_configuracion->tamanioPagina;
+
+	memcpy(archivoSwap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
+
+	msync(archivoSwap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
+
+	paginaAdmin->nroFrame = indiceFrame; //guardo el indice donde esta la pagina en SWAP
+
+	list_add(paginasEnSwap,paginaAdmin);
+
+}
+
 
 
 

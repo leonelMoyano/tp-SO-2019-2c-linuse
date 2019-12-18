@@ -364,8 +364,8 @@ int ClockModificado() {
 	if (punteroClock ==  g_cantidadFrames) punteroClock = 0;
 		for (int j = punteroClock; j < g_cantidadFrames; j++) {
 			punteroClock = j;
-			t_paginaAdministrativa* paginaGloblal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
-			aux = buscarFrameEnTablasDePaginas(paginaGloblal);
+			t_paginaAdministrativa* paginaGlobal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
+			aux = buscarFrameEnTablasDePaginas(paginaGlobal);
 			if ( aux->flagPresencia == true && aux->flagModificado == true) {
 				 aux->flagModificado = false;
 			}
@@ -373,19 +373,18 @@ int ClockModificado() {
 				 aux->flagPresencia = false;
 			}
 			else{
+
 				paginaVictima = aux;
-				//TODO: buscar contenido de void* a estructuca de contenidoframe
-				void* unosBytes;
-				if( aux->flagModificado == true) cargarPaginaEnSwap(unosBytes,paginaGloblal->nroPagina,paginaGloblal->socketPrograma,paginaGloblal->idSegmento);
+
+				cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
 			}
 		}
 	// Libero el frame, destruyo pagina y devuelvo indice
 	if( paginaVictima != NULL ){
+
 		indiceDeMarco = paginaVictima->nroFrame;
 
-		//aca me parece que deberua modificarla nada mas la pagina
 		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco);
-		destruirPagina( paginaVictima );
 
 		return indiceDeMarco;
 	}
