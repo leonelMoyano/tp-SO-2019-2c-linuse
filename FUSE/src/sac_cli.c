@@ -84,94 +84,75 @@ int find_by_path(const char *path){
 	return nodo_encontrado;
 }
 
-static int do_getattr(const char *path, struct stat *st) {
-	log_info( g_logger, "[getattr]:%s", path );
-
-	// GNU's definitions of the attributes (http://www.gnu.org/software/libc/manual/html_node/Attribute-Meanings.html):
-	// 		st_uid: 	The user ID of the file’s owner.
-	//		st_gid: 	The group ID of the file.
-	//		st_atime: 	This is the last access time for the file.
-	//		st_mtime: 	This is the time of the last modification to the contents of the file.
-	//		st_mode: 	Specifies the mode of the file. This includes file type information (see Testing File Type) and the file permission bits (see Permission Bits).
-	//		st_nlink: 	The number of hard links to the file. This count keeps track of how many directories have entries for this file. If the count is ever decremented to zero, then the file itself is discarded as soon
-	//						as no process still holds it open. Symbolic links are not counted in the total.
-	//		st_size:	This specifies the size of a regular file in bytes. For files that are really devices this field isn’t usually meaningful. For symbolic links this specifies the length of the file name the link refers to.
-
-	st->st_uid = getuid(); // The owner of the file/directory is the user who mounted the filesystem
-	st->st_gid = getgid(); // The group of the file/directory is the same as the group of the user who mounted the filesystem
-	st->st_atime = time(NULL); // The last "a"ccess of the file/directory is right now
-
-	if (strcmp(path, "/") == 0) {
-		st->st_mode = S_IFDIR | 0755;
-		st->st_nlink = 2; // Why "two" hardlinks instead of "one"? The answer is here: http://unix.stackexchange.com/a/101536
-		st->st_mtime = time(NULL); // The last "m"odification of the file/directory is right now
-		return 0;
-	}
-
-	// path aca es por ej "/testFoo"
-	int currNodeIndex = find_by_path(path);
-	if (currNodeIndex != -1) {
-		GFile* currNode = g_node_table + currNodeIndex;
-		if( currNode->state == 1 )
-			st->st_mode = S_IFREG | 0644;
-		else
-			st->st_mode = S_IFDIR | 0755;
-		st->st_nlink = 1;
-		st->st_mtime = currNode->m_date;
-		st->st_size = currNode->file_size;
-		return 0;
-	}
-
-	return -ENOENT;
-}
-
-static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
+static int do_centralized_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
 	log_info( g_logger, "[readdir]:%s", path );
 
-	int parentNodeIndex;
-	if( strcmp( path, "/" ) == 0 ){
-		parentNodeIndex = 0;
-	} else {
-		parentNodeIndex = find_by_path( path );
-		if( parentNodeIndex == -1 )
-			return -ENOENT;
-		else {
-			GFile *parentNode = g_node_table + parentNodeIndex;
-			if( parentNode->state == 1 )
-				return -ENOTDIR;
-		}
+	t_paquete* request = armarPaquetePathConOperacion( path, SAC_readdir );
+	t_paquete* response = send_request( request, "127.0.0.1", "54660" );
+
+	t_readdir_response* readdir_response = deserializarReaddir( response->buffer );
+	destruirPaquete( response );
+
+	if( readdir_response->errno_value != 0 ){
+		int errno_value = readdir_response->errno_value;
+		destruirReaddirResponse( readdir_response );
+
+		errno = errno_value;
+		return -errno_value;
 	}
 
 	filler(buffer, ".", NULL, 0); // Current Directory
 	filler(buffer, "..", NULL, 0); // Parent Directory
 
-	if( strcmp( "/", path ) != 0 )
-		parentNodeIndex += g_node_table_block_index; // Convertir a indice absoluto
-
-	for(int currNodeIndex = 0; currNodeIndex < GFILEBYTABLE; currNodeIndex++){
-		GFile* currNode = g_node_table + currNodeIndex;
-		if( currNode->parent_dir_block == parentNodeIndex && currNode->state != 0 ){
-			log_trace( g_logger, "Para %s, encontré: %s", path, currNode->fname );
-			filler(buffer, currNode->fname, NULL, 0);
-		}
+	for( int i = 0; i < readdir_response->count; i++ ){
+		filler(buffer, readdir_response->found[ i ], NULL, 0);
 	}
 
+	destruirReaddirResponse( readdir_response );
 	return 0;
 }
 
-static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
+static int do_centralized_truncate(const char* path, off_t size){
+	log_info( g_logger, "[truncate]:%s a size %ld", path, size );
+
+	t_paquete* paquete = armarPaqueteTruncate( path, size, SAC_truncate );
+	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+
+	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
+
+	if( errno_response->return_value < 0 )
+		errno = errno_response->errno_value;
+
+	int return_value = errno_response->return_value;
+
+	destruirPaquete( response );
+	free( errno_response );
+
+	return return_value;
+}
+
+static int do_centralized_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi) {
 	log_info( g_logger, "[read]:%s", path );
-	int currNodeIndex = find_by_path( path );
-	if(currNodeIndex == -1){
-		return -ENOENT;
+
+	t_paquete* paquete = armarPaqueteRead( path, size, offset, SAC_read );
+	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+
+	t_read_response* read_response = deserializarRead( response->buffer );
+
+	if( read_response->errno_value != 0 ){
+		int errno_value = read_response->errno_value;
+		errno = errno_value;
+		destruirPaquete( response );
+		destruirReadResponse( read_response );
+		return -errno_value;
 	}
 
-	GFile* currNode = g_node_table + currNodeIndex;
+	int copy_size = read_response->size;
+	memcpy( buffer, read_response->data, copy_size );
 
-	size_t copySize = min( currNode->file_size - offset, size );
-	copy_file_contents(currNode, buffer, copySize, offset, 1);
-
-	return copySize;
+	destruirPaquete( response );
+	destruirReadResponse( read_response );
+	return copy_size;
 }
 
 
@@ -331,65 +312,60 @@ static int do_centralized_utimens( const char *path, const struct timespec tv[2]
 	return return_value;
 }
 
-static int do_mknod (const char *path, mode_t mode, dev_t device){
-	log_info( g_logger, "[mknod]:%s", path );
-	int currNode = check_existance_and_availability( path );
-	if( currNode < 0 )
-		return currNode;
-
-	int parentNode = get_parent_node( path );
-	if( parentNode == -ENOTDIR )
-		return -ENOENT;
-
-	log_info( g_logger, "[mknod]:%s ocupa nodo %d", path, currNode );
-	occupy_node( path, currNode, parentNode, 1 );
-
-	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
-
-	return 0;
-}
-
-
-static int do_mkdir(const char *path, mode_t mode){
+static int do_centralized_mkdir(const char *path, mode_t mode){
 	log_info( g_logger, "[mkdir]:%s", path );
-	int currNode = check_existance_and_availability( path );
-	if( currNode < 0 )
-		return currNode;
+	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_mkdir );
+	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
 
-	int parentNode = get_parent_node( path );
-	if( parentNode == -ENOTDIR )
-		return -ENOTDIR;
+	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
-	log_info( g_logger, "[mkdir]:%s ocupa nodo %d", path, currNode );
-	occupy_node( path, currNode, parentNode, 2 );
+	if( errno_response->return_value < 0 )
+		errno = errno_response->errno_value;
 
-	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+	int return_value = errno_response->return_value;
 
-	return 0;
+	destruirPaquete( response );
+	free( errno_response );
+
+	return return_value;
 }
 
-static int do_unlink (const char *path){
+static int do_centralized_unlink (const char *path){
 	log_info( g_logger, "[unlink]:%s", path );
-	int currNodeIndex = find_by_path(path);
-	if (currNodeIndex == -1)
-		return -ENOENT;
-	GFile* currNode = g_node_table + currNodeIndex;
 
-	currNode->state = 0;
-	liberarBloques(currNode, get_occupied_datablocks_qty( currNode->file_size ), 0 );
+	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_unlink );
+	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
 
-	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
-	return 0;
+	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
+
+	if( errno_response->return_value < 0 )
+		errno = errno_response->errno_value;
+
+	int return_value = errno_response->return_value;
+
+	destruirPaquete( response );
+	free( errno_response );
+
+	return return_value;
 }
 
-static int do_rmdir( const char *path ){
+static int do_centralized_rmdir( const char *path ){
 	log_info( g_logger, "[rmdir]:%s", path );
-	int currNode = find_by_path( path );
-	GFile *fileNode = g_node_table + currNode;
-	fileNode->state = 0;
 
-	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
-	return 0;
+	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_rmdir );
+	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+
+	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
+
+	if( errno_response->return_value < 0 )
+		errno = errno_response->errno_value;
+
+	int return_value = errno_response->return_value;
+
+	destruirPaquete( response );
+	free( errno_response );
+
+	return return_value;
 }
 
 
@@ -527,35 +503,23 @@ bool is_enough_blocks( size_t current_size, size_t new_size ){
 	return get_free_blocks() >= needed_blocks ? 1 : 0;
 }
 
-static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
+static int do_centralized_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *fi){
 	log_info( g_logger, "[write]:%s", path );
-	int currNodeIndex = find_by_path( path );
-	if(currNodeIndex == -1){
-		return -ENOENT;
-	}
 
-	GFile* currNode = g_node_table + currNodeIndex;
+	t_paquete* paquete = armarPaqueteWrite( path, size, offset, buffer, SAC_write );
+	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
 
-	int currUsedBlocks = get_occupied_datablocks_qty(currNode->file_size);
-	int neededBlocks = get_occupied_datablocks_qty(size + offset);
-	if (size + offset > currNode->file_size) {
-		// Lo que quiero escribir mas donde lo quiero escribir se pasa del tamanio actual
-		if( neededBlocks > currUsedBlocks ){
-			reservarBloques(currNode, currUsedBlocks, neededBlocks);
-			// TODO semaforo para bitmap
-			/*
-			 * TODO preguntar si tengo bloques disponibles
-			 * sino return -EFBIG; o -EDQUOT no estoy seguro revisar man 2 write
-			 */
-			// TODO validar que si quiere reservar mas bloques que no se pase de 1000 * 1024 bloques ( lo maximo por archivo )
-		}
-		currNode->file_size = size + offset;
-	}
+	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
-	copy_file_contents(currNode, buffer, size, offset, 0);
-	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
+	if( errno_response->return_value < 0 )
+		errno = errno_response->errno_value;
 
-	return size;
+	int return_value = errno_response->return_value;
+
+	destruirPaquete( response );
+	free( errno_response );
+
+	return return_value;
 }
 
 /**
@@ -658,63 +622,18 @@ static int do_rename(const char *old_path, const char *new_path){
 	return 0;
 }
 
-static int do_truncate(const char* path, off_t size){
-	log_info( g_logger, "[truncate]:%s a size %ld", path, size );
-	int currNodeIndex = find_by_path(path);
-	if( currNodeIndex == -1 ){
-		return -ENOENT;
-	}
-
-	GFile* currNode = g_node_table + currNodeIndex;
-
-	if( !is_enough_blocks( currNode->file_size, size ) ){
-		// errno()
-		return -EFBIG;
-	}
-
-	int cantidadDatablocksActuales   = get_occupied_datablocks_qty( currNode->file_size );
-	int cantidadDatablocksNecesarios = get_occupied_datablocks_qty( size );
-
-	if( cantidadDatablocksActuales > cantidadDatablocksNecesarios )
-		liberarBloques(currNode, cantidadDatablocksActuales, cantidadDatablocksNecesarios);
-	else if( cantidadDatablocksActuales < cantidadDatablocksNecesarios )
-		reservarBloques(currNode, cantidadDatablocksActuales, cantidadDatablocksNecesarios);
-
-	currNode->file_size = size;
-	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
-
-	return 0;
-}
-
-static int do_utimens( const char *path, const struct timespec tv[2]){
-	log_info( g_logger, "[utimens]:%s", path );
-	// donde tv[ 0 ] es last access time y tv[ 1 ] es last modified time
-	int currNodeIndex = find_by_path(path);
-	if( currNodeIndex == -1 ){
-		return -ENOENT;
-	}
-
-	GFile* currNode = g_node_table + currNodeIndex;
-	currNode->m_date = tv[0].tv_sec;
-	// solo existe last modified time en SAC asi que no tengo fecha de ultimo acceso que actualizar
-
-	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
-
-	return 0;
-}
-
 static struct fuse_operations operations = {
-	.mknod   = do_centralized_mknod,
-	.utimens = do_centralized_utimens,
-	.getattr = do_centralized_getattr,
+	.getattr  = do_centralized_getattr,
+	.mknod    = do_centralized_mknod,
+	.mkdir    = do_centralized_mkdir,
+	.utimens  = do_centralized_utimens,
+	.unlink   = do_centralized_unlink,
+	.rmdir    = do_centralized_rmdir,
+	.readdir  = do_centralized_readdir,
+	.truncate = do_centralized_truncate,
+	.read     = do_centralized_read,
+	.write    = do_centralized_write,
 	/*
-	.readdir = do_readdir,
-	.read = do_read,
-	.unlink = do_unlink,
-	.write = do_write,
-	.truncate = do_truncate,
-	.mkdir = do_mkdir,
-	.rmdir = do_rmdir,
 	.rename = do_rename,
 	*/
 };

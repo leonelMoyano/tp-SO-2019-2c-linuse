@@ -67,14 +67,35 @@ t_paquete* procesarPaqueteFuseOps( t_paquete* request ){
 	t_paquete* response = NULL;
 
 	switch( request->codigoOperacion ){
+	case SAC_getattr:
+		response = procesar_getattr( request );
+		break;
 	case SAC_mknod:
 		response = procesar_mknod( request );
+		break;
+	case SAC_mkdir:
+		response = procesar_mkdir( request );
 		break;
 	case SAC_utimens:
 		response = procesar_utimens( request );
 		break;
-	case SAC_getattr:
-		response = procesar_getattr( request );
+	case SAC_unlink:
+		response = procesar_unlink( request );
+		break;
+	case SAC_rmdir:
+		response = procesar_rmdir( request );
+		break;
+	case SAC_readdir:
+		response = procesar_readdir( request );
+		break;
+	case SAC_truncate:
+		response = procesar_truncate( request );
+		break;
+	case SAC_read:
+		response = procesar_read( request );
+		break;
+	case SAC_write:
+		response = procesar_write( request );
 		break;
 	}
 
