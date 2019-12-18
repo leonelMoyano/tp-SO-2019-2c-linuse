@@ -52,6 +52,7 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 1;
 	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
+	segmentoNuevo->esCompartido = false;
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -63,6 +64,7 @@ t_segmento* crearSegmentoMmap(int direccionBase, int tamanio, t_mapAbierto* mape
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 2;
 	segmentoNuevo->mmap = mapeo;
+	segmentoNuevo->esCompartido = false;
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -75,6 +77,7 @@ t_segmento* crearSegmentoMmapCompartido(int direccionBase, int tamanio, bool tab
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 2;
 	segmentoNuevo->mmap = mapeo;
+	segmentoNuevo->esCompartido = true;
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -122,7 +125,9 @@ void agregarContenido(int nroFrame, void* contenido){
 	t_contenidoFrame* contenidoFrame = malloc( sizeof( t_contenidoFrame ) );
 	contenidoFrame->nroFrame = nroFrame;
 	contenidoFrame->contenido = contenido;
+	sem_wait(&g_mutexgContenidoFrames);
 	list_add(contenidoFrames, contenidoFrame);
+	sem_post(&g_mutexgContenidoFrames);
 }
 
 //TODO:agregar map, no compartido, no lo va a agregar a la lista de archivos compartido
@@ -162,10 +167,7 @@ t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 		return false;
 
 	}
-
-	//sem_wait(&g_mutex_tablas);
 	t_segmento* segmentoBuscado = list_find(segmentos,existeDireccionSegmento);
-	//sem_post(&g_mutex_tablas);
 	return segmentoBuscado;
 }
 
@@ -179,9 +181,9 @@ t_mapAbierto* buscarMapeoAbierto(char* path) {
 
 	}
 
-	//sem_wait(&g_mutex_tablas);
+	sem_wait(&g_mutexMapeosAbiertosCompartidos);
 	t_mapAbierto* mapAbiertoBuscado = list_find(mapeosAbiertosCompartidos,existePath);
-	//sem_post(&g_mutex_tablas);
+	sem_post(&g_mutexMapeosAbiertosCompartidos);
 	return mapAbiertoBuscado;
 }
 
@@ -195,9 +197,9 @@ void borrarMapeoAbierto(char* path) {
 
 	}
 
-	//sem_wait(&g_mutex_tablas);
+	sem_wait(&g_mutexMapeosAbiertosCompartidos);
 	list_remove_by_condition(mapeosAbiertosCompartidos,existePath);
-	//sem_post(&g_mutex_tablas);
+	sem_post(&g_mutexMapeosAbiertosCompartidos);
 }
 
 
@@ -212,9 +214,8 @@ t_segmento* buscarSegmentoId(t_list* segmentos,int idSemgneto) {
 
 	}
 
-	//sem_wait(&g_mutex_tablas);
 	t_segmento* segmentoBuscado = list_find(segmentos,existeDireccionSegmento);
-	//sem_post(&g_mutex_tablas);
+
 	return segmentoBuscado;
 }
 
@@ -229,9 +230,9 @@ t_contenidoFrame* buscarContenidoFrameMemoria(int nroFrame) {
 
 	}
 
-	//sem_wait(&g_mutex_tablas);
+	sem_wait(&g_mutexgContenidoFrames);
 	t_contenidoFrame* contenidoBuscado = list_find(contenidoFrames,existeContenidoFrame);
-	//sem_post(&g_mutex_tablas);
+	sem_post(&g_mutexgContenidoFrames);
 	return contenidoBuscado;
 }
 
@@ -243,9 +244,9 @@ int traerFrameDePaginaEnSwap(int socketPrograma,int idSegmento, int nroPagina) {
 		return false;
 	}
 
-	//sem_wait(&g_mutex_tablas);
+	sem_wait(&g_mutexSwap);
 	t_paginaAdministrativa* paginaBuscada = list_find(paginasEnSwap,existeFrame);
-	//sem_post(&g_mutex_tablas);
+	sem_post(&g_mutexSwap);
 	return paginaBuscada->nroFrame;
 }
 
@@ -258,9 +259,8 @@ void borrarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwap
 		if (nroFrameSwapOPrincipal != NULL) return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
 		return false;
 	}
-	//sem_wait(&g_mutex_tablas);
 	list_remove_by_condition(SwapOPrincipal,existeFrame);
-	//sem_post(&g_mutex_tablas);	
+
 }
 
 t_paginaAdministrativa* buscarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal){
@@ -271,9 +271,7 @@ t_paginaAdministrativa* buscarPaginaAdministrativaPorFrame(t_list* SwapOPrincipa
 		if (nroFrameSwapOPrincipal != NULL) return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
 		return false;
 	}
-	//sem_wait(&g_mutex_tablas);
 	t_paginaAdministrativa* paginaAdministrativa = list_find(SwapOPrincipal,existeFrame);
-	//sem_post(&g_mutex_tablas);
 
 	return paginaAdministrativa;
 }
@@ -287,9 +285,7 @@ t_paginaAdministrativa* buscarPaginaAdministrativaPorPagina(t_list* SwapOPrincip
 			return frameBuscar->idSegmento == idSegmento && frameBuscar->socketPrograma == socketPrograma && frameBuscar->nroPagina == nroPagina ;
 		return false;
 	}
-	//sem_wait(&g_mutex_tablas);
 	t_paginaAdministrativa* paginaAdministrativa = list_find(SwapOPrincipal,existeFrame);
-	//sem_post(&g_mutex_tablas);
 
 	return paginaAdministrativa;
 }
@@ -313,9 +309,9 @@ t_programa* buscarPrograma(int socket) {
 
 	}
 
-	//sem_wait(&g_mutex_tablas);
+	sem_wait(&g_mutexTablaProgramas);
 	t_programa* programaBuscado = list_find(programas,existeIdPrograma);
-	//sem_post(&g_mutex_tablas);
+	sem_post(&g_mutexTablaProgramas);
 	return programaBuscado;
 }
 
@@ -335,20 +331,24 @@ int desplazamientoPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 
 int buscarFrameLibre(){
 	for (int i = 0; i < g_cantidadFrames; i++) {
+		sem_wait(&g_mutexgBitarray_marcos);
 		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
 			bitarray_set_bit(g_bitarray_marcos,i);
 			return i;
 		}
+		sem_post(&g_mutexgBitarray_marcos);
 	}
 	return -1;
 }
 
 int buscarFrameLibreSwap(){
 	for (int i = 0; i < maxPaginasEnSwap; i++) {
+		sem_wait(&g_mutexgBitarray_swap);
 		if( bitarray_test_bit(g_bitarray_swap, i) == false ) {
 			bitarray_set_bit(g_bitarray_swap,i);
 			return i;
 		}
+		sem_post(&g_mutexgBitarray_swap);
 	}
 
 	return -1;
@@ -364,7 +364,11 @@ int ClockModificado() {
 	if (punteroClock ==  g_cantidadFrames) punteroClock = 0;
 		for (int j = punteroClock; j < g_cantidadFrames; j++) {
 			punteroClock = j;
+
+			sem_wait(&g_mutextablasDePaginas);
 			t_paginaAdministrativa* paginaGlobal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
+			sem_post(&g_mutextablasDePaginas);
+
 			aux = buscarFrameEnTablasDePaginas(paginaGlobal);
 			if ( aux->flagPresencia == true && aux->flagModificado == true) {
 				 aux->flagModificado = false;
@@ -375,7 +379,6 @@ int ClockModificado() {
 			else{
 
 				paginaVictima = aux;
-
 				cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
 			}
 		}

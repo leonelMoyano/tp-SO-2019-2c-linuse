@@ -117,16 +117,32 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 		t_heapSegmento * auxHeap = list_get(segmento->heapsSegmento, indiceHeap);
 
 		if(auxHeap->isFree){
+			auxHeap->isFree = false;
+			auxHeap->t_size = n;
 			if(auxHeap->t_size > n){
-				auxHeap->isFree = false;
-				auxHeap->t_size = n;
 				t_heapSegmento* heapHueco = crearHeap(auxHeap->t_size - n,true);
 				cambiarFramesPorHeap(segmento,dst,n,true);
+				copiarContenidoAFrames(socket,segmento,dst,n,src);
 			}
 			else{
-				//voy a pisar otro heap metadata ...que despues va a romper
+				int tamanioAuxiliar = n - auxHeap->t_size;
+				while(0  >= tamanioAuxiliar){
+					t_heapSegmento * auxHeapAPisar = list_get(segmento->heapsSegmento, indiceHeap);
+					tamanioAuxiliar = tamanioAuxiliar - (auxHeapAPisar->t_size + tamanio_heap);
+					list_remove_and_destroy_element(segmento->heapsSegmento,indiceHeap,destruirHeap);
+					//TODO: ver de manejar un t_heapMetadata negativo para saber que es invalido pero contar ese tamanio como
+					//numeracion de las direcioneslogicas
+				}
+
+				cambiarFramesPorHeap(segmento,dst,n,true);
+				copiarContenidoAFrames(socket,segmento,dst,n,src);
+				//si creo el heap y desplazo al otro, cuando referencia al otro va a romper por direccion invalida
+				//pero si lo desplazo voy a romper con la relacion del heap con el nro de pagina;
+				//en ese caso lo tengo que pisar los bytes que corresponda o la cantidad de heaps que tenga que pisar
+				// y si sobra espacio crear otro heap ocupado con el hueco?
 			}
 		}
+		else return -1; //quiero pisar un heap ocupado, rompo
 	}
 	else{
 		return copiarContenidoAFrames(socket,segmento,dst,n,src);
@@ -140,6 +156,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	FILE * archivoMap;
 
+	//TODO: revisar este map y el pasaje de los flags
 	void* contenidoMap = mapearArchivoMUSE(path,length,&archivoMap,flags);
 
 	//TODO: optimizar funcion, evitar repeticion codigo
@@ -337,6 +354,8 @@ uint32_t EspacioLibre(t_segmento* segmento){
 
 int PorcentajeAsignacionMemoria(t_programa* programa){}
 int SistemaMemoriaDisponible(){}
+
+
 void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, int flags) {
 	//Abro el archivo
 	*archivo = fopen(rutaArchivo, "r");
@@ -369,7 +388,11 @@ void TraerPaginaDeSwap(int socketPrograma, t_pagina* pagina, int idSegmento){
 	agregarContenido(nroFrameMemoria,dataPagina);	
 	pagina->nroFrame = nroFrameMemoria;
 	modificarPresencia(pagina,true,false);
+
+	sem_wait(&g_mutexSwap);
 	borrarPaginaAdministrativaPorFrame(paginasEnSwap,paginaAdmin->nroFrame);
+	sem_post(&g_mutexSwap);
+
 	paginaAdmin->nroFrame = nroFrameMemoria;
 	list_add(tablasDePaginas,paginaAdmin);	
 }
@@ -377,8 +400,10 @@ void TraerPaginaDeSwap(int socketPrograma, t_pagina* pagina, int idSegmento){
 void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSegmento){
 
 	int nroFrame = buscarFrameLibreSwap();
+	sem_wait(&g_mutexSwap);
 	escribirContenidoEnSwap(nroFrame,bytes,disco_swap);
 	list_add(paginasEnSwap, crearPaginaAdministrativa(socketPrograma, idSegmento, nroPagina, nroFrame));
+	sem_post(&g_mutexSwap);
 
 }
 
@@ -450,6 +475,7 @@ int cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_
 				modificarPresencia(pag,cargo,0); //TODO: ver si no modifica aca? creo que no
 	}
 
+	return 0;
 }
 
 int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, size_t tamanio,void* contenidoDestino)
@@ -463,12 +489,8 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 	if(offsetInicial > 0){
 		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
 		tamanio = tamanio - desplazamiento;
-		t_pagina* pagina = list_get(segmento->tablaPaginas,nroPaginaInicial);
-		if(pagina == NULL) return -1;
-		if(!pagina->flagPresencia) TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
-		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
-		//if(frame == NULL) return -1; 	//si esta null o no presente ,page fault traer de disco
-		memcpy(&contenidoDestino,&frame->contenido[offsetInicial],desplazamiento);
+		int ok = pageFault(segmento,0,contenidoDestino,offsetInicial,desplazamiento,false);
+		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 		nroPaginaInicial++;
@@ -477,12 +499,8 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		t_pagina* pagina = list_get(segmento->tablaPaginas,i);
-		if(pagina == NULL) return -1;
-		if(!pagina->flagPresencia) TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
-		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
-		//si esta null o no presente ,page fault traer de disco
-		memcpy(&contenidoDestino,&frame->contenido[offsetInicial],desplazamiento);
+		int ok = pageFault(segmento,i,contenidoDestino,offsetInicial,desplazamiento,false);
+		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
@@ -500,11 +518,8 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 	if(offsetInicial > 0){
 		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
 		tamanio = tamanio - desplazamiento;
-		t_pagina* pagina = list_get(segmento->tablaPaginas,nroPaginaInicial);
-		if(pagina == NULL) return -1;
-		if(!pagina->flagPresencia) TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
-		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
-		memcpy( &frame->contenido[offsetInicial], &porcionMemoria[0],desplazamiento);
+		int ok = pageFault(segmento,0,porcionMemoria,offsetInicial,desplazamiento,true);
+		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 		nroPaginaInicial++;
@@ -513,16 +528,33 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		t_pagina* pagina = list_get(segmento->tablaPaginas,i);
-		if(pagina == NULL) return -1;
-		if(!pagina->flagPresencia) TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
-		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
-		//si esta null o no presente ,page fault traer de disco
-		memcpy(&frame->contenido[0],&porcionMemoria[desplazamiento],desplazamiento);
+		int ok = pageFault(segmento,0,porcionMemoria,offsetInicial,desplazamiento,true);
+		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
 
+}
+
+int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa){
+
+	t_pagina* pagina = list_get(segmento->tablaPaginas,i);
+	if(pagina == NULL) return -1;
+	if(!operacionInversa && pagina->nroFrame == NULL) return -1; //verificar esto, pagina sin data y que no esta en swap
+	if(!pagina->flagPresencia){
+		if(segmento->esCompartido){
+			sem_wait(&segmento->mmap->semaforoPaginas);
+			TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
+			sem_post(&segmento->mmap->semaforoPaginas);
+		}
+		else TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
+	}
+	sem_wait(&g_mutexgContenidoFrames);
+	t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+	if(frame == NULL) return -1;
+	if(operacionInversa) memcpy(&frame->contenido[0],&contenidoDestinoOsrc[desplazamiento],desplazamiento);
+	else memcpy(&contenidoDestinoOsrc,&frame->contenido[offsetInicial],desplazamiento);
+	sem_post(&g_mutexgContenidoFrames);
 }
 
 void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
@@ -533,13 +565,20 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 
 	int indiceFrame = buscarFrameLibreSwap() * g_configuracion->tamanioPagina;
 
-	memcpy(archivoSwap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
+	sem_wait(&g_mutexgBitarray_marcos);
+	bitarray_clean_bit(g_bitarray_marcos,nroFrame);
+	sem_post(&g_mutexgBitarray_marcos);
 
+	sem_wait(&g_mutexSwap);
+	memcpy(archivoSwap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
 	msync(archivoSwap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
+	sem_wait(&g_mutexSwap);
 
 	paginaAdmin->nroFrame = indiceFrame; //guardo el indice donde esta la pagina en SWAP
 
+	sem_wait(&g_mutexPaginasEnSwap);
 	list_add(paginasEnSwap,paginaAdmin);
+	sem_wait(&g_mutexPaginasEnSwap);
 
 }
 

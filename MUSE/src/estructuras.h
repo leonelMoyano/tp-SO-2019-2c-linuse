@@ -73,6 +73,7 @@ typedef struct{
 	int tipoSegmento;
 	t_list* heapsSegmento;
 	t_mapAbierto* mmap;
+	bool esCompartido;
 }t_segmento;
 
 

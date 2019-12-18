@@ -24,12 +24,28 @@
 #define LIBMUSE 400
 #define DIRECCIONAMIENTO 4294967296‬
 
+//Variables globales
 int idSegmento;
 int nroPrograma;
 int punteroClock;
 int direccionamientoLogicoActual;
 size_t lengthPagina;
 
+//Semafotos
+sem_t g_mutexSwap;
+sem_t g_mutexPaginasEnSwap;
+sem_t g_mutexgBitarray_swap;
+
+sem_t g_mutextablasDePaginas;
+sem_t g_mutexMapeosAbiertosCompartidos;
+sem_t g_mutexgBitarray_marcos;
+sem_t g_mutexgContenidoFrames;
+
+sem_t g_mutexTablaProgramas;
+
+
+
+//Estructuras Swap
 void* archivoSwap;
 int fdSwap;
 FILE * disco_swap;
@@ -37,6 +53,7 @@ t_bitarray * g_bitarray_swap;
 t_list * paginasEnSwap;
 int maxPaginasEnSwap;
 
+//Servidor
 t_log* g_logger;
 t_log* g_loggerDebug;
 int g_cantidadFrames;
@@ -44,17 +61,13 @@ t_configuracion * g_configuracion;
 t_config* g_config;
 t_list* g_diccionarioConexiones; //de programas
 pthread_t hiloServidor;
+void* g_granMalloc;
 
-
-t_bitarray * g_bitarray_marcos; // Para saber que marcos estan ocupados
+//Estructuras memoria principal
+t_bitarray * g_bitarray_marcos;
 t_list * contenidoFrames;
-t_list* tablasDePaginas; // o TLB para hacer reemplazo global
-
+t_list* tablasDePaginas; // Tabla global de paginas en memoria
 t_list* mapeosAbiertosCompartidos;
-t_list* mapeosAbiertos;
-
-void * g_granMalloc;
-
 t_list* programas;
 int tamanio_heap;
 
