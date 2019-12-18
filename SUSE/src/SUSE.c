@@ -183,19 +183,22 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 		 * solo llamar a trancisionar_bloqueado_a_ready con cada elemento de la lista los saca de la lista de bloqueados
 		 * del proceso pero quedan dentro de la lista de bloqueados por el thread
 		 */
-		if (g_multiprog_max < g_config_server->max_multiprog) {
+		if( thread_a_cerrar->proceso_padre->main_tid == thread_a_cerrar->tid ){
+			log_info( g_logger, "Cliente de socket %d termino ejecucion", socket_cliente );
+		} else if( queue_is_empty( g_new_threads ) ){
+			// al hacer close de un thread aumento en "1" el grado de multiprogramación
 			g_multiprog_max++;
+			log_info( g_logger, "Capacidad de multiprog %d de %d", g_multiprog_max, g_config_server->max_multiprog );
+		} else {
+			// si hay threads esperando en new, saco uno
+			t_client_thread_suse* thread_to_ready = (t_client_thread_suse*) queue_pop(g_new_threads);
+			// habilito al thread a estar entre los próximos a ejecutar
+			// lo agregamos a la lista ready del proceso que realizó el request
+			thread_to_ready->estado = READY;
+			list_add(thread_to_ready->proceso_padre->ready, thread_to_ready);
+			log_info( g_logger, "Nuevo hilo %d en la lista Ready del socket %d", thread_to_ready->tid, socket_cliente );
 		}
-		// al hacer close de un thread aumento en "1" el grado de multiprogramación
-		void* to_ready_thread = queue_pop(g_new_threads);
-		// quito al 1° thread de la cola Global New Threads,
-		t_client_thread_suse* thread_to_ready = (t_client_thread_suse*) to_ready_thread;
-		thread_to_ready->estado = READY;
-		list_add(cliente_suse->ready, to_ready_thread);
-		// habilito al thread a estar entre los próximos a ejecutar
-		// lo agregamos a la lista ready del proceso que realizó el request
 		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion %d del socket %d", cliente_suse->running_thread->tid , socket_cliente );
-		log_info( g_logger, "Nuevo hilo %d en la lista Ready del socket %d", thread_to_ready->tid, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
 	}
 	return respuesta;
@@ -220,7 +223,7 @@ t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, i
 		bool compare_thread_in_thread_lists( void* thread ){
 			t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
 			bool condition_1 = tid_to_join == thread_t->tid;
-			bool condition_2 = cliente_suse->main_tid == thread_t->proceso_padre->main_tid;
+			bool condition_2 = cliente_suse == thread_t->proceso_padre;
 			return condition_1 && condition_2;
 		}
 		thread_buscado_en_exit = list_find( g_exit_threads, compare_thread_in_thread_lists );
@@ -291,7 +294,7 @@ t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proc
 	bool compare_thread_id( void* thread ){
 		t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
 		bool condition_1 = tid == thread_t->tid;
-		bool condition_2 = proceso_padre->main_tid == thread_t->proceso_padre->main_tid;
+		bool condition_2 = proceso_padre == thread_t->proceso_padre;
 		return condition_1 && condition_2;
 	}
 	// Lo busco en varios lados porque puede estar en cualquier estado
@@ -384,7 +387,7 @@ void trancisionar_bloqueado_a_ready( void* thread ){
 	bool compare_thread( void* otro_thread ){
 		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
 		bool condition_1 = otro_thread_t->tid == thread_t->tid;
-		bool condition_2 = otro_thread_t->proceso_padre->main_tid == thread_t->proceso_padre->main_tid;
+		bool condition_2 = otro_thread_t->proceso_padre == thread_t->proceso_padre;
 		return condition_1 && condition_2;
 	}
 	list_remove_by_condition( g_blocked_threads, compare_thread);
