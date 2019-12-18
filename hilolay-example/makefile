@@ -1,6 +1,6 @@
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
-	CFLAGS := -D_XOPEN_SOURCE -Wno-deprecated-declarations
+	CFLAGS := -D_XOPEN_SOURCE -Wno-deprecated-declarations -g
 endif
 
 CC := gcc
@@ -17,4 +17,4 @@ clean:
 
 
 example:
-	$(CC) src/example_program.c -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug" -Wall $(CFLAGS) -o $(BUILD)/$(NAME) -lhilolay -lbiblioSuse
+	$(CC) src/example_program.c -g -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug" -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/hilolay/bin" -Wall $(CFLAGS) -o $(BUILD)/$(NAME) -lbiblioSuse -lhilolay 

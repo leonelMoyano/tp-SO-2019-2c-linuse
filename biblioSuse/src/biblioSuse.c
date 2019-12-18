@@ -95,8 +95,11 @@ void enviarThreadClose(int socket, int tid) {
 
 void enviarThreadScheduleNext( int socket ) {  // No le envío TID al SUSE Server, pero el Server Si envía el próximo Thread a ejecutar en la rta.
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+	t_stream * buffer = malloc(sizeof(t_stream));
 	unPaquete->codigoOperacion = SUSE_SCHEDULE_NEXT;
-	enviarPaquetes(socket, unPaquete);
+	unPaquete->buffer = buffer;
+	unPaquete->buffer->size = 0;
+	enviarPaquetes( socket, unPaquete );
 }
 
 

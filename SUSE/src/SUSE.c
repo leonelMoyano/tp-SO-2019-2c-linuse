@@ -123,10 +123,9 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 	nuevo_thread->tid = tid;
 	nuevo_thread->time_created = time( NULL );
 	nuevo_thread->proceso_padre = cliente_suse;
-	// TODO estimacion inicial en 0
-	if( is_main_thread == 1 && g_multiprog_max > 0){
+	nuevo_thread->threads_bloqueados = list_create();
+	if( is_main_thread == 1 ) {
 		// Cuando llega el create del main thread ya esta corriendo
-		// Valido si el grado de multiprogramación permite ejecutar al nuevo thread,
 		nuevo_thread->estado = RUNNING;
 		nuevo_thread->time_last_run = time( NULL );
 		nuevo_thread->time_last_yield = time( NULL );
@@ -134,15 +133,25 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 		cliente_suse->main_tid = tid;
 		cliente_suse->running_thread = nuevo_thread;
 		cliente_suse->ready = list_create();
-
+		log_info( g_logger, "Operacion suse_create Ok, hilo_principal %d en ejecucion para el socket %d", cliente_suse->running_thread->tid, socket_cliente );
+	}
+	else if( g_multiprog_max > 0 ) {
+		// Cuando llega el create de un thread adicional
+		// El proceso padre ya tiene su running thread
+		// Valido si el grado de multiprogramación permite ejecutar al nuevo thread,
+		nuevo_thread->estado = READY;
+		nuevo_thread->time_last_run = 0 ;		// 0 para simbolizar que nunca corrio
+		nuevo_thread->time_last_yield = 0 ;
+		list_add( cliente_suse->ready, nuevo_thread );
+		log_info( g_logger, "Operacion suse_create Ok, hilo_adicional %d en lista Ready del socket %d", nuevo_thread->tid, socket_cliente );
 		g_multiprog_max--;
 	}
-	else {						// Le pongo 0 para simbolizar que nunca corrio
+	else {
 		nuevo_thread->estado = NEW;
-		nuevo_thread->time_last_run = 0;
+		nuevo_thread->time_last_run = 0;		// 0 para simbolizar que nunca corrio
 		nuevo_thread->time_last_yield = 0;
-		// TODO revisar nivel max de multiprog y ponerlo a waiting y no a new ?
 		queue_push( g_new_threads, nuevo_thread ); // en la cola Global New Threads
+		log_info( g_logger, "Operacion suse_create Ok, hilo_adicional %d en cola New para el socket %d", nuevo_thread->tid, socket_cliente );
 	}
 	return NULL;
 }
@@ -185,7 +194,7 @@ t_paquete* procesarThreadClose(t_paquete* paquete, t_client_suse* cliente_suse, 
 		list_add(cliente_suse->ready, to_ready_thread);
 		// habilito al thread a estar entre los próximos a ejecutar
 		// lo agregamos a la lista ready del proceso que realizó el request
-		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion %d del socket %d", cliente_suse->running_thread, socket_cliente );
+		log_info( g_logger, "Operacion suse_close Ok para hilo en ejecucion %d del socket %d", cliente_suse->running_thread->tid , socket_cliente );
 		log_info( g_logger, "Nuevo hilo %d en la lista Ready del socket %d", thread_to_ready->tid, socket_cliente );
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_CLOSE );
 	}
@@ -219,7 +228,7 @@ t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, i
 
 		if (thread_buscado_en_exit != NULL) {
 		//encontré al thread requested to join la Lista Global de EXIT threads
-			log_info( g_logger, "Operacion Suse_Join Ok, Hilo %d de socket %d ya en EXIT", tid_to_join, socket_cliente );
+			log_info( g_logger, "Operacion suse_join Ok, Hilo %d de socket %d ya estaba en EXIT", tid_to_join, socket_cliente );
 			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
 		}
 		else {
@@ -229,7 +238,7 @@ t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, i
 			list_add(g_blocked_threads,runningThread);														// agregamos al thread en ejecución a la lista Global Blocked Threeads
 			t_client_thread_suse* thread_to_join = find_thread_by_tid_in_parent(tid_to_join, cliente_suse); // busco el thread que fue requerido a hacer Join
 			list_add(thread_to_join->threads_bloqueados,runningThread); 									// agregamos a la lista "thread_bloqueados" del thread solicitado a hacer Join el running_thread al thread
-			log_info( g_logger, "Operacion Suse_Join Ok, Hilo en ejecucion %d a BLOCKED del socket %d", cliente_suse->running_thread, socket_cliente );
+			log_info( g_logger, "Operacion suse_join Ok, hilo %d en ejecucion a Blocked para el socket %d", cliente_suse->running_thread->tid, socket_cliente );
 
 			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
 		}
@@ -240,7 +249,7 @@ t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, i
 
 t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
 
-	log_info( g_logger, "Recibi un Schedule_Next");
+	log_info( g_logger, "Recibi un schedule_next");
 	t_paquete* respuesta = NULL;
 
 	if( cliente_suse->main_tid < 0){
@@ -264,14 +273,15 @@ t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente
 		list_sort(cliente_suse->ready,comparo_threads_por_indice_sjf); 	// ordeno la lista Ready del proceso que envió el request, los threads por indice_sjf, el de menor indice en 1° lugar
 		next_running_thread = list_get(cliente_suse->ready, 0);			// obtengo el 1° thread de la lista Ready,
 		list_remove(cliente_suse->ready, 0);							// quitamos el 1° thread de la lista Ready,
-		list_add(cliente_suse->ready, prev_running_thread);				// agregamos el running_thread actual a la lista de Ready, se dejará de ejecutar,
+		list_add(cliente_suse->ready, prev_running_thread);			// agregamos el running_thread actual a la lista de Ready, se dejará de ejecutar,
 		prev_running_thread->time_last_yield = time(NULL);				// actualizamos time_last_yield del thread que se dejará de ejecutar,
+		prev_running_thread->estado = READY;
 		cliente_suse->running_thread = next_running_thread;				// ponemos a ejecutar el thread seleccionado de la lista Ready,
-		next_running_thread->time_last_run = time(NULL);				// actualizamos time_last_run del thread que entrará en ejecucion,
-		int next_running_tid = next_running_thread->tid;
+		cliente_suse->running_thread->estado = RUNNING;
+		cliente_suse->running_thread->time_last_run = time(NULL);				// actualizamos time_last_run del thread que entrará en ejecucion,
 
-		log_info( g_logger, "Operacion suse_schedule_next Ok para Proceso %d, proximo TID a ejecutar %d", cliente_suse->main_tid , next_running_tid);
-		respuesta = armarPaqueteNumeroConOperacion( next_running_tid , SUSE_SCHEDULE_NEXT ); // en la respuesta al request envío el TID del nuevo running thread,
+		log_info( g_logger, "Operacion suse_schedule_next Ok para socket %d, hilo %d proximo a ejecutar", socket_cliente , cliente_suse->running_thread->tid );
+		respuesta = armarPaqueteNumeroConOperacion( cliente_suse->running_thread->tid , SUSE_SCHEDULE_NEXT ); // en la respuesta al request envío el TID del nuevo running thread,
 	}
 	return respuesta;
 }
@@ -298,7 +308,11 @@ t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proc
 	if( thread_buscado != NULL )
 		return thread_buscado;
 
-	return list_find( g_blocked_threads, compare_thread_id );
+	thread_buscado = list_find( g_blocked_threads, compare_thread_id );
+	if( thread_buscado != NULL )
+		return thread_buscado;
+
+	return list_find( g_new_threads->elements, compare_thread_id );
 }
 
 t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
@@ -470,6 +484,7 @@ void iniciar_logger(void) {
 }
 
 double indice_sjf(t_client_thread_suse* thread_to_compare) {
+
 	long ready_time = thread_to_compare->time_last_run - thread_to_compare->time_created;
 	long exec_time 	= thread_to_compare->time_last_yield - thread_to_compare->time_last_run;
 	double alfa = g_config_server->alpha_sjf;
