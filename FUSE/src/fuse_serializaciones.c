@@ -76,6 +76,21 @@ void serializarRead( t_paquete* paquete, char* path, size_t size, off_t offset )
 	memcpy( paquete->buffer->data + desplazamiento, &offset, sizeof( off_t ) );
 }
 
+void serializarRename( t_paquete* paquete, char* old_path, char* new_path ){
+	int largo_old_path = strlen( old_path ) + 1;
+	int largo_new_path = strlen( new_path ) + 1;
+
+	int tamTotal = largo_old_path + largo_new_path;
+
+	paquete->buffer = malloc(sizeof(t_stream));
+	paquete->buffer->size = tamTotal;
+	paquete->buffer->data = malloc(tamTotal);
+
+	strcpy( paquete->buffer->data, old_path );
+
+	strcpy( paquete->buffer->data + largo_old_path, new_path );
+}
+
 t_return_errno_response * deserializarReturnErrno(t_stream * buffer){
 	t_return_errno_response* response = malloc( sizeof( t_return_errno_response ) );
 
@@ -169,6 +184,13 @@ t_paquete* armarPaqueteWrite( char* path, size_t size, off_t offset, void* buffe
 	t_paquete* paquete = malloc(sizeof(t_paquete));
 	paquete->codigoOperacion = codigo_op;
 	serializarWrite( paquete, path, size, offset, buffer );
+	return paquete;
+}
+
+t_paquete* armarPaqueteRename( char* old_path, char* new_path, int codigo_op ){
+	t_paquete* paquete = malloc(sizeof(t_paquete));
+	paquete->codigoOperacion = codigo_op;
+	serializarRename( paquete, old_path, new_path );
 	return paquete;
 }
 

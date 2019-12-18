@@ -37,8 +37,10 @@ void atenderConexion(int socketCliente) {
 	t_paquete* response;
 
 	log_trace(g_logger, "Checkeo que el paquete sea handshake");
+	int handshake_code = recibirHandshake(package);
+	destruirPaquete( package );
 	// Espero recibir el handshake y trato segun quien se conecte
-	switch (recibirHandshake(package)) {
+	switch (handshake_code) {
 	case SAC_CLI:
 		log_debug(g_logger, "Recibi el handshake del cliente SAC");
 		while (1) {
@@ -47,6 +49,7 @@ void atenderConexion(int socketCliente) {
 
 			if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ) {
 				log_trace(g_logger, "Cierro esta conexion del sac-cli %d", socketCliente);
+				destruirPaquete( package );
 				break;
 			};
 
@@ -96,6 +99,9 @@ t_paquete* procesarPaqueteFuseOps( t_paquete* request ){
 		break;
 	case SAC_write:
 		response = procesar_write( request );
+		break;
+	case SAC_rename:
+		response = procesar_rename( request );
 		break;
 	}
 

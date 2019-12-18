@@ -44,10 +44,13 @@
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="hilolay.null.1751990529" name="hilolay"/>
 	</storageModule>
-	<storageModule moduleId="scannerConfiguration">
-		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope"/>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="cdt.managedbuild.toolchain.gnu.base.954198022;cdt.managedbuild.toolchain.gnu.base.954198022.1642095317;cdt.managedbuild.tool.gnu.c.compiler.base.207706629;cdt.managedbuild.tool.gnu.c.compiler.input.273246902">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+	</storageModule>
 </cproject>

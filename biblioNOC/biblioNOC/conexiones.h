@@ -1,6 +1,7 @@
 #ifndef BIBLIONOC_SOCKETS_H_
 #define BIBLIONOC_SOCKETS_H_
 
+#include <pthread.h>
 #include "estructurasAdministrativas.h"
 #include <commons/log.h>
 #include "paquetes.h"

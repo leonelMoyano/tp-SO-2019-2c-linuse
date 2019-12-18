@@ -34,6 +34,11 @@ typedef struct fuse_write_payload{
 	void* data;
 } t_write_request;
 
+typedef struct fuse_rename_payload{
+	char* old_path;
+	char* new_path;
+} t_rename_request;
+
 // Serializaciones
 void agregarPathBufferReaddir( t_paquete* paquete, char* path );
 t_paquete* armarPaqueteReturnErrnoConOperacion( int return_value, int errno_code, int codigo_op );
@@ -46,11 +51,13 @@ t_utimens_request* deserializarUtimensReq( t_stream* buffer );
 t_truncate_request* deserializarTruncateReq( t_stream* buffer );
 t_read_request* deserializarReadReq( t_stream* buffer );
 t_write_request* deserializarWriteReq( t_stream* buffer );
+t_rename_request* deserializarRenameReq( t_stream* buffer );
 
 // Destruir structs
 void destruirUtimensReq( t_utimens_request* utimens_req );
 void destruirTruncateReq( t_truncate_request* truncate_req );
 void destruirReadReq( t_read_request* read_req );
 void destruirWriteReq( t_write_request* write_req );
+void destruirRenameReq( t_rename_request* rename_req );
 
 #endif /* SAC_SERVER_SERIALIZACIONES_H_ */

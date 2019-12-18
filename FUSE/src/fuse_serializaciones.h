@@ -39,6 +39,8 @@ t_paquete* armarPaquetePathConOperacion( char* path, int codigo_op );
 t_paquete* armarPaqueteUtimens( char* path, time_t new_time, int codigo_op );
 t_paquete* armarPaqueteTruncate( char* path, off_t size, int codigo_op );
 t_paquete* armarPaqueteRead( char* path, size_t size, off_t offset, int codigo_op );
+t_paquete* armarPaqueteWrite( char* path, size_t size, off_t offset, void* buffer, int codigo_op );
+t_paquete* armarPaqueteRename( char* old_path, char* new_path, int codigo_op );
 
 // Deserializaciones
 t_return_errno_response * deserializarReturnErrno(t_stream * buffer);

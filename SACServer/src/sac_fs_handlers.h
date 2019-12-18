@@ -18,6 +18,7 @@ t_paquete* procesar_readdir( t_paquete* request );
 t_paquete* procesar_truncate( t_paquete* request );
 t_paquete* procesar_read( t_paquete* request );
 t_paquete* procesar_write( t_paquete* request );
+t_paquete* procesar_rename( t_paquete* request );
 
 void init_fs(char* disc_path);
 

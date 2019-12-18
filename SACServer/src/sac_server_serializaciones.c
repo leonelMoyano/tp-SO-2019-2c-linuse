@@ -160,6 +160,16 @@ t_write_request* deserializarWriteReq( t_stream* buffer ){
 	return write_req;
 }
 
+t_rename_request* deserializarRenameReq( t_stream* buffer ){
+	t_rename_request* rename_req = malloc( sizeof( t_rename_request ) );
+
+	// old_path - new_path
+	rename_req->old_path = strdup( (char*) buffer->data );
+	rename_req->new_path = strdup( (char*) ( buffer->data + strlen( rename_req->old_path) + 1 ) );
+
+	return rename_req;
+}
+
 void destruirUtimensReq( t_utimens_request* utimens_req ){
 	free( utimens_req->path );
 	free( utimens_req );
@@ -179,4 +189,10 @@ void destruirWriteReq( t_write_request* write_req ){
 	free( write_req->path );
 	free( write_req->data );
 	free( write_req );
+}
+
+void destruirRenameReq( t_rename_request* rename_req ){
+	free( rename_req->old_path );
+	free( rename_req->new_path );
+	free( rename_req );
 }

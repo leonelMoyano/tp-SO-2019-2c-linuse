@@ -39,6 +39,22 @@ u_int32_t g_block_count; // Cantidad de bloques en el archivo
 t_bitarray* g_bitmap; // Puntero al bitmap del FS
 
 
+void destruir_string_split( char** splitted_string ){
+	for( int i = 0; splitted_string[ i ] != NULL; i++ ){
+		free( splitted_string[ i ] );
+	}
+	free( splitted_string );
+}
+
+char* get_last_name( const char* full_path ){
+	int last_separator_index = 0;
+	int path_index = 0;
+	for( int path_index = 0; full_path[ path_index ] != '\0'; path_index++ ){
+		if( *( full_path + path_index ) == '/' ) last_separator_index = path_index;
+	}
+	return full_path + last_separator_index + 1;
+}
+
 /**
 * @NAME: find_by_name_in_parent
 * @DESC: Devuelve el indice en la tabla de nodos para el archivo de nombre name con nodo padre parent_index, -1 en caso de no encontrarlo
@@ -64,14 +80,7 @@ int find_by_name_in_parent(const char *name, int parent_index){
 int find_by_path(const char *path){
 	int parent_node_index = get_parent_node( path );
 
-	int splitted_path_index = 0;
-	char **splitted_path = string_split( path, "/" );
-	while( splitted_path[ splitted_path_index + 1 ] != NULL ) {
-		free( splitted_path[ splitted_path_index ] );
-		splitted_path_index++;
-	}
-	int nodo_encontrado = find_by_name_in_parent( splitted_path[ splitted_path_index ], parent_node_index );
-	free( splitted_path[ splitted_path_index ] );
+	int nodo_encontrado = find_by_name_in_parent( get_last_name( path ), parent_node_index );
 	return nodo_encontrado;
 }
 
@@ -131,6 +140,7 @@ t_paquete* procesar_readdir( t_paquete* request ){
 		}
 	}
 
+	free( path );
 	return paths_response;
 }
 
@@ -181,7 +191,6 @@ int get_avail_node(){
 *
 */
 int get_parent_node(const char *path){
-	// TODO liberar la memoria del split
 	char **split_path = string_split( path, "/" );
 	// string_split( "/testetset/opt/okok", "/" ) -> [ testsetest, opt, okokok, NULL ]
 	// string_split( "/", "/" ) -> [ NULL ]
@@ -196,10 +205,13 @@ int get_parent_node(const char *path){
 		// devuelve el indice relativo dentro de la tabla y los padres estan indicados como indices absolutos
 		currentParent = find_by_name_in_parent( split_path[ currentPathIndex ], currentParent ) + g_node_table_block_index;
 		currNode = g_node_table + currentParent - g_node_table_block_index;
-		if( currNode->state != 2 )
+		if( currNode->state != 2 ){
+			destruir_string_split( split_path );
 			return -ENOTDIR;
+		}
 		currentPathIndex++;
 	}
+	destruir_string_split( split_path );
 	return currentParent;
 }
 
@@ -227,13 +239,7 @@ int check_existance_and_availability( const char *path ){
 void occupy_node( char *path, int nodeIndex, int parentNodeIndex, int state ){
 	GFile* nodeToSet = g_node_table + nodeIndex;
 
-	char **splitted_path = string_split( path, "/" );
-	int splitted_path_index = 0;
-	// TODO liberar memoria de string_split
-	while( splitted_path[ splitted_path_index + 1 ] != NULL )
-		splitted_path_index++;
-
-	strcpy((char*) nodeToSet->fname, splitted_path[ splitted_path_index ] );
+	strcpy((char*) nodeToSet->fname, get_last_name( path ) );
 	nodeToSet->state = state;
 	nodeToSet->file_size = 0;
 	nodeToSet->parent_dir_block = parentNodeIndex;
@@ -520,6 +526,7 @@ int liberarBloques(GFile* fileNode, int cantidadDatablocksActuales, int cantidad
 		if( datablockIndexInsideIndir == -1 ){
 			freedDatablocks++;
 			bitarray_clean_bit(g_bitmap, fileNode->blk_indirect[indirIndex]);
+			fileNode->blk_indirect[indirIndex] = 0;
 			datablockIndexInsideIndir = PTRBYINDIRECT - 1;
 			indirIndex--;
 		}
@@ -572,30 +579,26 @@ int reservarBloques( GFile* fileNode, int cantBlocksActuales, int cantBlocksFina
 	return reservedDatablocks;
 }
 
-static int do_rename(const char *old_path, const char *new_path){
-	log_info( g_logger, "[rename]:%s a %s", old_path, new_path );
-	int currNodeIndex = find_by_path( old_path );
+t_paquete* procesar_rename( t_paquete* request ){
+	t_rename_request* rename_req = deserializarRenameReq( request->buffer );
+	log_info( g_logger, "[rename]:%s a %s", rename_req->old_path, rename_req->new_path );
+	int currNodeIndex = find_by_path( rename_req->old_path );
 	if( currNodeIndex == -1 ){
-		return -ENOENT;
+		destruirRenameReq( rename_req );
+		return armarPaqueteReturnErrnoConOperacion( -ENOENT, ENOENT, SAC_rename );
 	}
 
 	GFile* currNode = g_node_table + currNodeIndex;
-	int new_parent_node = get_parent_node( new_path );
+	int new_parent_node = get_parent_node( rename_req->new_path );
 
 	currNode->parent_dir_block = new_parent_node;
 
-	char **splitted_path = string_split( new_path, "/" );
-	int splitted_path_index;
-	for(splitted_path_index = 0; splitted_path[ splitted_path_index + 1 ] != NULL; splitted_path_index++ ){
-		free(splitted_path[ splitted_path_index ]);
-	}
-
-	strcpy((char*) currNode->fname, splitted_path[ splitted_path_index ] );
-	free( splitted_path[ splitted_path_index ] );
+	strcpy((char*) currNode->fname, get_last_name( rename_req->new_path ) );
 
 	msync( g_first_block, g_disk_size, MS_SYNC ); // Para que lleve los cambios del archivo a disco
 
-	return 0;
+	destruirRenameReq( rename_req );
+	return armarPaqueteReturnErrnoConOperacion( 0, 0, SAC_rename );
 }
 
 

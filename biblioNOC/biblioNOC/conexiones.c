@@ -154,8 +154,13 @@ int iniciarServidor(char* puerto, t_log* g_loggerDebug, void (*attendConnection)
 		pthread_t pid;
 
 		log_debug( g_loggerDebug, "Me llego conexion con este socket %d", cliente_fd );
-		pthread_create(&pid, NULL, (void*) attendConnection, (void*) cliente_fd);
-
+		int thread_status = pthread_create(&pid, NULL, (void*) attendConnection, (void*) cliente_fd);
+		if( thread_status != 0 ){
+			log_error( g_loggerDebug, "Thread create returno %d", thread_status );
+			log_error( g_loggerDebug, "Thread create returno %s", strerror( thread_status ) );
+		} else {
+			pthread_detach( pid );
+		}
 	}
 }
 
