@@ -244,7 +244,7 @@ t_paquete* procesarThreadJoin(t_paquete* paquete, t_client_suse* cliente_suse, i
 			list_add(g_blocked_threads,runningThread);														// agregamos al thread en ejecución a la lista Global Blocked Threeads
 			t_client_thread_suse* thread_to_join = find_thread_by_tid_in_parent(tid_to_join, cliente_suse); // busco el thread que fue requerido a hacer Join
 			list_add(thread_to_join->threads_bloqueados,runningThread); 									// agregamos a la lista "thread_bloqueados" del thread solicitado a hacer Join el running_thread al thread
-			log_info( g_logger, "Operacion suse_join Ok, hilo %d en ejecucion a Blocked para el socket %d", cliente_suse->running_thread->tid, socket_cliente );
+			log_info( g_logger, "Operacion suse_join Ok, hilo %d en ejecucion a Blocked esperando %d para el socket %d", cliente_suse->running_thread->tid, tid_to_join, socket_cliente );
 
 			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_JOIN );
 		}
@@ -276,12 +276,16 @@ t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente
 			return indice_sjf(thread_t) <= indice_sjf(otro_thread_t);
 		}
 
+		if( prev_running_thread->estado == RUNNING ){
+			list_add(cliente_suse->ready, prev_running_thread);			// agregamos el running_thread actual a la lista de Ready, se dejará de ejecutar,
+			prev_running_thread->time_last_yield = time(NULL);				// actualizamos time_last_yield del thread que se dejará de ejecutar,
+			prev_running_thread->estado = READY;
+		}
+
 		list_sort(cliente_suse->ready,comparo_threads_por_indice_sjf); 	// ordeno la lista Ready del proceso que envió el request, los threads por indice_sjf, el de menor indice en 1° lugar
 		next_running_thread = list_get(cliente_suse->ready, 0);			// obtengo el 1° thread de la lista Ready,
 		list_remove(cliente_suse->ready, 0);							// quitamos el 1° thread de la lista Ready,
-		list_add(cliente_suse->ready, prev_running_thread);			// agregamos el running_thread actual a la lista de Ready, se dejará de ejecutar,
-		prev_running_thread->time_last_yield = time(NULL);				// actualizamos time_last_yield del thread que se dejará de ejecutar,
-		prev_running_thread->estado = READY;
+
 		cliente_suse->running_thread = next_running_thread;				// ponemos a ejecutar el thread seleccionado de la lista Ready,
 		cliente_suse->running_thread->estado = RUNNING;
 		cliente_suse->running_thread->time_last_run = time(NULL);				// actualizamos time_last_run del thread que entrará en ejecucion,
