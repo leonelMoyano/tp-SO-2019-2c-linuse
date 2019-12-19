@@ -101,11 +101,11 @@ t_pagina* crearPagina(int nroFrame, int nroPagina){
 	return pagina;
 }
 
-t_pagina* crearPaginaMap(int nroPagina){
+t_pagina* crearPaginaMap(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
 	pagina->flagPresencia  = false;
 	pagina->flagModificado = false;
-	pagina->nroFrame  = NULL;
+	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
 	return pagina;
 }

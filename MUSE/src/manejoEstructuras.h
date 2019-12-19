@@ -38,6 +38,10 @@ int				nroPaginaSegmento				(uint32_t direccionVirtual, int baseLogica);
 int				desplazamientoPaginaSegmento	(uint32_t direccionVirtual, int baseLogica);
 void			modificarPresencia				(t_pagina* pagina , bool presencia, bool modifica);
 void			modificarContenidoPagina		(t_pagina* pagina ,void* nuevoContenido, bool presencia);
+void            borrarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal);
+t_pagina*       crearPaginaMap                  (int  nroFrame,int  nroPagina);
+
+t_mapAbierto*   buscarMapeoAbierto              (char* path);
 
 
 //FRAMES Y CONTENIDO
@@ -51,6 +55,10 @@ t_heapSegmento* buscarHeapConEspacioLibre		(int cantidadBytesNecesarios, t_segme
 int             ClockModificado                 ();
 int				bytesNecesariosUltimoFrame		(int cantidadBytes);
 int				framesNecesariosPorCantidadMemoria(int cantidadBytes);
+void            cargarFrameASwap                (int nroFrame, t_paginaAdministrativa * paginaAdmin);
+int             esDireccionLogicaValida         (uint32_t direccionLogica, t_segmento* segmento);
+t_contenidoFrame* buscarContenidoFrameMemoria   (int nroFrame);
+void            agregarContenido                (int nroFrame, void* contenido);
 
 /**** Destuir estructuras ****/
 void       destruirSegmento             (t_segmento* segmento);
@@ -59,5 +67,7 @@ void	   destruirPrograma				( t_programa* programa );
 void 	   destruirSegmentosPrograma	( t_segmentos_programa* segmentos );
 void	   destruirHeap					( t_heapSegmento* heap );
 void 	   destruirSegmentoMap			( t_segmento* segmento, bool borrarTodo );
+void       borrarMapeoAbierto           (char* path);
+
 
 #endif /* MANEJOESTRUCTURAS_H_ */
