@@ -115,9 +115,12 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 	case MUSE_GET: ;
 		t_registromget* registroGet = deserializarGet(paquete->buffer);
 
-		uint32_t operacionSatisfactoriaGet = procesarGet(registroGet->dst,registroGet->src,registroGet->n,socket);
+		void* buffer = malloc( registroGet->n );
+		uint32_t operacionSatisfactoriaGet = procesarGet( buffer, registroGet->src, registroGet->n, socket );
 
-		enviarRespuestaGet(cliente_fd, operacionSatisfactoriaGet);
+		enviarRespuestaGet( cliente_fd, operacionSatisfactoriaGet, registroGet->n, buffer );
+		free( buffer );
+		free( registroGet );
 		break;
 
 	case MUSE_COPY: ;

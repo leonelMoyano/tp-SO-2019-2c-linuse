@@ -11,7 +11,7 @@
 void serializarUINT32(t_paquete* unPaquete, uint32_t numero);
 int deserializarUINT32(t_stream* buffer);
 
-void serializarGet(t_paquete* unPaquete, void* dst,uint32_t src, size_t n);
+void serializarRespuestaGet( t_paquete* unPaquete, int operacionSatisfactoria, size_t size, void* buffer );
 t_registromget* deserializarGet(t_stream * buffer);
 
 void serialzarCopy(t_paquete* unPaquete, void* src,uint32_t dst, int n);
@@ -28,7 +28,7 @@ t_registrounmap* deserealizarUnmap(t_stream * buffer);
 
 void enviarRespuestaAlloc(int server_socket, uint32_t tamanio);
 
-void enviarRespuestaGet(int server_socket, int operacionSatisfactoria);
+void enviarRespuestaGet(int server_socket, int operacionSatisfactoria, size_t size, void* buffer);
 
 void enviarRespuestaCopy(int server_socket, int operacionSatisfactoria);
 
