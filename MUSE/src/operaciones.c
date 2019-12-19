@@ -40,10 +40,8 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 			}
 		}
 		else{
-
 			segmentoElegido = buscarSegmento(programa->segmentos_programa->lista_segmentos,direccionLogica);
 			int ok = cambiarFramesPorHeap(segmentoElegido, direccionLogica, tam, 1);
-
 		}
 	}
 
@@ -121,33 +119,33 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 		int indiceHeap = esDireccionLogicaValida(dst,segmento);
 		t_heapSegmento * auxHeap = list_get(segmento->heapsSegmento, indiceHeap);
 
-		if(auxHeap->isFree){
-			auxHeap->isFree = false;
-			auxHeap->t_size = n;
-			if(auxHeap->t_size > n){
-				t_heapSegmento* heapHueco = crearHeap(auxHeap->t_size - n,true);
-				cambiarFramesPorHeap(segmento,dst,n,true);
-				copiarContenidoAFrames(socket,segmento,dst,n,src);
-			}
-			else{
-				int tamanioAuxiliar = n - auxHeap->t_size;
-				while(0  >= tamanioAuxiliar){
-					t_heapSegmento * auxHeapAPisar = list_get(segmento->heapsSegmento, indiceHeap);
-					tamanioAuxiliar = tamanioAuxiliar - (auxHeapAPisar->t_size + tamanio_heap);
-					list_remove_and_destroy_element(segmento->heapsSegmento,indiceHeap,destruirHeap);
-					//TODO: ver de manejar un t_heapMetadata negativo para saber que es invalido pero contar ese tamanio como
-					//numeracion de las direcioneslogicas
-				}
 
-				cambiarFramesPorHeap(segmento,dst,n,true);
-				copiarContenidoAFrames(socket,segmento,dst,n,src);
-				//si creo el heap y desplazo al otro, cuando referencia al otro va a romper por direccion invalida
-				//pero si lo desplazo voy a romper con la relacion del heap con el nro de pagina;
-				//en ese caso lo tengo que pisar los bytes que corresponda o la cantidad de heaps que tenga que pisar
-				// y si sobra espacio crear otro heap ocupado con el hueco?
-			}
+		auxHeap->isFree = false;
+		if(auxHeap->t_size > n){
+			t_heapSegmento* heapHueco = crearHeap(auxHeap->t_size - n,true);
+			list_add(segmento->heapsSegmento,heapHueco);
+			cambiarFramesPorHeap(segmento,dst,n,true);
+			copiarContenidoAFrames(socket,segmento,dst,n,src);
 		}
-		else return -1; //quiero pisar un heap ocupado, rompo
+		else{
+			int tamanioAuxiliar = n - auxHeap->t_size;
+			while(tamanioAuxiliar  > 0){
+				t_heapSegmento * auxHeapAPisar = list_get(segmento->heapsSegmento, indiceHeap);
+				tamanioAuxiliar = tamanioAuxiliar - (auxHeapAPisar->t_size + tamanio_heap);
+				list_remove_and_destroy_element(segmento->heapsSegmento,indiceHeap,destruirHeap);
+				//TODO: ver de manejar un t_heapMetadata negativo para saber que es invalido pero contar ese tamanio como
+				//numeracion de las direcioneslogicas
+			}
+			if(0  > tamanioAuxiliar){
+				t_heapSegmento* huecoInvalido = crearHeap(tamanioAuxiliar,false);
+				list_add(segmento->heapsSegmento,huecoInvalido);
+			}
+
+
+		}
+		cambiarFramesPorHeap(segmento,dst,n,true);
+		copiarContenidoAFrames(socket,segmento,dst,n,src);
+
 	}
 	else{
 		return copiarContenidoAFrames(socket,segmento,dst,n,src);
@@ -251,13 +249,13 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 	for(int j = 0; j < list_size(segmentos->lista_segmentos) && !encontrado; j++)
 	{
 		segmentoBuscar = list_get(segmentos->lista_segmentos,j);
-		direccionHeap = segmentos->baseLogica;
+		direccionHeap = segmentos->baseLogica + tamanio_heap;
 		if(segmentoBuscar->tipoSegmento == 1)
 		{ //es heap, para los mmap tengo que usar heaps igual?
 			for (int i = 0; i < list_size(segmentoBuscar->heapsSegmento) && !encontrado; i++) {
 				auxHeap = list_get(segmentoBuscar->heapsSegmento,i);
-				encontrado = heapBuscado->isFree && heapBuscado->t_size > cantidadBytesNecesarios;
-				if(!encontrado) direccionHeap += heapBuscado->t_size + tamanio_heap;
+				encontrado = auxHeap->isFree && auxHeap->t_size > cantidadBytesNecesarios;
+				if(!encontrado) direccionHeap += auxHeap->t_size + tamanio_heap;
 				else heapBuscado = auxHeap;
 			}
 		}
@@ -265,18 +263,15 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 
 	if(heapBuscado != NULL)	{
 		heapBuscado->isFree = false;
-		heapBuscado->t_size = cantidadBytesNecesarios;
 		int huecoGenerado =  heapBuscado->t_size - cantidadBytesNecesarios;
+		heapBuscado->t_size = cantidadBytesNecesarios;
 		if(huecoGenerado > 0){
-			t_heapSegmento * heapHueco = crearHeap(huecoGenerado,true);
+			t_heapSegmento * heapHueco = crearHeap(huecoGenerado - tamanio_heap,true);
 			list_add_in_index(segmentoBuscar->heapsSegmento, i , heapHueco);
 		}
-
-		direccionHeap += tamanio_heap;
 	}
 
-
-	return -1;
+	return direccionHeap;
 }
 
 void allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias ){
@@ -295,13 +290,13 @@ void allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender,
 
 int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNecesarios){
 
-	uint32_t direccionLogica = segmento->limiteLogico + tamanio_heap;
+	uint32_t direccionLogica = segmento->baseLogica + tamanio_heap;
 
 	t_heapSegmento* ultimoHeap = list_get(segmento->heapsSegmento, list_size(segmento->heapsSegmento));
 	if(ultimoHeap != NULL && ultimoHeap->isFree){
 		cantBytesNecesarios = cantBytesNecesarios - ultimoHeap->t_size;
 		ultimoHeap->isFree = false;
-		direccionLogica = direccionLogica - ultimoHeap->t_size;
+		direccionLogica = direccionLogica + ultimoHeap->t_size;
 		ultimoHeap->t_size = cantBytesNecesarios;
 	}
 	else{
@@ -309,9 +304,9 @@ int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNe
 		list_add(segmento->heapsSegmento,heapNuevo);
 	}
 	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios + tamanio_heap);
-	int huecoLibre = cantBytesNecesarios - (cantPaginas * lengthPagina);
+	int huecoLibre = (cantPaginas * lengthPagina) - cantBytesNecesarios  ;
 	if(huecoLibre > 0) {
-		t_heapSegmento* heapNuevoHueco = crearHeap(huecoLibre,true);
+		t_heapSegmento* heapNuevoHueco = crearHeap(huecoLibre - tamanio_heap,true);
 		list_add(segmento->heapsSegmento,heapNuevoHueco);
 	}
 
@@ -494,7 +489,8 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 
 	//tendria que verificar que si el frame esta libre o no tiene contenido
 	if(offsetInicial > 0){
-		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
+		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
+		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
 		int ok = pageFault(segmento,0,contenidoDestino,offsetInicial,desplazamiento,false);
 		if(ok == -1) return ok;
@@ -523,7 +519,8 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 	//tendria que validar que las paginas esten libres, y no haya contenido cargado en el frame?
 	if(offsetInicial > 0){
-		desplazamiento = (g_configuracion->tamanioPagina - offsetInicial);
+		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
+		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
 		int ok = pageFault(segmento,0,porcionMemoria,offsetInicial,desplazamiento,true);
 		if(ok == -1) return ok;

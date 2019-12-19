@@ -15,6 +15,7 @@ int main(void) {
 	paginasEnSwap = crearListaPaginasSwap();
 	mapeosAbiertosCompartidos = crearListaMapeos();
 	tablasDePaginas = crearTablaPaginas();
+	contenidoFrames = crearTablaPaginas();
 
 	sem_init(&g_mutexTablaProgramas, 0, 1);
 	sem_init(&g_mutextablasDePaginas, 0, 1);
@@ -23,6 +24,7 @@ int main(void) {
 	sem_init(&g_mutexSwap, 0, 1);
 	sem_init(&g_mutexgBitarray_swap, 0, 1);
 	sem_init(&g_mutexgBitarray_marcos, 0, 1);
+	sem_init(&g_mutexgContenidoFrames, 0, 1);
 
 	armarConfigMemoria();
 	lengthPagina = g_configuracion->tamanioPagina;

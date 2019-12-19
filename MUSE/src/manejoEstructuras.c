@@ -153,9 +153,11 @@ t_heapSegmento* crearHeap(uint32_t tamanio, bool isFree){
 
 void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
 	t_pagina * paginaNuevo = crearPagina( numeroDeMarco, list_size( segmento->tablaPaginas) );
-	//TODO: flag de seteo de marco ocupado o no, lo aplicaria tambien en crear pagina
+	//TODO:sincronizar todo esto
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
+	void* contenidoFrame = malloc(lengthPagina);
+	agregarContenido(numeroDeMarco, contenidoFrame);
 	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas),numeroDeMarco));
 }
 
@@ -231,9 +233,9 @@ t_contenidoFrame* buscarContenidoFrameMemoria(int nroFrame) {
 
 	}
 
-	sem_wait(&g_mutexgContenidoFrames);
+	//sem_wait(&g_mutexgContenidoFrames);
 	t_contenidoFrame* contenidoBuscado = list_find(contenidoFrames,existeContenidoFrame);
-	sem_post(&g_mutexgContenidoFrames);
+	//sem_post(&g_mutexgContenidoFrames);
 	return contenidoBuscado;
 }
 
@@ -454,13 +456,15 @@ int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
 	if(segmento->tipoSegmento == 2) return -1;
 
-	int direccionLogicaAux = segmento->baseLogica;
+	int direccionLogicaAux = segmento->baseLogica + tamanio_heap ;
 	bool encontrado = false;
 	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++)
 	{
 		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
-		encontrado = (direccionLogicaAux + tamanio_heap == direccionLogica);
-		if(!encontrado) direccionLogicaAux += auxHeap->t_size + tamanio_heap;
+		encontrado = (direccionLogicaAux  == direccionLogica);
+		if(encontrado && 0  > auxHeap->t_size) return -1; //lo del 0 es para los heaps pisados que son invalidos
+		else if(!encontrado &&  0  > auxHeap->t_size)  direccionLogicaAux += auxHeap->t_size * -1;
+		else if(!encontrado) direccionLogicaAux += auxHeap->t_size + tamanio_heap;
 		else return i;
 	}
 

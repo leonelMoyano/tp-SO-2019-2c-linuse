@@ -56,7 +56,7 @@ int				bytesNecesariosUltimoFrame		(int cantidadBytes);
 int				framesNecesariosPorCantidadMemoria(int cantidadBytes);
 void            cargarFrameASwap                (int nroFrame, t_paginaAdministrativa * paginaAdmin);
 int             esDireccionLogicaValida         (uint32_t direccionLogica, t_segmento* segmento);
-t_contenidoFrame* buscarContenidoFrameMemoria   (int nroFrame);
+t_contenidoFrame* buscarContenidoFrameMemoria	(int nroFrame);
 void            agregarContenido                (int nroFrame, void* contenido);
 
 /**** Destuir estructuras ****/
