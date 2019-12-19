@@ -48,15 +48,20 @@ void muse_free(uint32_t dir){
 
 int muse_get(void* dst, uint32_t src, size_t n){
 
-	enviarGet(socketConexion,dst,src,n);
+	enviarGet( socketConexion, src, n );
 
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 
-	int operacionSatisfactoria = deserializarNumero(paquete->buffer);
+	t_get_response* read_resultado = deserealizarMuseGet( paquete->buffer );
 
-	VerificoOperacion(operacionSatisfactoria);
+	memcpy( dst, read_resultado->data, n );
 
-	return operacionSatisfactoria;
+	int errno_value =  read_resultado->errno_value;
+	destruirGetResponse( read_resultado );
+
+	VerificoOperacion( errno_value );
+
+	return errno_value;
 }
 
 int muse_cpy(uint32_t dst, void* src, int n){

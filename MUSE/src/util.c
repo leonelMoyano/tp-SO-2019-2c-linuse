@@ -54,16 +54,16 @@ t_registromcopy* deserializarCopy(t_stream * buffer){
 t_registromap* deserealizarMap(t_stream * buffer){
 	t_registromap* registro = malloc(sizeof(t_registromap));
 
+	int largo_path = strlen( (char*) buffer->data ) + 1;
 	int desplazamiento = 0;
 
-	memcpy(&registro->path,&buffer->data + desplazamiento,sizeof(char *));
-	desplazamiento += sizeof(char*);
+	registro->path = strdup( buffer->data );
+	desplazamiento += largo_path;
 
-	memcpy(&registro->length,&buffer->data + desplazamiento, sizeof(size_t));
+	registro->length = *(size_t*) ( buffer->data + desplazamiento );
 	desplazamiento += sizeof(size_t);
 
-	memcpy(&registro->flags,&buffer->data + desplazamiento, sizeof(int));
-	desplazamiento += sizeof(int);
+	registro->flags = *(int*) ( buffer->data + desplazamiento );
 
 	return registro;
 }

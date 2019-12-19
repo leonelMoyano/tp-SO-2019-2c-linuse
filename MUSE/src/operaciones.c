@@ -196,6 +196,8 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	list_add(programa->segmentos_programa->lista_segmentos,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += tamanioLogico;
+	//  TODO revisar caso
+	// el mmap caiga en un hueco al principio por lo que el limite logico no se modifica
 
 	return nuevoSegmento->baseLogica;
 }
@@ -426,11 +428,11 @@ void paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * cont
 
 			desplazamiento += g_configuracion->tamanioPagina;
 
-			list_add(paginasEnSwap,crearPaginaAdministrativa(socket,unSegmento->idSegmento,paginaNuevo->nroPagina,0));
+			list_add( paginasEnSwap, crearPaginaAdministrativa( socket, unSegmento->idSegmento, paginaNuevo->nroPagina, frameSwapElegido ) );
 
-			t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
+			// t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
 
-			paginaAdmin->nroFrame = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
+			// paginaAdmin->nroFrame = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
 
 			list_add(mapAbierto->tablaPaginas, paginaNuevo);
 		}
@@ -442,7 +444,7 @@ void escribirContenidoEnSwap(int indiceLibre,void* contenido,int desplazamiento)
 
 	void * contenidoACopiar = contenido + desplazamiento;
 
-	memcpy(archivoSwap + indiceSwap, contenidoACopiar ,lengthPagina);
+	memcpy(g_archivo_swap + indiceSwap, contenidoACopiar ,lengthPagina);
 
 }
 
@@ -450,7 +452,7 @@ void* traerContenidoSwap(int indiceBuscado){
 	//contenido debe ser una direccion Libre
 	void* memoriaDestino = malloc(lengthPagina);
 	int indiceSwap = indiceBuscado * g_configuracion->tamanioPagina;
-	memcpy(memoriaDestino, archivoSwap + indiceSwap ,lengthPagina);
+	memcpy(memoriaDestino, g_archivo_swap + indiceSwap ,lengthPagina);
 
 }
 
@@ -574,8 +576,8 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 	sem_post(&g_mutexgBitarray_marcos);
 
 	sem_wait(&g_mutexSwap);
-	memcpy(archivoSwap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
-	msync(archivoSwap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
+	memcpy(g_archivo_swap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
+	msync(g_archivo_swap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
 	sem_wait(&g_mutexSwap);
 
 	paginaAdmin->nroFrame = indiceFrame; //guardo el indice donde esta la pagina en SWAP

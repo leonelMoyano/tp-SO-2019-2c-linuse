@@ -28,12 +28,10 @@ int main(void) {
 
 	armarConfigMemoria();
 	lengthPagina = g_configuracion->tamanioPagina;
-	size_t tamArch;
 
 	reservarEspacioMemoriaPrincipal();
 
-	//archivoSwap = malloc(g_configuracion->tamanioSwap);
-	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
+	g_archivo_swap = crearArchivoSwap( RUTASWAP, g_configuracion->tamanioSwap  );
 
 	iniciarServidor(g_configuracion->puertoConexion,g_logger, (void*)attendConnection);
 
@@ -178,8 +176,8 @@ void armarConfigMemoria() {
 
 	g_configuracion->puertoConexion    = strdup( config_get_string_value(g_config, "LISTEN_PORT") );
 	g_configuracion->tamanioMemoria    = config_get_int_value(g_config, "MEMORY_SIZE");
-	g_configuracion->tamanioPagina       = config_get_int_value(g_config, "PAGE_SIZE");
-	g_configuracion->tamanioSwap     = config_get_int_value(g_config, "SWAP_SIZE");
+	g_configuracion->tamanioPagina     = config_get_int_value(g_config, "PAGE_SIZE");
+	g_configuracion->tamanioSwap       = config_get_int_value(g_config, "SWAP_SIZE");
 
 	config_destroy(g_config);
 }
@@ -211,6 +209,29 @@ void InicializarNuevoPrograma(int socket){
 void FinalizarPrograma(int socket){
 	destruirPrograma(buscarPrograma(socket));
 	//ActualizarLogMetricas();
+}
+
+void* crearArchivoSwap( char* path, int size ){
+	// Abro el archivo
+	int fd = open( path, O_CREAT | O_RDWR );
+
+	if ( fd == -1 ) {
+		perror( strerror( errno ) );
+		printf("%s: No existe el archivo o el directorio", path );
+		return NULL;
+	}
+
+	// Le doy el tamanio de la config
+	int truncate_result = ftruncate( fd, size );
+
+	if( truncate_result != 0 ){
+		perror( truncate_result );
+		perror( strerror( errno ) );
+	}
+
+	void * dataArchivo = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+	return dataArchivo;
 }
 
 void destruirGlobales(){}

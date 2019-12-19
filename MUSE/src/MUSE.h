@@ -1,6 +1,8 @@
 #ifndef MUSE_H_
 #define MUSE_H_
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -14,7 +16,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdarg.h>
-#include <signal.h>s
+#include <signal.h>
 #include "estructuras.h"
 #include "operaciones.h"
 #include "util.h"
@@ -46,7 +48,7 @@ sem_t g_mutexTablaProgramas;
 
 
 //Estructuras Swap
-void* archivoSwap;
+void* g_archivo_swap;
 int fdSwap;
 FILE * disco_swap;
 t_bitarray * g_bitarray_swap;
@@ -81,6 +83,7 @@ t_paquete* 		procesarPaqueteLibMuse			(t_paquete* paquete, int cliente_fd);
 void 			abrirArchivoGral				(FILE ** archivo);
 void 			InicializarNuevoPrograma		(int socket);
 void 			FinalizarPrograma				(int socket);
+void* 			crearArchivoSwap				(char* path, int size);
 
 #endif
 
