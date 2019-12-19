@@ -61,6 +61,7 @@ typedef struct suse_semaforo{
 	int current_value;
 	int max_value;
 	t_queue* threads_bloquedos;
+	pthread_mutex_t sem_mutex; // para proteger que el mismo semaforo no sea modificado por 2 programas a la vez
 } t_semaforo_suse;
 
 typedef struct suse_cliente t_client_suse;
@@ -80,6 +81,13 @@ typedef struct suse_cliente{
 	t_client_thread_suse* running_thread;
 	t_list* ready;
 	int self_socket;
+	pthread_mutex_t being_externally_scheduled;
+	/*
+	 * Si programa A esta bloqueda: tid0 en join, tid1 en wait semA y tid2 en wait semB
+	 * programa B hace signal semA y programa C hace signal semB a la vez
+	 * los prog B y prog C intentarian schedulear A desde afuera a la vez
+	 * este mutex protege contra ese caso
+	 */
 } t_client_suse;
 
 t_config_suse* g_config_server;

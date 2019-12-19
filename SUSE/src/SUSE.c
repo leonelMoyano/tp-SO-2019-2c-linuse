@@ -40,7 +40,6 @@ int main(void) {
 	iniciar_config("/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/SUSE/suseServer.cfg");
 	inicializar_estructuras();
 	inicializar_semaforos();
-	// TODO despues de levantar la config inicializar los semaforos de la config
 
 	iniciarServidor(g_config_server->puerto, g_logger, (void*)atenderConexion);
 
@@ -138,6 +137,7 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 		cliente_suse->running_thread = nuevo_thread;
 		cliente_suse->self_socket = socket_cliente;
 		cliente_suse->ready = list_create();
+		pthread_mutex_init(&( cliente_suse->being_externally_scheduled ), NULL);
 		log_info( g_logger, "Operacion suse_create Ok, hilo_principal %d en ejecucion para el socket %d", cliente_suse->running_thread->tid, socket_cliente );
 	}
 	else if( g_multiprog_max > 0 ) {
@@ -333,7 +333,6 @@ t_client_thread_suse* find_thread_by_tid_in_parent( int tid, t_client_suse* proc
 }
 
 t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
-	// TODO poner semaforos ( de verdad ) dentro de cada operacion de suse_semaforo
 	t_semaforo_request_suse* sem_req_info = deserializarSemaforoRequest( paquete->buffer );
 	log_info( g_logger, "Sem signal de %s, para tid %d", sem_req_info->name, sem_req_info->tid );
 
@@ -348,6 +347,7 @@ t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, in
 		log_warning( g_logger, "Sem %s ya esta en su valor maximo %d", sem_req_info->name, semaforo->max_value );
 		respuesta = armarPaqueteNumeroConOperacion( -EOVERFLOW, SUSE_SIGNAL );
 	} else {
+		pthread_mutex_lock( &( semaforo->sem_mutex ) );
 		if( queue_is_empty( semaforo->threads_bloquedos ) ) {
 			semaforo->current_value++;
 			log_info( g_logger, "Sem %s nuevo valor %d", sem_req_info->name, semaforo->current_value );
@@ -355,28 +355,38 @@ t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, in
 		else {
 			t_client_thread_suse* thread_desbloqueado = queue_pop( semaforo->threads_bloquedos );
 			// quitamos el primer hilo de la cola Blocked Threads del semaforo
-			thread_desbloqueado->estado = READY;
 			// cambiamos el estado del hilo desbloqueado
 			if( thread_desbloqueado->proceso_padre->running_thread == NULL ){	// pudiera ser que el proceso no tenga hilos en ejecución
-				quitar_thread_de_bloqueados( thread_desbloqueado );				// lo quitamos de la lista Global Blocked Thereads.
-				list_add(thread_desbloqueado->proceso_padre->ready,thread_desbloqueado);
-				// lo agregamos en la lista Ready threads del proceso padre del hilo desbloqueado
-				snd_schd_nxt_blockd_process( thread_desbloqueado );
-				// El proceso padre del hilo desbloqueado está esperando una respuesta de Schedule_Next, en ese momento no había más hilos para ejecutar
-				log_info( g_logger, "Operacion suse_schedule_next Ok para socket %d, hilo %d proximo a ejecutar", thread_desbloqueado->proceso_padre->self_socket , thread_desbloqueado->tid );
+				pthread_mutex_lock( &( thread_desbloqueado->proceso_padre->being_externally_scheduled ) );
+				if( thread_desbloqueado->proceso_padre->running_thread == NULL ){
+					quitar_thread_de_bloqueados( thread_desbloqueado );				// lo quitamos de la lista Global Blocked Thereads.
+					thread_desbloqueado->proceso_padre->running_thread = thread_desbloqueado;
+					thread_desbloqueado->estado = RUNNING;
+					// lo pasamos a Running del proceso padre del hilo desbloqueado
+					snd_schd_nxt_blockd_process( thread_desbloqueado );
+					// El proceso padre del hilo desbloqueado está esperando una respuesta de Schedule_Next, en ese momento no había más hilos para ejecutar
+					log_info( g_logger, "Operacion suse_schedule_next Ok para socket %d, hilo %d proximo a ejecutar", thread_desbloqueado->proceso_padre->self_socket , thread_desbloqueado->tid );
+				} else {
+					trancisionar_bloqueado_a_ready( ( void*) thread_desbloqueado );
+					thread_desbloqueado->estado = READY;
+					// El proceso padre del thread desbloquedo tenía un hilo en ejecucion, se agregó el hilo desbloquedado a su lista Ready Threads
+					log_info( g_logger, "Sem signal en %s desbloqueo tid %d", sem_req_info->name, thread_desbloqueado->tid );
+				}
+				pthread_mutex_unlock( &( thread_desbloqueado->proceso_padre->being_externally_scheduled ) );
+			} else {
+				trancisionar_bloqueado_a_ready( ( void*) thread_desbloqueado );
+				thread_desbloqueado->estado = READY;
+				// El proceso padre del thread desbloquedo tenía un hilo en ejecucion, se agregó el hilo desbloquedado a su lista Ready Threads
+				log_info( g_logger, "Sem signal en %s desbloqueo tid %d", sem_req_info->name, thread_desbloqueado->tid );
 			}
-			void* unlocked_thread = thread_desbloqueado;
-			trancisionar_bloqueado_a_ready( unlocked_thread );
-			// El proceso padre del thread desbloquedo tenía un hilo en ejecucion, se agregó el hilo desbloquedado a su lista Ready Threads
-			log_info( g_logger, "Sem signal en %s desbloqueo tid %d", sem_req_info->name, thread_desbloqueado->tid );
 		}
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_SIGNAL );
+		pthread_mutex_unlock( &( semaforo->sem_mutex ) );
 	}
 	return respuesta;
 }
 
 t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente){
-	// TODO poner semaforos ( de verdad ) dentro de cada operacion de suse_semaforo
 	t_semaforo_request_suse* sem_req_info = deserializarSemaforoRequest( paquete->buffer );
 	log_info( g_logger, "Sem wait de %s, para tid %d", sem_req_info->name, sem_req_info->tid );
 
@@ -388,17 +398,21 @@ t_paquete* procesarSemWait(t_paquete* paquete, t_client_suse* cliente_suse, int 
 	if( semaforo == NULL ){
 		log_warning( g_logger, "Sem %s no existe", sem_req_info->name );
 		respuesta = armarPaqueteNumeroConOperacion( -EINVAL, SUSE_WAIT );
-	} else if( semaforo->current_value == 0 ) {
-		log_info( g_logger, "Sem %s esta en 0, se bloquea el tid %d", sem_req_info->name, sem_req_info->tid );
-		running_thread->estado = BLOCKED;
-		queue_push( semaforo->threads_bloquedos, running_thread );
-		list_add( g_blocked_threads, running_thread );
-		// agrego al thread en ejecución a la lista Global Blocked Threads,
-		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
-	} else { // aca asumo que el semaforo puede ser restado porque no es 0
-		semaforo->current_value--;
-		log_info( g_logger, "Sem %s nuevo valor %d", sem_req_info->name, semaforo->current_value );
-		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
+	} else {
+		pthread_mutex_lock( &( semaforo->sem_mutex ) );
+		if( semaforo->current_value == 0 ) {
+			log_info( g_logger, "Sem %s esta en 0, se bloquea el tid %d", sem_req_info->name, sem_req_info->tid );
+			running_thread->estado = BLOCKED;
+			queue_push( semaforo->threads_bloquedos, running_thread );
+			list_add( g_blocked_threads, running_thread );
+			// agrego al thread en ejecución a la lista Global Blocked Threads,
+			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
+		} else { // aca asumo que el semaforo puede ser restado porque no es 0
+			semaforo->current_value--;
+			log_info( g_logger, "Sem %s nuevo valor %d", sem_req_info->name, semaforo->current_value );
+			respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_WAIT );
+		}
+		pthread_mutex_unlock( &( semaforo->sem_mutex ) );
 	}
 	return respuesta;
 }
@@ -506,6 +520,7 @@ void inicializar_semaforos(){
 		nuevo_semaforo->current_value = atoi( list_get( g_config_server->sem_init, i ) );
 		nuevo_semaforo->max_value = atoi( list_get( g_config_server->sem_max, i ) );
 		nuevo_semaforo->threads_bloquedos = queue_create();
+		pthread_mutex_init(&( nuevo_semaforo->sem_mutex ), NULL);
 
 		list_add( g_semaforos, nuevo_semaforo );
 	}
@@ -525,11 +540,12 @@ void iniciar_logger(void) {
 }
 
 double indice_sjf(t_client_thread_suse* thread_to_compare) {
-
 	long ready_time = thread_to_compare->time_last_run - thread_to_compare->time_created;
 	long exec_time 	= thread_to_compare->time_last_yield - thread_to_compare->time_last_run;
+
 	double alfa = g_config_server->alpha_sjf;
 	double comp_alfa = 1 - g_config_server->alpha_sjf;
+
 	double valor_calculado = alfa * ready_time + comp_alfa * exec_time;
 	return valor_calculado;
 }
