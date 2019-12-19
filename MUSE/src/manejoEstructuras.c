@@ -19,8 +19,8 @@ t_list* crearListaHeapsMetadata() {
 
 t_segmentos_programa* crearSegmentosPrograma() {
 	t_segmentos_programa* aux = malloc(sizeof(t_segmentos_programa));
-	aux->baseLogica = 0;
 	aux->limiteLogico = 0;
+	aux->baseLogica = 0;
 	aux->lista_segmentos = crearTablaSegmentos();
 	return aux;
 }
@@ -106,8 +106,7 @@ t_pagina* crearPaginaMap(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
 	pagina->flagPresencia  = false;
 	pagina->flagModificado = false;
-	// pagina->nroFrame  = NULL;
-	pagina->nroFrame  = nroFrame; // inicialmente va a ser el frame en swap
+	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
 	return pagina;
 }
@@ -228,10 +227,7 @@ t_contenidoFrame* buscarContenidoFrameMemoria(int nroFrame) {
 
 	bool existeContenidoFrame(void* contenidoFrame){
 		t_contenidoFrame* contenidoBuscar = (t_contenidoFrame*) contenidoFrame;
-
-		if(nroFrame != NULL) return contenidoBuscar->nroFrame == nroFrame;
-		return false;
-
+		return contenidoBuscar->nroFrame == nroFrame;
 	}
 
 	//sem_wait(&g_mutexgContenidoFrames);

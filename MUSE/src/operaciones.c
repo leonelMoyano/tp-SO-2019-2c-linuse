@@ -27,7 +27,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 				log_info( g_logger, "Creo nuevo segmento");
 				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 				list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
-				programa->segmentos_programa->limiteLogico += tam;
+				programa->segmentos_programa->limiteLogico += segmentoElegido->limiteLogico;
 				direccionLogica = segmentoElegido->baseLogica;
 
 			}
@@ -196,6 +196,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	list_add(programa->segmentos_programa->lista_segmentos,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += tamanioLogico;
+
 	//  TODO revisar caso
 	// el mmap caiga en un hueco al principio por lo que el limite logico no se modifica
 
@@ -437,9 +438,9 @@ void paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * cont
 
 			list_add( paginasEnSwap, crearPaginaAdministrativa( socket, unSegmento->idSegmento, paginaNuevo->nroPagina, frameSwapElegido ) );
 
-			// t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
+			t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
 
-			// paginaAdmin->nroFrame = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
+			paginaAdmin->nroFrame = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
 
 			list_add(mapAbierto->tablaPaginas, paginaNuevo);
 		}
@@ -563,10 +564,22 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 		else TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
 	}
 	//sem_wait(&g_mutexgContenidoFrames);
-	t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
-	if(frame == NULL) return -1;
-	if(operacionInversa) memcpy(frame->contenido, contenidoDestinoOsrc + desplazamiento,desplazamiento);
-	else memcpy(contenidoDestinoOsrc,frame->contenido + offsetInicial,desplazamiento);
+	if(operacionInversa) {
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		if(frame == NULL){
+			void* contenidoFrame = malloc(lengthPagina);
+			memcpy(contenidoFrame, contenidoDestinoOsrc + desplazamiento,desplazamiento);
+			agregarContenido(pagina->nroFrame,contenidoFrame);
+		}
+		else{
+			memcpy(frame->contenido, contenidoDestinoOsrc + desplazamiento,desplazamiento);
+		}
+	}
+	else {
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		if(frame == NULL) return -1;
+		memcpy(contenidoDestinoOsrc,frame->contenido + offsetInicial,desplazamiento);
+	}
 	//sem_post(&g_mutexgContenidoFrames);
 }
 
