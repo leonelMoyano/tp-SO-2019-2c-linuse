@@ -19,7 +19,7 @@ t_list* crearListaHeapsMetadata() {
 
 t_segmentos_programa* crearSegmentosPrograma() {
 	t_segmentos_programa* aux = malloc(sizeof(t_segmentos_programa));
-	aux->baseLogica = direccionamientoLogicoActual;
+	aux->baseLogica = 0;
 	aux->lista_segmentos = crearTablaSegmentos();
 	return aux;
 }
@@ -101,11 +101,12 @@ t_pagina* crearPagina(int nroFrame, int nroPagina){
 	return pagina;
 }
 
-t_pagina* crearPaginaMap(int nroPagina){
+t_pagina* crearPaginaMap(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
 	pagina->flagPresencia  = false;
 	pagina->flagModificado = false;
 	pagina->nroFrame  = NULL;
+	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
 	return pagina;
 }

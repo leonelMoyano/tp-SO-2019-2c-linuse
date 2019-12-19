@@ -38,6 +38,7 @@ t_registromcopy* deserializarCopy(t_stream * buffer){
 	int desplazamiento = 0;
 
 	memcpy(&registro->n,buffer->data + desplazamiento, sizeof(int));
+	desplazamiento += sizeof(int);
 
 	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(uint32_t));
 	desplazamiento += sizeof(uint32_t);

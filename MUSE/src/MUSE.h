@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdarg.h>
-#include <signal.h>
+#include <signal.h>s
 #include "estructuras.h"
 #include "operaciones.h"
 #include "util.h"
@@ -28,10 +28,10 @@
 int idSegmento;
 int nroPrograma;
 int punteroClock;
-int direccionamientoLogicoActual;
 size_t lengthPagina;
 
 //Semafotos
+
 sem_t g_mutexSwap;
 sem_t g_mutexPaginasEnSwap;
 sem_t g_mutexgBitarray_swap;

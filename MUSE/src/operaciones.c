@@ -5,14 +5,14 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	t_programa * programa = buscarPrograma(socket);
 	log_info( g_logger, "Programa %d: Alloqueo %lu bytes",programa->programaId,tam);
 	t_segmento * segmentoElegido;
-	uint32_t direccionLogica = 0;
+	uint32_t direccionLogica = 5;
 
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
 		log_info( g_logger, "Creo el primer segmento del programa %d",programa->programaId);
 		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 		list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
-		int auxNoUsar = allocarHeapNuevo(socket , segmentoElegido, tam);
+		int auxNoUsar = allocarHeapNuevo(programa , segmentoElegido, tam);
 	}
 	else
 	{
@@ -28,6 +28,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 				list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
 				programa->segmentos_programa->limiteLogico += tam;
+				direccionLogica = segmentoElegido->baseLogica;
 
 			}
 			else{
@@ -46,7 +47,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 		}
 	}
 
-	ActualizarLogMetricas();
+	//ActualizarLogMetricas();
 	return direccionLogica;
 
 }
@@ -161,7 +162,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	FILE * archivoMap;
 
 	//TODO: revisar este map y el pasaje de los flags
-	void* contenidoMap = mapearArchivoMUSE(path,length,&archivoMap,flags);
+	void* contenidoMap = mapearArchivoMUSE(path,&length,&archivoMap,flags);
 
 	//TODO: optimizar funcion, evitar repeticion codigo
 
@@ -294,7 +295,7 @@ void allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender,
 
 int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNecesarios){
 
-	uint32_t direccionLogica = segmento->limiteLogico;
+	uint32_t direccionLogica = segmento->limiteLogico + tamanio_heap;
 
 	t_heapSegmento* ultimoHeap = list_get(segmento->heapsSegmento, list_size(segmento->heapsSegmento));
 	if(ultimoHeap != NULL && ultimoHeap->isFree){
@@ -307,7 +308,7 @@ int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNe
 		t_heapSegmento* heapNuevo = crearHeap(cantBytesNecesarios,false);
 		list_add(segmento->heapsSegmento,heapNuevo);
 	}
-	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios);
+	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios + tamanio_heap);
 	int huecoLibre = cantBytesNecesarios - (cantPaginas * lengthPagina);
 	if(huecoLibre > 0) {
 		t_heapSegmento* heapNuevoHueco = crearHeap(huecoLibre,true);
@@ -388,7 +389,7 @@ void TraerPaginaDeSwap(int socketPrograma, t_pagina* pagina, int idSegmento){
 	t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socketPrograma,idSegmento,pagina->nroPagina);
 	void* dataPagina = traerContenidoSwap(paginaAdmin->nroFrame);
 	int nroFrameMemoria = buscarFrameLibre();
-	if(nroFrameMemoria == NULL) nroFrameMemoria = ClockModificado();
+	if(nroFrameMemoria == -1) nroFrameMemoria = ClockModificado();
 	agregarContenido(nroFrameMemoria,dataPagina);	
 	pagina->nroFrame = nroFrameMemoria;
 	modificarPresencia(pagina,true,false);
@@ -404,8 +405,9 @@ void TraerPaginaDeSwap(int socketPrograma, t_pagina* pagina, int idSegmento){
 void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSegmento){
 
 	int nroFrame = buscarFrameLibreSwap();
+	int desplazamiento = nroFrame * g_configuracion->tamanioPagina;
 	sem_wait(&g_mutexSwap);
-	escribirContenidoEnSwap(nroFrame,bytes,disco_swap);
+	escribirContenidoEnSwap(nroFrame,bytes,desplazamiento);
 	list_add(paginasEnSwap, crearPaginaAdministrativa(socketPrograma, idSegmento, nroPagina, nroFrame));
 	sem_post(&g_mutexSwap);
 
@@ -418,9 +420,10 @@ void paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * cont
 	int cantPaginasAMover = framesNecesariosPorCantidadMemoria(tamanioMap);
 
 	for(int i=0;i < cantPaginasAMover;i++){
-			t_pagina * paginaNuevo = crearPaginaMap(i);
 
 			int frameSwapElegido = buscarFrameLibreSwap(); //modifico bitaray de swap
+
+			t_pagina * paginaNuevo = crearPaginaMap(frameSwapElegido, i);
 
 			if(frameSwapElegido == -1) perror("Memoria Swap completa"); //es correcto? si pero en teoria nunca va a pasar
 
@@ -556,8 +559,8 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 	sem_wait(&g_mutexgContenidoFrames);
 	t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
 	if(frame == NULL) return -1;
-	if(operacionInversa) memcpy(&frame->contenido[0],&contenidoDestinoOsrc[desplazamiento],desplazamiento);
-	else memcpy(&contenidoDestinoOsrc,&frame->contenido[offsetInicial],desplazamiento);
+	if(operacionInversa) memcpy(frame->contenido, contenidoDestinoOsrc + desplazamiento,desplazamiento);
+	else memcpy(contenidoDestinoOsrc,frame->contenido + offsetInicial,desplazamiento);
 	sem_post(&g_mutexgContenidoFrames);
 }
 

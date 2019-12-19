@@ -5,7 +5,6 @@ int main(void) {
 	idSegmento = 0;
 	punteroClock = 0;
 	nroPrograma = 1;
-	direccionamientoLogicoActual = 0;
 	tamanio_heap = 5;
 
 	g_logger = log_create("MUSE.log", "MUSE", true, LOG_LEVEL_TRACE);
@@ -26,9 +25,10 @@ int main(void) {
 	sem_init(&g_mutexgBitarray_marcos, 0, 1);
 
 	armarConfigMemoria();
-
 	lengthPagina = g_configuracion->tamanioPagina;
 	size_t tamArch;
+
+	reservarEspacioMemoriaPrincipal();
 
 	//archivoSwap = malloc(g_configuracion->tamanioSwap);
 	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
@@ -176,8 +176,8 @@ void armarConfigMemoria() {
 
 	g_configuracion->puertoConexion    = strdup( config_get_string_value(g_config, "LISTEN_PORT") );
 	g_configuracion->tamanioMemoria    = config_get_int_value(g_config, "MEMORY_SIZE");
-	g_configuracion->tamanioSwap       = config_get_int_value(g_config, "PAGE_SIZE");
-	g_configuracion->tamanioPagina     = config_get_int_value(g_config, "SWAP_SIZE");
+	g_configuracion->tamanioPagina       = config_get_int_value(g_config, "PAGE_SIZE");
+	g_configuracion->tamanioSwap     = config_get_int_value(g_config, "SWAP_SIZE");
 
 	config_destroy(g_config);
 }
@@ -208,7 +208,7 @@ void InicializarNuevoPrograma(int socket){
 
 void FinalizarPrograma(int socket){
 	destruirPrograma(buscarPrograma(socket));
-	ActualizarLogMetricas();
+	//ActualizarLogMetricas();
 }
 
 void destruirGlobales(){}
