@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdarg.h>
-#include <signal.h>s
+#include <signal.h>
 #include "estructuras.h"
 #include "operaciones.h"
 #include "util.h"
