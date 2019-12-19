@@ -79,6 +79,7 @@ typedef struct suse_cliente{
 	int main_tid;
 	t_client_thread_suse* running_thread;
 	t_list* ready;
+	int threads_q;
 } t_client_suse;
 
 t_config_suse* g_config_server;
