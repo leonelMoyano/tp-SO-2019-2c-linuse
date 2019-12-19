@@ -333,27 +333,28 @@ int desplazamientoPaginaSegmento(uint32_t direccionVirtual, int baseLogica){
 }
 
 int buscarFrameLibre(){
+	sem_wait(&g_mutexgBitarray_marcos);
 	for (int i = 0; i < g_cantidadFrames; i++) {
-		sem_wait(&g_mutexgBitarray_marcos);
 		if( bitarray_test_bit(g_bitarray_marcos, i) == false ) {
 			bitarray_set_bit(g_bitarray_marcos,i);
+			sem_post(&g_mutexgBitarray_marcos);
 			return i;
 		}
-		sem_post(&g_mutexgBitarray_marcos);
 	}
+	sem_post(&g_mutexgBitarray_marcos);
 	return -1;
 }
 
 int buscarFrameLibreSwap(){
+	sem_wait(&g_mutexgBitarray_swap);
 	for (int i = 0; i < maxPaginasEnSwap; i++) {
-		sem_wait(&g_mutexgBitarray_swap);
 		if( bitarray_test_bit(g_bitarray_swap, i) == false ) {
 			bitarray_set_bit(g_bitarray_swap,i);
+			sem_post(&g_mutexgBitarray_swap);
 			return i;
 		}
-		sem_post(&g_mutexgBitarray_swap);
 	}
-
+	sem_post(&g_mutexgBitarray_swap);
 	return -1;
 }
 
@@ -452,13 +453,24 @@ t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 	return list_get(programa->segmentos_programa->lista_segmentos,list_size(programa->segmentos_programa->lista_segmentos) -1);
 }
 
+int huecoUltimaPagina(t_segmento * segmento){
+	int espacioVacio = 0;
+	int espacioOcupado = 0;
+	for (int i = 0; i < list_size(segmento->heapsSegmento); i++) {
+		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
+		espacioOcupado +=  auxHeap->t_size + tamanio_heap;
+	}
+	int cantPaginas = list_size(segmento->tablaPaginas);
+	return (cantPaginas * lengthPagina) - espacioOcupado;
+}
+
 int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
 	if(segmento->tipoSegmento == 2) return -1;
 
 	int direccionLogicaAux = segmento->baseLogica + tamanio_heap ;
 	bool encontrado = false;
-	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++)
+	for (int i = 0; list_size(segmento->heapsSegmento) && !encontrado; i++)
 	{
 		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
 		encontrado = (direccionLogicaAux  == direccionLogica);

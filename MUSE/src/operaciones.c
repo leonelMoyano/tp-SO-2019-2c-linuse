@@ -34,7 +34,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 			else{
 				log_info( g_logger, "Redimensiono el ultimo segmento del programa %d",programa->programaId);
 				segmentoElegido = ultimoSegmento;
-				direccionLogica = allocarHeapNuevo(socket,segmentoElegido, tam);
+				direccionLogica = allocarHeapNuevo(programa,segmentoElegido, tam);
 				int cantPaginas = framesNecesariosPorCantidadMemoria(tam);
 
 			}
@@ -251,33 +251,35 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 		segmentoBuscar = list_get(segmentos->lista_segmentos,j);
 		direccionHeap = segmentos->baseLogica + tamanio_heap;
 		if(segmentoBuscar->tipoSegmento == 1)
-		{ //es heap, para los mmap tengo que usar heaps igual?
+		{
 			for (int i = 0; i < list_size(segmentoBuscar->heapsSegmento) && !encontrado; i++) {
 				auxHeap = list_get(segmentoBuscar->heapsSegmento,i);
-				encontrado = auxHeap->isFree && auxHeap->t_size > cantidadBytesNecesarios;
+				encontrado = auxHeap->isFree && auxHeap->t_size >= cantidadBytesNecesarios;
 				if(!encontrado) direccionHeap += auxHeap->t_size + tamanio_heap;
-				else heapBuscado = auxHeap;
+				else {
+					heapBuscado = auxHeap;
+					heapBuscado->isFree = false;
+				}
 			}
 		}
 	}
 
 	if(heapBuscado != NULL)	{
-		heapBuscado->isFree = false;
 		int huecoGenerado =  heapBuscado->t_size - cantidadBytesNecesarios;
 		heapBuscado->t_size = cantidadBytesNecesarios;
-		if(huecoGenerado > 0){
-			t_heapSegmento * heapHueco = crearHeap(huecoGenerado - tamanio_heap,true);
-			list_add_in_index(segmentoBuscar->heapsSegmento, i , heapHueco);
+		if(huecoGenerado > 5){
+			huecoGenerado = huecoGenerado - tamanio_heap;
+			t_heapSegmento * heapHueco = crearHeap(huecoGenerado,true);
+			list_add(segmentoBuscar->heapsSegmento,heapHueco);
 		}
+		return direccionHeap;
 	}
-
-	return direccionHeap;
+	else return -1;
 }
 
-void allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias ){
-	int i;
-
-	for (i = 0; cantPaginasNecesarias > i ; ++i){
+int allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias ){
+	int indiceNuevaPagina = list_size(segmentoAExtender->tablaPaginas) - 1;
+	for (int i = 0; cantPaginasNecesarias > i ; ++i){
 		int indiceFrame = buscarFrameLibre();
 		if(indiceFrame == -1) indiceFrame = ClockModificado();
 		else
@@ -286,13 +288,15 @@ void allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender,
 
 	segmentoAExtender->limiteLogico += cantPaginasNecesarias * lengthPagina;
 	programa->segmentos_programa->limiteLogico += segmentoAExtender->limiteLogico;	
+	return indiceNuevaPagina + 1;
 }
 
 int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNecesarios){
 
+	int espacioLibreUltimaPagina = huecoUltimaPagina(segmento);
 	uint32_t direccionLogica = segmento->baseLogica + tamanio_heap;
 
-	t_heapSegmento* ultimoHeap = list_get(segmento->heapsSegmento, list_size(segmento->heapsSegmento));
+	t_heapSegmento* ultimoHeap = list_get(segmento->heapsSegmento, list_size(segmento->heapsSegmento) - 1);
 	if(ultimoHeap != NULL && ultimoHeap->isFree){
 		cantBytesNecesarios = cantBytesNecesarios - ultimoHeap->t_size;
 		ultimoHeap->isFree = false;
@@ -303,14 +307,17 @@ int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNe
 		t_heapSegmento* heapNuevo = crearHeap(cantBytesNecesarios,false);
 		list_add(segmento->heapsSegmento,heapNuevo);
 	}
-	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios + tamanio_heap);
-	int huecoLibre = (cantPaginas * lengthPagina) - cantBytesNecesarios  ;
-	if(huecoLibre > 0) {
+	int bytesNecesarios = cantBytesNecesarios  + tamanio_heap - espacioLibreUltimaPagina;
+	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios);
+	int huecoLibre = (cantPaginas * lengthPagina) - bytesNecesarios;
+	if(huecoLibre > 5) {
 		t_heapSegmento* heapNuevoHueco = crearHeap(huecoLibre - tamanio_heap,true);
 		list_add(segmento->heapsSegmento,heapNuevoHueco);
 	}
 
-	allocarEnPaginasNuevas(programa,segmento,cantPaginas);
+	int indicePrimeraPagina = allocarEnPaginasNuevas(programa,segmento,cantPaginas);
+	int tamanioHeapAux = tamanio_heap - espacioLibreUltimaPagina;
+	direccionLogica = (indicePrimeraPagina * lengthPagina) + tamanioHeapAux;
 
 	return direccionLogica;
 }
@@ -553,12 +560,12 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 		}
 		else TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
 	}
-	sem_wait(&g_mutexgContenidoFrames);
+	//sem_wait(&g_mutexgContenidoFrames);
 	t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
 	if(frame == NULL) return -1;
 	if(operacionInversa) memcpy(frame->contenido, contenidoDestinoOsrc + desplazamiento,desplazamiento);
 	else memcpy(contenidoDestinoOsrc,frame->contenido + offsetInicial,desplazamiento);
-	sem_post(&g_mutexgContenidoFrames);
+	//sem_post(&g_mutexgContenidoFrames);
 }
 
 void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
