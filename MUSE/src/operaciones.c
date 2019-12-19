@@ -28,6 +28,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 				list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
 				programa->segmentos_programa->limiteLogico += tam;
+				direccionLogica = segmentoElegido->baseLogica;
 
 			}
 			else{
@@ -46,7 +47,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 		}
 	}
 
-	ActualizarLogMetricas();
+	//ActualizarLogMetricas();
 	return direccionLogica;
 
 }
