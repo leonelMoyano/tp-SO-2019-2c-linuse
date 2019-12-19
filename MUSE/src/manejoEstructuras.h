@@ -29,6 +29,7 @@ bool			esSegmentoExtendible			(t_segmentos_programa* segmentos, t_segmento* segm
 
 //PAGINAS
 t_pagina*       crearPagina                     (int numeroDeMarco, int nroPagina);
+t_pagina* 		crearPaginaMap					(int nroFrame, int nroPagina);
 void 			agregarPaginaEnSegmento		    (int socket, t_segmento * segmento, int numeroDeMarco);
 void			modificarPagina					(t_pagina* pagina ,void* nuevoContenido, bool presencia);
 t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegmento,int nroPagina, int nroFrame);
@@ -39,8 +40,6 @@ int				desplazamientoPaginaSegmento	(uint32_t direccionVirtual, int baseLogica);
 void			modificarPresencia				(t_pagina* pagina , bool presencia, bool modifica);
 void			modificarContenidoPagina		(t_pagina* pagina ,void* nuevoContenido, bool presencia);
 void            borrarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwapOPrincipal);
-t_pagina*       crearPaginaMap                  (int  nroFrame,int  nroPagina);
-
 t_mapAbierto*   buscarMapeoAbierto              (char* path);
 
 
@@ -68,6 +67,5 @@ void 	   destruirSegmentosPrograma	( t_segmentos_programa* segmentos );
 void	   destruirHeap					( t_heapSegmento* heap );
 void 	   destruirSegmentoMap			( t_segmento* segmento, bool borrarTodo );
 void       borrarMapeoAbierto           (char* path);
-
 
 #endif /* MANEJOESTRUCTURAS_H_ */
