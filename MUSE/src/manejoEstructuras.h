@@ -30,6 +30,7 @@ bool			esSegmentoExtendible			(t_segmentos_programa* segmentos, t_segmento* segm
 //PAGINAS
 t_pagina*       crearPagina                     (int numeroDeMarco, int nroPagina);
 t_pagina* 		crearPaginaMap					(int nroFrame, int nroPagina);
+int				huecoUltimaPagina				(t_segmento * segmento);
 void 			agregarPaginaEnSegmento		    (int socket, t_segmento * segmento, int numeroDeMarco);
 void			modificarPagina					(t_pagina* pagina ,void* nuevoContenido, bool presencia);
 t_paginaAdministrativa* crearPaginaAdministrativa(int socketPrograma, int idSegmento,int nroPagina, int nroFrame);
