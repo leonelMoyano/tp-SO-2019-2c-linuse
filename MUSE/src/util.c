@@ -20,15 +20,11 @@ t_registromget* deserializarGet(t_stream * buffer){
 	t_registromget * registro = malloc(sizeof(t_registromget));
 	int desplazamiento = 0;
 
-	memcpy(&registro->n,buffer->data + desplazamiento, sizeof(size_t));
-	desplazamiento += sizeof(size_t);
-
 	memcpy(&registro->src,buffer->data + desplazamiento,sizeof(uint32_t));
 	desplazamiento += sizeof(uint32_t);
 
-	registro->dst = malloc(registro->n);
-	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(void));
-	desplazamiento += registro->n;
+	memcpy(&registro->n,buffer->data + desplazamiento, sizeof(size_t));
+	desplazamiento += sizeof(size_t);
 
 	return registro;
 }
