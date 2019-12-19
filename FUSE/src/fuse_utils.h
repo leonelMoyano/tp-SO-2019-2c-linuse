@@ -15,8 +15,7 @@ typedef struct fuse_client_config{
 	char* puerto;
 } t_fuse_config;
 
-t_config* commons_config;
-t_fuse_config* fuse_config;
+t_fuse_config* g_fuse_config;
 
 int get_datablock_index(off_t);
 int get_indirect_block_index(off_t);
