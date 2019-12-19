@@ -61,7 +61,7 @@ int muse_get(void* dst, uint32_t src, size_t n){
 
 int muse_cpy(uint32_t dst, void* src, int n){
 
-	enviarCopy(socketConexion,dst, src,n);
+	enviarCopy(socketConexion,src, dst,n);
 
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 

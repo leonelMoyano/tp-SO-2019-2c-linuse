@@ -3,20 +3,32 @@
 
 #include <biblioNOC/estructurasAdministrativas.h>
 #include <biblioNOC/paquetes.h>
-#include "libMUSE.h"
 #include <setjmp.h>
 #include <signal.h>
+#include <biblioNOC/conexiones.h>
+#include "util.h"
+#define LIBMUSE 400
 
-//extern int pid;
+	int socketConexion;
+	int pid;
 
-//si queres podemos cambiar parametros por estructuras que los contengan
+	typedef enum  {
+		MUSE_INIT = 723,
+		MUSE_ALLOC,
+		MUSE_FREE,
+		MUSE_GET,
+		MUSE_COPY,
+		MUSE_MAP,
+		MUSE_SYNC,
+		MUSE_UNMAP,
+		MUSE_CLOSE
+	}t_cod_operaciones_MUSE;
+
 void serializarUINT32(t_paquete* unPaquete, uint32_t numero);
 uint32_t deserializarUINT32(t_stream* buffer);
 
 void serializarGet(t_paquete* unPaquete, void* dst,uint32_t src, size_t n);
-
 void serialzarCopy(t_paquete* unPaquete, void* src,uint32_t dst, int n);
-
 void serializarMap(t_paquete * unPaquete, char * path, size_t length, int flags);
 
 void serializarMsync(t_paquete * unPaquete,uint32_t addr, size_t len);

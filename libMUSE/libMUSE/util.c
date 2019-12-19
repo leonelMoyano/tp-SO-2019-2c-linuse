@@ -68,8 +68,6 @@ void serialzarCopy(t_paquete* unPaquete, void* src,uint32_t dst, int n){
 
 	memcpy(unPaquete->buffer->data + desplazamiento, src, cantBytes);
 	desplazamiento += cantBytes;
-
-
 }
 
 void serializarMap(t_paquete * unPaquete, char * path, size_t length, int flags){
@@ -171,22 +169,12 @@ void enviarGet(int server_socket,void* dst,  uint32_t src, size_t n) {
 	enviarPaquetes(server_socket, unPaquete);
 }
 
-void enviarCopy(int server_socket,void* src,  uint32_t dst, int n) {
-	t_paquete * unPaquete = malloc(sizeof(t_paquete));
-
-	unPaquete->codigoOperacion = MUSE_COPY;
-
-	serialzarCopy(unPaquete,src, dst, n);
-
-	enviarPaquetes(server_socket, unPaquete);
-}
-
 void enviarMap(int server_socket,char * path, size_t length, int flags) {
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_MAP;
 
-	serialzarMap(unPaquete, path,  length, flags);
+	serializarMap(unPaquete, path,  length, flags);
 
 	enviarPaquetes(server_socket, unPaquete);
 }
@@ -196,7 +184,17 @@ void enviarMsync(int server_socket,uint32_t addr, size_t len) {
 
 	unPaquete->codigoOperacion = MUSE_SYNC;
 
-	serialzarMsync(unPaquete, addr,  len);
+	serializarMsync(unPaquete, addr,  len);
+
+	enviarPaquetes(server_socket, unPaquete);
+}
+
+void enviarCopy(int server_socket,void* src,  uint32_t dst, int n) {
+	t_paquete * unPaquete = malloc(sizeof(t_paquete));
+
+	unPaquete->codigoOperacion = MUSE_COPY;
+
+	serialzarCopy(unPaquete,src, dst, n);
 
 	enviarPaquetes(server_socket, unPaquete);
 }
