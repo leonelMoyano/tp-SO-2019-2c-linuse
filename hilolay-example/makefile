@@ -17,4 +17,4 @@ clean:
 
 
 example:
-	$(CC) src/example_program.c -g -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug" -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/hilolay/bin" -Wall $(CFLAGS) -o $(BUILD)/$(NAME) -lbiblioSuse -lhilolay 
+	$(CC) src/example_program.c -g -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug" -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug" -L"/home/utnso/workspace/tp-2019-2c-No-C-Nada/hilolay/bin" -Wall $(CFLAGS) -o $(BUILD)/$(NAME) -lbiblioSuse -lhilolay 

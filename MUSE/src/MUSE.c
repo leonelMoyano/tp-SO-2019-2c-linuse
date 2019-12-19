@@ -174,10 +174,10 @@ void armarConfigMemoria() {
 	g_config = config_create(ruta);
 	g_configuracion = malloc( sizeof( t_configuracion ) );
 
-	g_configuracion->puertoConexion    = config_get_string_value(g_config, "LISTEN_PORT");
+	g_configuracion->puertoConexion    = strdup( config_get_string_value(g_config, "LISTEN_PORT") );
 	g_configuracion->tamanioMemoria    = config_get_int_value(g_config, "MEMORY_SIZE");
-	g_configuracion->tamanioSwap    = config_get_int_value(g_config, "PAGE_SIZE");
-	g_configuracion->tamanioPagina    = config_get_int_value(g_config, "SWAP_SIZE");
+	g_configuracion->tamanioSwap       = config_get_int_value(g_config, "PAGE_SIZE");
+	g_configuracion->tamanioPagina     = config_get_int_value(g_config, "SWAP_SIZE");
 
 	config_destroy(g_config);
 }

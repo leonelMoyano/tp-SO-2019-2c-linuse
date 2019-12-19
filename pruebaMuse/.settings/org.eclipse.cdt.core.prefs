@@ -1,0 +1,6 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.300967586/LD_LIBRARY_PATH/delimiter=\:
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.300967586/LD_LIBRARY_PATH/operation=replace
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.300967586/LD_LIBRARY_PATH/value=/usr/lib/jvm/java-8-openjdk-i386/jre/lib/i386/server\:/usr/lib/jvm/java-8-openjdk-i386/jre/lib/i386\:/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug\:/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.300967586/append=true
+environment/project/cdt.managedbuild.config.gnu.cross.exe.debug.300967586/appendContributed=true
