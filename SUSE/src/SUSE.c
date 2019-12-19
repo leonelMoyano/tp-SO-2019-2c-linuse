@@ -354,12 +354,20 @@ t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, in
 		}
 		else {
 			t_client_thread_suse* thread_desbloqueado = queue_pop( semaforo->threads_bloquedos );
-			if( thread_desbloqueado->proceso_padre->running_thread == NULL ){
-				quitar_thread_de_bloqueados( thread_desbloqueado );
+			// quitamos el primer hilo de la cola Blocked Threads del semaforo
+			thread_desbloqueado->estado = READY;
+			// cambiamos el estado del hilo desbloqueado
+			if( thread_desbloqueado->proceso_padre->running_thread == NULL ){	// pudiera ser que el proceso no tenga hilos en ejecución
+				quitar_thread_de_bloqueados( thread_desbloqueado );				// lo quitamos de la lista Global Blocked Thereads.
 				list_add(thread_desbloqueado->proceso_padre->ready,thread_desbloqueado);
+				// lo agregamos en la lista Ready threads del proceso padre del hilo desbloqueado
 				snd_schd_nxt_blockd_process( thread_desbloqueado );
+				// El proceso padre del hilo desbloqueado está esperando una respuesta de Schedule_Next, en ese momento no había más hilos para ejecutar
 				log_info( g_logger, "Operacion suse_schedule_next Ok para socket %d, hilo %d proximo a ejecutar", thread_desbloqueado->proceso_padre->self_socket , thread_desbloqueado->tid );
 			}
+			void* unlocked_thread = thread_desbloqueado;
+			trancisionar_bloqueado_a_ready( unlocked_thread );
+			// El proceso padre del thread desbloquedo tenía un hilo en ejecucion, se agregó el hilo desbloquedado a su lista Ready Threads
 			log_info( g_logger, "Sem signal en %s desbloqueo tid %d", sem_req_info->name, thread_desbloqueado->tid );
 		}
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_SIGNAL );
