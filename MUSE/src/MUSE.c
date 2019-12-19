@@ -4,7 +4,7 @@ int main(void) {
 
 	idSegmento = 0;
 	punteroClock = 0;
-	nroPrograma = 0;
+	nroPrograma = 1;
 	direccionamientoLogicoActual = 0;
 	tamanio_heap = 5;
 
@@ -17,6 +17,14 @@ int main(void) {
 	mapeosAbiertosCompartidos = crearListaMapeos();
 	tablasDePaginas = crearTablaPaginas();
 
+	sem_init(&g_mutexTablaProgramas, 0, 1);
+	sem_init(&g_mutextablasDePaginas, 0, 1);
+	sem_init(&g_mutexMapeosAbiertosCompartidos, 0, 1);
+	sem_init(&g_mutexPaginasEnSwap, 0, 1);
+	sem_init(&g_mutexSwap, 0, 1);
+	sem_init(&g_mutexgBitarray_swap, 0, 1);
+	sem_init(&g_mutexgBitarray_marcos, 0, 1);
+
 	armarConfigMemoria();
 
 	lengthPagina = g_configuracion->tamanioPagina;
@@ -25,19 +33,7 @@ int main(void) {
 	//archivoSwap = malloc(g_configuracion->tamanioSwap);
 	archivoSwap = abrirArchivo(RUTASWAP,&tamArch,&disco_swap);
 
-	//log_info( g_logger, "Levante archivo Swap: %s", RUTASWAP );
-
-	/*if( pthread_create( &hiloServidor, NULL, (void*) arrancarServer, (void*) g_configuracion->puertoConexion ) < 0 ) {
-			log_error(g_logger, "No pude crear thread de servidor MUSE");
-			destruirGlobales();
-			return EXIT_FAILURE;
-	}*/
-
 	iniciarServidor(g_configuracion->puertoConexion,g_logger, (void*)attendConnection);
-
-	InicializarNuevoPrograma(1);
-	procesarAlloc(80,1);
-
 
 	return prueba();
 
@@ -178,10 +174,10 @@ void armarConfigMemoria() {
 	g_config = config_create(ruta);
 	g_configuracion = malloc( sizeof( t_configuracion ) );
 
-	g_configuracion->puertoConexion    = config_get_string_value(g_config, "LISTEN_PORT");
+	g_configuracion->puertoConexion    = strdup( config_get_string_value(g_config, "LISTEN_PORT") );
 	g_configuracion->tamanioMemoria    = config_get_int_value(g_config, "MEMORY_SIZE");
-	g_configuracion->tamanioSwap    = config_get_int_value(g_config, "PAGE_SIZE");
-	g_configuracion->tamanioPagina    = config_get_int_value(g_config, "SWAP_SIZE");
+	g_configuracion->tamanioSwap       = config_get_int_value(g_config, "PAGE_SIZE");
+	g_configuracion->tamanioPagina     = config_get_int_value(g_config, "SWAP_SIZE");
 
 	config_destroy(g_config);
 }
@@ -204,8 +200,10 @@ void reservarEspacioMemoriaPrincipal(){
 }
 
 void InicializarNuevoPrograma(int socket){
+	log_info( g_logger, "Levanto programa nro %d",nroPrograma);
 	t_programa * nuevoPrograma = crearPrograma(socket);
 	list_add(programas,nuevoPrograma);
+
 }
 
 void FinalizarPrograma(int socket){

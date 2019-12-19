@@ -1,5 +1,5 @@
-#ifndef util_h
-#define util_h
+#ifndef MUSEutil_h
+#define MUSEutil_h
 
 #include "estructuras.h"
 #include <biblioNOC/estructurasAdministrativas.h>

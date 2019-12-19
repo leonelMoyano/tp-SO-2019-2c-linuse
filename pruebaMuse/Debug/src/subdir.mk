@@ -4,23 +4,20 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../libMUSE/libMUSE.c \
-../libMUSE/util.c 
+../src/pruebaMuse.c 
 
 OBJS += \
-./libMUSE/libMUSE.o \
-./libMUSE/util.o 
+./src/pruebaMuse.o 
 
 C_DEPS += \
-./libMUSE/libMUSE.d \
-./libMUSE/util.d 
+./src/pruebaMuse.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
-libMUSE/%.o: ../libMUSE/%.c
+src/%.o: ../src/%.c
 	@echo 'Building file: $<'
-	@echo 'Invoking: GCC C Compiler'
-	gcc -I/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
+	@echo 'Invoking: Cross GCC Compiler'
+	gcc -I/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/libMUSE -I/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@)" -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
 

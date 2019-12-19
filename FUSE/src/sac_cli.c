@@ -42,7 +42,7 @@ static int do_centralized_readdir(const char *path, void *buffer, fuse_fill_dir_
 	log_info( g_logger, "[readdir]:%s", path );
 
 	t_paquete* request = armarPaquetePathConOperacion( path, SAC_readdir );
-	t_paquete* response = send_request( request, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( request, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_readdir_response* readdir_response = deserializarReaddir( response->buffer );
 	destruirPaquete( response );
@@ -70,7 +70,7 @@ static int do_centralized_truncate(const char* path, off_t size){
 	log_info( g_logger, "[truncate]:%s a size %ld", path, size );
 
 	t_paquete* paquete = armarPaqueteTruncate( path, size, SAC_truncate );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -89,7 +89,7 @@ static int do_centralized_read(const char *path, char *buffer, size_t size, off_
 	log_info( g_logger, "[read]:%s", path );
 
 	t_paquete* paquete = armarPaqueteRead( path, size, offset, SAC_read );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_read_response* read_response = deserializarRead( response->buffer );
 
@@ -113,7 +113,7 @@ static int do_centralized_getattr(const char *path, struct stat *st) {
 	log_info( g_logger, "[getattr]:%s", path );
 
 	t_paquete* request = armarPaquetePathConOperacion( path, SAC_getattr );
-	t_paquete* response = send_request( request, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( request, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_getattr_response* getattr_response = deserializarGetattr( response->buffer );
 	destruirPaquete( response ); // este se puede free de una porque solo saca valores
@@ -145,7 +145,7 @@ static int do_centralized_mknod(const char *path, mode_t mode, dev_t device){
 	log_info( g_logger, "[mknod]:%s", path );
 
 	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_mknod );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -166,7 +166,7 @@ static int do_centralized_utimens( const char *path, const struct timespec tv[2]
 	// donde tv[ 0 ] es last access time y tv[ 1 ] es last modified time
 	// solo existe last modified time en SAC asi que no tengo fecha de ultimo acceso que actualizar
 	t_paquete* paquete = armarPaqueteUtimens( path, tv[0].tv_sec, SAC_utimens );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -184,7 +184,7 @@ static int do_centralized_utimens( const char *path, const struct timespec tv[2]
 static int do_centralized_mkdir(const char *path, mode_t mode){
 	log_info( g_logger, "[mkdir]:%s", path );
 	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_mkdir );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -203,7 +203,7 @@ static int do_centralized_unlink (const char *path){
 	log_info( g_logger, "[unlink]:%s", path );
 
 	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_unlink );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -222,7 +222,7 @@ static int do_centralized_rmdir( const char *path ){
 	log_info( g_logger, "[rmdir]:%s", path );
 
 	t_paquete* paquete = armarPaquetePathConOperacion( path, SAC_rmdir );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -241,7 +241,7 @@ static int do_centralized_write(const char *path, const char *buffer, size_t siz
 	log_info( g_logger, "[write]:%s", path );
 
 	t_paquete* paquete = armarPaqueteWrite( path, size, offset, buffer, SAC_write );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -260,7 +260,7 @@ static int do_centralized_rename(const char *old_path, const char *new_path){
 	log_info( g_logger, "[rename]:%s a %s", old_path, new_path );
 
 	t_paquete* paquete = armarPaqueteRename( old_path, new_path, SAC_rename );
-	t_paquete* response = send_request( paquete, "127.0.0.1", "54660" );
+	t_paquete* response = send_request( paquete, g_fuse_config->ip, g_fuse_config->puerto );
 
 	t_return_errno_response* errno_response = deserializarReturnErrno( response->buffer );
 
@@ -312,6 +312,7 @@ static struct fuse_opt fuse_options[] = {
 // debe estar el path al directorio donde vamos a montar nuestro FS
 int main(int argc, char *argv[]) {
 	g_logger = log_create( "/home/utnso/logs/FUSE/cli.log", "SACCLI", 1, LOG_LEVEL_TRACE );
+	armar_config( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/FUSE/sacServer.cfg" );
 	// TODO levantar config, crear struct y var global
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
@@ -343,4 +344,13 @@ t_paquete* send_request( t_paquete* request, char* ip, char* puerto ){
 	enviarAvisoDesconexion( server_socket );
 	close( server_socket );
 	return respuesta;
+}
+
+void armar_config( char* path ){
+	t_config* config = config_create( path );
+
+	g_fuse_config->ip = strdup( config_get_string_value( config, "IP" ) );
+	g_fuse_config->puerto = strdup( config_get_string_value( config, "PUERTO" ) );
+
+	config_destroy( config );
 }

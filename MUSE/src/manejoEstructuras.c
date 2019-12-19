@@ -84,10 +84,10 @@ t_segmento* crearSegmentoMmapCompartido(int direccionBase, int tamanio, bool tab
 
 t_programa* crearPrograma(int socket){
 	t_programa* programaNuevo = malloc( sizeof( t_programa ) );
-	nroPrograma++;
 	programaNuevo->programaId = nroPrograma;
 	programaNuevo->segmentos_programa = crearSegmentosPrograma();
 	programaNuevo->socket = socket;
+	nroPrograma++;
 	return programaNuevo;
 }
 
@@ -453,7 +453,7 @@ int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
 	if(segmento->tipoSegmento == 2) return -1;
 
-	int direccionLogicaAux = 0;
+	int direccionLogicaAux = segmento->baseLogica;
 	bool encontrado = false;
 	for (int i = 0; i < list_size(segmento->heapsSegmento) && !encontrado; i++)
 	{

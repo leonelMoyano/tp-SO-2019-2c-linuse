@@ -35,8 +35,7 @@
 								<option id="gnu.c.compiler.so.debug.option.debugging.level.1102490400" name="Debug Level" superClass="gnu.c.compiler.so.debug.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.misc.pic.1142135400" name="Position Independent Code (-fPIC)" superClass="gnu.c.compiler.option.misc.pic" useByScannerDiscovery="false" value="false" valueType="boolean"/>
 								<option id="gnu.c.compiler.option.include.paths.1546905588" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/biblioNOC}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/biblioNOC/Debug}&quot;"/>
+									<listOptionValue builtIn="false" value="/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1652670710" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>

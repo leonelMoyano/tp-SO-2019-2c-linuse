@@ -2,19 +2,21 @@
 
 uint32_t procesarAlloc(uint32_t tam, int socket){
 
-	log_info( g_logger, "Alloqueo algunos bytes");
 	t_programa * programa = buscarPrograma(socket);
+	log_info( g_logger, "Programa %d: Alloqueo %lu bytes",programa->programaId,tam);
 	t_segmento * segmentoElegido;
 	uint32_t direccionLogica = 0;
 
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
+		log_info( g_logger, "Creo el primer segmento del programa %d",programa->programaId);
 		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 		list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
 		int auxNoUsar = allocarHeapNuevo(socket , segmentoElegido, tam);
 	}
 	else
 	{
+		log_info( g_logger, "Busco heap Libre");
 		direccionLogica = allocarEnHeapLibre(tam,programa->segmentos_programa);
 
 		if(direccionLogica == -1)
@@ -22,12 +24,14 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 			t_segmento * ultimoSegmento =  ultimoSegmentoPrograma(programa);
 			if(ultimoSegmento->tipoSegmento == 2)//segmento mmap
 			{
+				log_info( g_logger, "Creo nuevo segmento");
 				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 				list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
 				programa->segmentos_programa->limiteLogico += tam;
 
 			}
 			else{
+				log_info( g_logger, "Redimensiono el ultimo segmento del programa %d",programa->programaId);
 				segmentoElegido = ultimoSegmento;
 				direccionLogica = allocarHeapNuevo(socket,segmentoElegido, tam);
 				int cantPaginas = framesNecesariosPorCantidadMemoria(tam);
