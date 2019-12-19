@@ -33,8 +33,9 @@ void				atenderConexion					( int socketCliente );
 void 				enviarMultiProg					( int socket_dst );
 void 				iniciar_logger					( void );
 void 				inicializar_estructuras			( );
-void 				iniciar_config					(char* path);
+void 				iniciar_config					(char* path );
 void				inicializar_semaforos			( );
+void 				quitar_thread_de_bloqueados		( void* thread );
 
 /*
  * @NAME: trancisionar_bloqueado_a_ready

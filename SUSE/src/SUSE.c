@@ -10,28 +10,29 @@
 #include "SUSE.h"
 
 /*--------------------------------definiciones-------------------------------*/
-t_paquete* 				procesarPaqueteLibSuse			( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente );
-t_paquete* 				procesarThreadCreate			( t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
-t_paquete* 				procesarThreadClose				( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* 				procesarThreadJoin				( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* 				procesarThreadScheduleNext		( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* 				procesarSemSignal				( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* 				procesarSemWait					( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
-t_paquete* 				armarPaqueteNumeroConOperacion	( int numero, int codigo_op );
-void					esperarPaqueteCreateMain		( t_client_suse* cliente_suse, int socket_cliente );
+t_paquete* 				procesarPaqueteLibSuse				( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente );
+t_paquete* 				procesarThreadCreate				( t_paquete* paquete, t_client_suse* cliente_suse, int is_main_thread, int socket_cliente);
+t_paquete* 				procesarThreadClose					( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarThreadJoin					( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarThreadScheduleNext			( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarSemSignal					( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				procesarSemWait						( t_paquete* paquete, t_client_suse* cliente_suse, int socket_cliente);
+t_paquete* 				armarPaqueteNumeroConOperacion		( int numero, int codigo_op );
+void					esperarPaqueteCreateMain			( t_client_suse* cliente_suse, int socket_cliente );
 /*
  * @NAME: find_thread_by_tid_in_parent
  * @DESC: Retorna el thread con el tid buscando dentro del proceso padre, NULL en caso de no existir
  * busco solo en RUNNING, READY, y en las Listas Globles EXIT y BLOCKED, si esta en NEW no lo busco
  */
-t_client_thread_suse* 	find_thread_by_tid_in_parent	( int tid, t_client_suse* proceso_padre );
+t_client_thread_suse* 	find_thread_by_tid_in_parent		( int tid, t_client_suse* proceso_padre );
 
 /*
  *  @NAME: find_sem_by_name
  *  @DESC: Retorna el semaforo con nombre sem_name, NULL en caso de no existir
  */
-t_semaforo_suse* 		find_sem_by_name 				( char* sem_name );
-double 					indice_sjf						(t_client_thread_suse* thread_to_compare);
+t_semaforo_suse* 		find_sem_by_name 					( char* sem_name );
+double 					indice_sjf							( t_client_thread_suse* thread_to_compare);
+void 					snd_schd_nxt_blockd_process	( t_client_thread_suse* thread_t );
 /*----------------------------------------------------------------------------*/
 
 int main(void) {
@@ -49,7 +50,7 @@ int main(void) {
 }
 
 void atenderConexion(int socketCliente) {
-	log_debug(g_logger, "Attend connection con este socket %d", socketCliente);
+	log_debug(g_logger, "Atiende conexion con socket %d", socketCliente);
 	t_paquete* package = recibirArmarPaquete(socketCliente);
 	t_paquete* response;
 
@@ -135,6 +136,7 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 
 		cliente_suse->main_tid = tid;
 		cliente_suse->running_thread = nuevo_thread;
+		cliente_suse->self_socket = socket_cliente;
 		cliente_suse->ready = list_create();
 		log_info( g_logger, "Operacion suse_create Ok, hilo_principal %d en ejecucion para el socket %d", cliente_suse->running_thread->tid, socket_cliente );
 	}
@@ -282,7 +284,12 @@ t_paquete* procesarThreadScheduleNext(t_paquete* paquete, t_client_suse* cliente
 			prev_running_thread->estado = READY;
 		}
 
-		list_sort(cliente_suse->ready,comparo_threads_por_indice_sjf); 	// ordeno la lista Ready del proceso que envió el request, los threads por indice_sjf, el de menor indice en 1° lugar
+		list_sort(cliente_suse->ready,comparo_threads_por_indice_sjf);	// ordeno la lista Ready del proceso que envió el request, los threads por indice_sjf, el de menor indice en 1° lugar
+		if( list_is_empty(cliente_suse->ready) ){
+			cliente_suse->running_thread = NULL;
+			log_warning(g_logger, "Operacion suse_schedule_next sin hilos para ejecutar en socket %d", socket_cliente );
+			return NULL;
+		}
 		next_running_thread = list_get(cliente_suse->ready, 0);			// obtengo el 1° thread de la lista Ready,
 		list_remove(cliente_suse->ready, 0);							// quitamos el 1° thread de la lista Ready,
 
@@ -344,9 +351,15 @@ t_paquete* procesarSemSignal(t_paquete* paquete, t_client_suse* cliente_suse, in
 		if( queue_is_empty( semaforo->threads_bloquedos ) ) {
 			semaforo->current_value++;
 			log_info( g_logger, "Sem %s nuevo valor %d", sem_req_info->name, semaforo->current_value );
-		} else {
+		}
+		else {
 			t_client_thread_suse* thread_desbloqueado = queue_pop( semaforo->threads_bloquedos );
-			trancisionar_bloqueado_a_ready( thread_desbloqueado );
+			if( thread_desbloqueado->proceso_padre->running_thread == NULL ){
+				quitar_thread_de_bloqueados( thread_desbloqueado );
+				list_add(thread_desbloqueado->proceso_padre->ready,thread_desbloqueado);
+				snd_schd_nxt_blockd_process( thread_desbloqueado );
+				log_info( g_logger, "Operacion suse_schedule_next Ok para socket %d, hilo %d proximo a ejecutar", thread_desbloqueado->proceso_padre->self_socket , thread_desbloqueado->tid );
+			}
 			log_info( g_logger, "Sem signal en %s desbloqueo tid %d", sem_req_info->name, thread_desbloqueado->tid );
 		}
 		respuesta = armarPaqueteNumeroConOperacion( 0, SUSE_SIGNAL );
@@ -389,7 +402,7 @@ t_paquete* armarPaqueteNumeroConOperacion( int numero, int codigo_op ){
 	return paquete;
 }
 
-void trancisionar_bloqueado_a_ready( void* thread ){
+void quitar_thread_de_bloqueados( void* thread ){
 	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
 	bool compare_thread( void* otro_thread ){
 		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
@@ -399,9 +412,15 @@ void trancisionar_bloqueado_a_ready( void* thread ){
 	}
 	list_remove_by_condition( g_blocked_threads, compare_thread);
 	// Quitamos al thread de la lista Global Blocked Threads,
+}
+
+void trancisionar_bloqueado_a_ready( void* thread ){
+	quitar_thread_de_bloqueados(thread);
+	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
 	list_add( thread_t->proceso_padre->ready, thread );
 	// Agregamos al thread en la lista Ready Threads de su Proceso Padre,
 }
+
 
 void trancisionar_ready_a_bloqueado( void* thread ){
 	t_client_thread_suse* thread_t = (t_client_thread_suse*) thread;
@@ -505,4 +524,11 @@ double indice_sjf(t_client_thread_suse* thread_to_compare) {
 	double comp_alfa = 1 - g_config_server->alpha_sjf;
 	double valor_calculado = alfa * ready_time + comp_alfa * exec_time;
 	return valor_calculado;
+}
+
+void snd_schd_nxt_blockd_process( t_client_thread_suse* thread_t ){
+	t_client_suse* procesoPadre = thread_t->proceso_padre;
+	int socket_cliente = procesoPadre->self_socket;
+	t_paquete* rta_schd_nxt = armarPaqueteNumeroConOperacion(thread_t->tid, SUSE_SCHEDULE_NEXT);
+	enviarPaquetes( socket_cliente, rta_schd_nxt );
 }
