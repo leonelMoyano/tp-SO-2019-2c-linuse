@@ -1,37 +1,41 @@
-#! /bin/bash
+#! /bin/bash -e
+#Flag e para que en caso de error cierre el script
 
-cd /home/utnso/workspace
+
+MYFIRSTPATH="/home/utnso/workspace"
+MYPATH ="/home/utnso/workspace/tp-2019-2c-No-C-Nada"
+
+
+
+#Creo carpeta si no existe
+mkdir -p workspace
+
+cd "$MYFIRSTPATH"
 
 #Clon del repo
 
-git clone https://github.com/sisoputnfrba/tp-2019-2c-No-C-Nada.git
+git clone https://github.com/sisoputnfrba/tp-2019-2c-No-C-Nada.git 
 
 #Creo variables de entorno libMUSE - biblioNOC - biblioSuse
 
-#sudo nano /home/utnso/.profile 
+sudo nano /home/utnso/.profile 
 
-#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/libSuse/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug"
+
+echo LD_LIBRARY_PATH
 
 #Levanto  .so
 
 git clone https://github.com/sisoputnfrba/tp-2019-2c-No-C-Nada.git
 
-cd biblioNOC/Debug 
+cd "$MYPATH/biblioNOC/Debug" 
 make clean
 make all
 
-cd ..
-cd ..
-cd libMUSE/Debug
+cd "$MYPATH/libMUSE/Debug"
 make clean
 make all
 
-cd ..
-cd ..
-cd biblioSuse/Debug
+cd "$MYPATH/biblioSuse/Debug"
 make clean
 make all
-
-cd .
-
-
