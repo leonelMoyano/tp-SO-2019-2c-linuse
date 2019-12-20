@@ -74,6 +74,7 @@ typedef struct{
 	t_list* heapsSegmento;
 	t_mapAbierto* mmap;
 	bool esCompartido;
+	bool estaLibre;
 }t_segmento;
 
 

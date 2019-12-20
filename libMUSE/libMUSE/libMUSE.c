@@ -26,7 +26,7 @@ int muse_init(int id, char* ip, int puerto){
 void muse_close(){
 
 	enviarMuseClose(socketConexion);
-	free(socketConexion);
+	close(socketConexion);
 }
 
 uint32_t muse_alloc(uint32_t tam){

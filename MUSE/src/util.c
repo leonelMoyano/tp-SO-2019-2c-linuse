@@ -14,6 +14,28 @@ int deserializarUINT32(t_stream* buffer) {
 	return *(uint32_t*) (buffer->data);
 }
 
+void serializarRespuestaGet( t_paquete* unPaquete, int operacionSatisfactoria, size_t size, void* buffer ){
+	if( operacionSatisfactoria == -1 ){
+		size = 0;
+	}
+
+	int tam_total = sizeof( int ) + sizeof( size_t ) + size;
+	int desplazamiento = 0;
+
+	unPaquete->buffer = malloc(sizeof(t_stream));
+	unPaquete->buffer->size = tam_total;
+	unPaquete->buffer->data = malloc( tam_total );
+
+	memcpy(unPaquete->buffer->data, &operacionSatisfactoria, sizeof( int ) );
+	desplazamiento += sizeof( int );
+
+	memcpy(unPaquete->buffer->data + desplazamiento, &size, sizeof( size_t ) );
+	desplazamiento += sizeof( size_t );
+
+	memcpy(unPaquete->buffer->data + desplazamiento, buffer, size);
+
+}
+
 //TODO verificar serializacion de void*
 
 t_registromget* deserializarGet(t_stream * buffer){
@@ -39,10 +61,8 @@ t_registromcopy* deserializarCopy(t_stream * buffer){
 	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(uint32_t));
 	desplazamiento += sizeof(uint32_t);
 
-	void * porcionMemoria = malloc(registro->n);
-	memcpy(porcionMemoria ,buffer->data + desplazamiento, registro->n);
-	desplazamiento += registro->n;
-
+	registro->src = malloc(registro->n);
+	memcpy( registro->src ,buffer->data + desplazamiento, registro->n );
 
 	return registro;
 }
@@ -97,15 +117,16 @@ void enviarRespuestaAlloc(int server_socket, uint32_t tamanio) {
 	enviarPaquetes(server_socket, unPaquete);
 }
 
-void enviarRespuestaGet(int server_socket, int operacionSatisfactoria){
+void enviarRespuestaGet(int server_socket, int operacionSatisfactoria, size_t size, void* buffer){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 
 	unPaquete->codigoOperacion = MUSE_GET;
 
-	serializarNumero(unPaquete, operacionSatisfactoria);
+	serializarRespuestaGet( unPaquete, operacionSatisfactoria, size, buffer );
 
 	enviarPaquetes(server_socket,unPaquete);
 }
+
 void enviarRespuestaCopy(int server_socket, int operacionSatisfactoria){
 	t_paquete * unPaquete = malloc(sizeof(t_paquete));
 

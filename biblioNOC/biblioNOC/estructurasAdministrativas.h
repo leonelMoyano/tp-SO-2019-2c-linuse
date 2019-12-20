@@ -109,7 +109,6 @@ typedef struct {
 
 typedef struct{
 	uint32_t src;
-	void* dst;
 	size_t n;
 }t_registromget;
 

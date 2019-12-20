@@ -10,7 +10,8 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
 		log_info( g_logger, "Creo el primer segmento del programa %d",programa->programaId);
-		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
+		// Inicializo segmento con lim logico en 0, despues cuando se crean paginas se agranda
+		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, 0);
 		list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
 		int auxNoUsar = allocarHeapNuevo(programa , segmentoElegido, tam);
 	}
@@ -27,7 +28,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 				log_info( g_logger, "Creo nuevo segmento");
 				segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
 				list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
-				programa->segmentos_programa->limiteLogico += tam;
+				programa->segmentos_programa->limiteLogico += segmentoElegido->limiteLogico;
 				direccionLogica = segmentoElegido->baseLogica;
 
 			}
@@ -46,6 +47,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	}
 
 	//ActualizarLogMetricas();
+	log_info( g_logger, "Alloqueo en direccion virtual %lu",direccionLogica);
 	return direccionLogica;
 
 }
@@ -59,10 +61,11 @@ void procesarFree(uint32_t dir, int socket){
 
 		if(indiceHeap != -1){
 			t_heapSegmento * heapLiberar = list_get(segmento->heapsSegmento, indiceHeap);
+			log_info( g_logger, "Programa %d: Libero %d bytes del heap correspondiente a la direccion virtual %lu",programa->programaId,heapLiberar->t_size,dir);
 			if(heapLiberar->isFree == false){
 				int sizeFreeAgregar = verificarCompactacionFree(segmento->heapsSegmento, indiceHeap);
 				//verificar liberacion frames;
-				heapLiberar-> isFree = true;
+				heapLiberar-> isFree = 1;
 				heapLiberar-> t_size = heapLiberar->t_size + sizeFreeAgregar;
 				cambiarFramesPorHeap(segmento,dir,0,0); //TODO: ver si no modifica aca? creo que no
 			}
@@ -79,15 +82,17 @@ int verificarCompactacionFree(t_list* heaps, int indiceHeap){
 
 	int tamanioAgregar = 0;
 
-	if(auxHeapAnterior->isFree){
-		tamanioAgregar += auxHeapAnterior->t_size;
+	if(auxHeapAnterior != NULL && auxHeapAnterior->isFree){
+		tamanioAgregar += auxHeapAnterior->t_size + tamanio_heap;
+		log_info( g_logger, "Compacto %lu bytes del heap anterior más los 5 bytes de la metadata",auxHeapAnterior->t_size);
 		list_remove_and_destroy_element(heaps,indiceHeap - 1, (void*) destruirHeap);
 	}
 
-	if(auxHeapPosterior->isFree){
-			tamanioAgregar += auxHeapPosterior->t_size;
-			//cambia el indice porque destrui una posicion
-			list_remove_and_destroy_element(heaps,indiceHeap, (void*) destruirHeap);
+	if(auxHeapPosterior != NULL &&  auxHeapPosterior->isFree){
+		tamanioAgregar += auxHeapPosterior->t_size + tamanio_heap;
+		//TODO: revisar que no rompa en caso que el anterior y el posterior esten libres
+		log_info( g_logger, "Compacto %lu bytes del heap posterior más los 5 bytes de la metadata",auxHeapPosterior->t_size);
+		list_remove_and_destroy_element(heaps,indiceHeap + 1, (void*) destruirHeap);
 	}
 
 	return tamanioAgregar;
@@ -98,7 +103,7 @@ int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,src);
 	if(segmento == NULL) return -1;
 
-	bool segmentoUnico = segmento->limiteLogico > src + n;
+	bool segmentoUnico = segmento->limiteLogico >= src + n;
 	if(!segmentoUnico) return -1;
 
 	return copiarContenidoDeFrames(socket,segmento,src,n,dst);
@@ -109,7 +114,7 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,dst);
 	if(segmento == NULL) return -1;
 
-	bool segmentoUnico = segmento->limiteLogico > dst + n;
+	bool segmentoUnico = segmento->limiteLogico >= dst + n;
 	if(!segmentoUnico) return -1;
 
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
@@ -117,10 +122,14 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 
 	if(segmento->tipoSegmento == 1){
 		int indiceHeap = esDireccionLogicaValida(dst,segmento);
+		if(indiceHeap == -1) return indiceHeap;
 		t_heapSegmento * auxHeap = list_get(segmento->heapsSegmento, indiceHeap);
 
+		log_info( g_logger, "Programa %d: Copio %d bytes a direcion virtual %lu",programa->programaId,n,dst);
 
+		//TODO en que caso cambio la pagina a modificada?
 		auxHeap->isFree = false;
+
 		if(auxHeap->t_size > n){
 			t_heapSegmento* heapHueco = crearHeap(auxHeap->t_size - n,true);
 			list_add(segmento->heapsSegmento,heapHueco);
@@ -142,9 +151,9 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 			}
 
 
-		}
 		cambiarFramesPorHeap(segmento,dst,n,true);
 		copiarContenidoAFrames(socket,segmento,dst,n,src);
+		}
 
 	}
 	else{
@@ -196,6 +205,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	list_add(programa->segmentos_programa->lista_segmentos,nuevoSegmento);
 	programa->segmentos_programa->limiteLogico += tamanioLogico;
+
 	//  TODO revisar caso
 	// el mmap caiga en un hueco al principio por lo que el limite logico no se modifica
 
@@ -207,9 +217,11 @@ int procesarSync(uint32_t addr, size_t len, int socket){
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,addr);
 
 	if(segmento->tipoSegmento == 2){
-		void* archivoActualizado;
-		copiarContenidoDeFrames(socket,segmento,addr,len,archivoActualizado);
-		memcpy(segmento->mmap->contenido,archivoActualizado,len);
+		void* porcionMemoriaActualizada = malloc(len);
+		//obtengo la info de los frames de la/las paginas en cuestion y copio eso a puntero auxiliar
+		copiarContenidoDeFrames(socket,segmento,addr,len,porcionMemoriaActualizada);
+		//TODO: aca falta calcular el desplazamiento del contenido a actualizar?? no se probo por eso
+		memcpy(segmento->mmap->contenido,porcionMemoriaActualizada,len);
 		msync(segmento->mmap->contenido,len,MS_SYNC);
 	}
 
@@ -228,7 +240,10 @@ uint32_t procesarUnMap(uint32_t dir, int socket){
 
 	if(segmento->mmap->cantProcesosUsando == 1){
 		borrarMapeoAbierto(segmento->mmap->path); //ver de usar id de segmento
+
 		destruirSegmentoMap(segmento,1);
+		//TODO: sacar de la lista o agregar flag de libre y usarlo allocar futura memoria
+
 		munmap(segmento->mmap->contenido,largoArchivo);
 	}
 	else{
@@ -310,7 +325,7 @@ int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNe
 		list_add(segmento->heapsSegmento,heapNuevo);
 	}
 	int bytesNecesarios = cantBytesNecesarios  + tamanio_heap - espacioLibreUltimaPagina;
-	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios);
+	int cantPaginas = framesNecesariosPorCantidadMemoria(bytesNecesarios);
 	int huecoLibre = (cantPaginas * lengthPagina) - bytesNecesarios;
 	if(huecoLibre > 5) {
 		t_heapSegmento* heapNuevoHueco = crearHeap(huecoLibre - tamanio_heap,true);
@@ -341,7 +356,7 @@ void RegistrarMetricasPrograma(t_programa* programa){
 }
 
 void ActualizarLogMetricas(){
-
+	//TODO terminar metricas?? o que la chupen??
 	list_iterate(programas, RegistrarMetricasPrograma);
 	int cantidadBytes = SistemaMemoriaDisponible();
 	log_info( g_logger, "La cantidad de memoria del sistema es de n bytes" );
@@ -437,9 +452,9 @@ void paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * cont
 
 			list_add( paginasEnSwap, crearPaginaAdministrativa( socket, unSegmento->idSegmento, paginaNuevo->nroPagina, frameSwapElegido ) );
 
-			// t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
+			t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
 
-			// paginaAdmin->nroFrame = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
+			paginaAdmin->nroFrame = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
 
 			list_add(mapAbierto->tablaPaginas, paginaNuevo);
 		}
@@ -491,6 +506,7 @@ int cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, uint32_
 
 int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, size_t tamanio,void* contenidoDestino)
 {
+	int offsetContenido = 0;
 	int desplazamiento = 0;
 	int nroPaginaInicial = nroPaginaSegmento(direccionLogica, segmento->baseLogica);
 	int offsetInicial = desplazamientoPaginaSegmento(direccionLogica, segmento->baseLogica);
@@ -501,27 +517,31 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
 		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
-		int ok = pageFault(segmento,0,contenidoDestino,offsetInicial,desplazamiento,false);
+		int ok = pageFault(segmento,nroPaginaInicial,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
 		if(ok == -1) return ok;
-		offsetInicial += desplazamiento;
-		tamanio = tamanio - desplazamiento;
+		offsetContenido += desplazamiento;
+		offsetInicial = 0;
+		//offsetInicial += desplazamiento;
 		nroPaginaInicial++;
 		cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
 	}
 
-	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
+	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		int ok = pageFault(segmento,i,contenidoDestino,offsetInicial,desplazamiento,false);
+		int ok = pageFault(segmento,i,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
+
+	return 0;
 
 }
 
 int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* porcionMemoria)
 {
 	int desplazamiento = 0;
+	int offsetContenido = 0;
 	int nroPaginaInicial = nroPaginaSegmento(direccionLogica, segmento->baseLogica);
 	int offsetInicial = desplazamientoPaginaSegmento(direccionLogica, segmento->baseLogica);
 	int cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
@@ -531,29 +551,33 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
 		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
-		int ok = pageFault(segmento,0,porcionMemoria,offsetInicial,desplazamiento,true);
+		//esto no deberia ir
+		//porcionMemoria = malloc(lengthPagina);
+		int ok = pageFault(segmento,nroPaginaInicial,porcionMemoria,offsetInicial,desplazamiento,true,offsetContenido);
 		if(ok == -1) return ok;
-		offsetInicial += desplazamiento;
-		tamanio = tamanio - desplazamiento;
+		offsetContenido += desplazamiento;
+		offsetInicial = 0;
+		//offsetInicial += desplazamiento;
 		nroPaginaInicial++;
 		cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
 	}
 
-	for(int i= nroPaginaInicial; cantPaginasAObtener > i; i++){
+	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		int ok = pageFault(segmento,0,porcionMemoria,offsetInicial,desplazamiento,true);
+		int ok = pageFault(segmento,nroPaginaInicial,porcionMemoria,0,desplazamiento,true,offsetContenido);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
+	return 0;
 
 }
 
-int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa){
+int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa, int offsetContenido){
 
 	t_pagina* pagina = list_get(segmento->tablaPaginas,i);
 	if(pagina == NULL) return -1;
-	if(!operacionInversa && pagina->nroFrame == NULL) return -1; //verificar esto, pagina sin data y que no esta en swap
+	//if(!operacionInversa && pagina->nroFrame == 0 ) return -1; //verificar esto, pagina sin data y que no esta en swap
 	if(!pagina->flagPresencia){
 		if(segmento->esCompartido){
 			sem_wait(&segmento->mmap->semaforoPaginas);
@@ -563,10 +587,26 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 		else TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
 	}
 	//sem_wait(&g_mutexgContenidoFrames);
-	t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
-	if(frame == NULL) return -1;
-	if(operacionInversa) memcpy(frame->contenido, contenidoDestinoOsrc + desplazamiento,desplazamiento);
-	else memcpy(contenidoDestinoOsrc,frame->contenido + offsetInicial,desplazamiento);
+	if(operacionInversa) {
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		if(frame == NULL){
+			log_info( g_logger, "Cargo nuevo frame al segmento");
+			void* contenidoFrame = malloc(lengthPagina);
+			memcpy(contenidoFrame, contenidoDestinoOsrc,desplazamiento);
+			//agregarContenido(pagina->nroFrame,contenidoFrame);
+		}
+		else{
+			log_info( g_logger, "Copio %d bytes del segmento %d - pagina %d - frame %d , desde el offset %d",desplazamiento,segmento->idSegmento,i,pagina->nroFrame,offsetInicial);
+			memcpy(frame->contenido + offsetInicial, contenidoDestinoOsrc + offsetContenido,desplazamiento);
+		}
+	}
+	else {
+		log_info( g_logger, "Obtengo %d bytes del segmento %d - pagina %d - frame %d , desde el offset %d",desplazamiento,segmento->idSegmento,i,pagina->nroFrame,offsetInicial);
+		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
+		if(frame == NULL) return -1;
+		memcpy(contenidoDestinoOsrc + offsetContenido,frame->contenido + offsetInicial,desplazamiento);
+	}
+	return 0;
 	//sem_post(&g_mutexgContenidoFrames);
 }
 
@@ -585,13 +625,13 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 	sem_wait(&g_mutexSwap);
 	memcpy(g_archivo_swap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
 	msync(g_archivo_swap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
-	sem_wait(&g_mutexSwap);
+	sem_post(&g_mutexSwap);
 
 	paginaAdmin->nroFrame = indiceFrame; //guardo el indice donde esta la pagina en SWAP
 
 	sem_wait(&g_mutexPaginasEnSwap);
 	list_add(paginasEnSwap,paginaAdmin);
-	sem_wait(&g_mutexPaginasEnSwap);
+	sem_post(&g_mutexPaginasEnSwap);
 
 }
 

@@ -2,7 +2,7 @@
 
 int main(void) {
 
-	idSegmento = 0;
+	idSegmento = 1;
 	punteroClock = 0;
 	nroPrograma = 1;
 	tamanio_heap = 5;
@@ -59,7 +59,8 @@ void attendConnection( int socketCliente) {
 
 			while (1) {
 				package = recibirArmarPaquete(socketCliente);
-				log_debug( g_loggerDebug, "Recibo paquete" );
+				//TODO: me rompe aca en el free, tira error rancio, pero free ejecuto bien
+				//log_debug( g_loggerDebug, "Recibo paquete" );
 
 				if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ){
 					log_warning( g_loggerDebug, "Cierro esta conexion del LibMuse %d", socketCliente );
@@ -115,9 +116,12 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 	case MUSE_GET: ;
 		t_registromget* registroGet = deserializarGet(paquete->buffer);
 
-		uint32_t operacionSatisfactoriaGet = procesarGet(registroGet->dst,registroGet->src,registroGet->n,socket);
+		void* buffer = malloc( registroGet->n );
+		uint32_t operacionSatisfactoriaGet = procesarGet( buffer, registroGet->src, registroGet->n, socket );
 
-		enviarRespuestaGet(cliente_fd, operacionSatisfactoriaGet);
+		enviarRespuestaGet( cliente_fd, operacionSatisfactoriaGet, registroGet->n, buffer );
+		free( buffer );
+		free( registroGet );
 		break;
 
 	case MUSE_COPY: ;
