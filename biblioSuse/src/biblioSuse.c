@@ -191,5 +191,5 @@ int esperarRespuestaSemPost( int socket ){
 }
 
 void iniciar_log(void) {
-	g_logger = log_create("/home/utnso/workspace/confBiblioSuse/suseServer.log", "biblioSuse", 1, LOG_LEVEL_TRACE);
+	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/logFiles/biblioSuse.log", "biblioSuse", 1, LOG_LEVEL_TRACE);
 }
