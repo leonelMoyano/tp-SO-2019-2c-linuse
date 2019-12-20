@@ -22,7 +22,7 @@ int			 	 cambiarFramesPorHeap(t_segmento* segmento, uint32_t direccionLogica, ui
 
 //Funciones auxiliares memoria MUSE
 //si al page fault le paso el ultimo bool en true, hace la operacion inversa
-int 			 pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa);
+int 			 pageFault				(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa, int offsetContenido);
 int 			 copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, size_t tamanio,void* contenidoDestino);
 int 			 copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* porcionMemoria);
 void*			 sacarFrameSwap		(int nroMarco, FILE** archivo);
