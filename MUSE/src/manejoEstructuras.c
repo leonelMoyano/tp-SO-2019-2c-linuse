@@ -162,7 +162,7 @@ void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarc
 	list_add( segmento->tablaPaginas, paginaNuevo );
 	void* contenidoFrame = malloc(lengthPagina);
 	agregarContenido(numeroDeMarco, contenidoFrame);
-	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas),numeroDeMarco));
+	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas) - 1,numeroDeMarco));
 }
 
 t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
@@ -369,38 +369,37 @@ int ClockModificado() {
 	t_pagina* aux = NULL;
 	t_pagina* paginaVictima = NULL;
 
-	if (punteroClock ==  g_cantidadFrames) punteroClock = 0;
-		for (int j = punteroClock; j < g_cantidadFrames; j++) {
-			punteroClock = j;
+	if ( punteroClock ==  g_cantidadFrames -1 )
+		punteroClock = 0;
 
-			sem_wait(&g_mutextablasDePaginas);
-			t_paginaAdministrativa* paginaGlobal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
-			sem_post(&g_mutextablasDePaginas);
+	for (int j = punteroClock; j < g_cantidadFrames; j++) {
+		punteroClock = j;
 
-			aux = buscarFrameEnTablasDePaginas(paginaGlobal);
-			if ( aux->flagPresencia == true && aux->flagModificado == true) {
-				 aux->flagModificado = false;
-			}
-			else if (aux->flagPresencia == true && aux->flagModificado == false ) {
-				 aux->flagPresencia = false;
-			}
-			else{
+		sem_wait(&g_mutextablasDePaginas);
+		t_paginaAdministrativa* paginaGlobal = buscarPaginaAdministrativaPorFrame(tablasDePaginas, j);
+		sem_post(&g_mutextablasDePaginas);
 
-				paginaVictima = aux;
-				cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
-			}
+		aux = buscarFrameEnTablasDePaginas(paginaGlobal);
+		if ( aux->flagPresencia == true && aux->flagModificado == true) {
+			 aux->flagModificado = false;
 		}
+		else if (aux->flagPresencia == true && aux->flagModificado == false ) {
+			 aux->flagPresencia = false;
+		}
+		else{
+			paginaVictima = aux;
+			cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
+		}
+	}
+
 	// Libero el frame, destruyo pagina y devuelvo indice
 	if( paginaVictima != NULL ){
-
 		indiceDeMarco = paginaVictima->nroFrame;
-
-		//sincronizar o ya fue todo?
+		//sincronizar o ya fue todx?
 		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco);
-
 		return indiceDeMarco;
-	}
-	else return ClockModificado();
+	} else
+		return ClockModificado();
 }
 
 int framesNecesariosPorCantidadMemoria(int cantidadBytes){

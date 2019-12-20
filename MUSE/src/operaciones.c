@@ -10,7 +10,8 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	if(list_is_empty(programa->segmentos_programa->lista_segmentos))
 	{
 		log_info( g_logger, "Creo el primer segmento del programa %d",programa->programaId);
-		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, tam);
+		// Inicializo segmento con lim logico en 0, despues cuando se crean paginas se agranda
+		segmentoElegido = crearSegmento(programa->segmentos_programa->baseLogica, 0);
 		list_add(programa->segmentos_programa->lista_segmentos,segmentoElegido);
 		int auxNoUsar = allocarHeapNuevo(programa , segmentoElegido, tam);
 	}
@@ -102,7 +103,7 @@ int procesarGet(void* dst, uint32_t src, size_t n, int socket){
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,src);
 	if(segmento == NULL) return -1;
 
-	bool segmentoUnico = segmento->limiteLogico > src + n;
+	bool segmentoUnico = segmento->limiteLogico >= src + n;
 	if(!segmentoUnico) return -1;
 
 	return copiarContenidoDeFrames(socket,segmento,src,n,dst);
@@ -113,7 +114,7 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,dst);
 	if(segmento == NULL) return -1;
 
-	bool segmentoUnico = segmento->limiteLogico > dst + n;
+	bool segmentoUnico = segmento->limiteLogico >= dst + n;
 	if(!segmentoUnico) return -1;
 
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
@@ -324,7 +325,7 @@ int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNe
 		list_add(segmento->heapsSegmento,heapNuevo);
 	}
 	int bytesNecesarios = cantBytesNecesarios  + tamanio_heap - espacioLibreUltimaPagina;
-	int cantPaginas = framesNecesariosPorCantidadMemoria(cantBytesNecesarios);
+	int cantPaginas = framesNecesariosPorCantidadMemoria(bytesNecesarios);
 	int huecoLibre = (cantPaginas * lengthPagina) - bytesNecesarios;
 	if(huecoLibre > 5) {
 		t_heapSegmento* heapNuevoHueco = crearHeap(huecoLibre - tamanio_heap,true);
@@ -620,13 +621,13 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 	sem_wait(&g_mutexSwap);
 	memcpy(g_archivo_swap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
 	msync(g_archivo_swap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
-	sem_wait(&g_mutexSwap);
+	sem_post(&g_mutexSwap);
 
 	paginaAdmin->nroFrame = indiceFrame; //guardo el indice donde esta la pagina en SWAP
 
 	sem_wait(&g_mutexPaginasEnSwap);
 	list_add(paginasEnSwap,paginaAdmin);
-	sem_wait(&g_mutexPaginasEnSwap);
+	sem_post(&g_mutexPaginasEnSwap);
 
 }
 
