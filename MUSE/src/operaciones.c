@@ -300,8 +300,7 @@ int allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, 
 		int indiceFrame = buscarFrameLibre();
 		if(indiceFrame == -1)
 			indiceFrame = ClockModificado();
-		else
-			agregarPaginaEnSegmento(programa->socket, segmentoAExtender,indiceFrame);
+		agregarPaginaEnSegmento(programa->socket, segmentoAExtender,indiceFrame);
 	}
 
 	segmentoAExtender->limiteLogico += cantPaginasNecesarias * lengthPagina;
@@ -580,7 +579,8 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa, int offsetContenido){
 
 	t_pagina* pagina = list_get(segmento->tablaPaginas,i);
-	if(pagina == NULL) return -1;
+	if(pagina == NULL)
+		return -1;
 	//if(!operacionInversa && pagina->nroFrame == 0 ) return -1; //verificar esto, pagina sin data y que no esta en swap
 	if(!pagina->flagPresencia){
 		if(segmento->esCompartido){
