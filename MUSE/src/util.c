@@ -32,7 +32,7 @@ void serializarRespuestaGet( t_paquete* unPaquete, int operacionSatisfactoria, s
 	memcpy(unPaquete->buffer->data + desplazamiento, &size, sizeof( size_t ) );
 	desplazamiento += sizeof( size_t );
 
-	memcpy(unPaquete->buffer->data + desplazamiento, &buffer, size);
+	memcpy(unPaquete->buffer->data + desplazamiento, buffer, size);
 
 }
 
