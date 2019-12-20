@@ -388,7 +388,9 @@ int ClockModificado() {
 		} else if (aux->flagPresencia == true && aux->flagUso == false ) {
 			paginaVictima = aux;
 			paginaVictima->flagPresencia = false;
+			log_debug( g_logger, "Faulteo pag %d de frame %d", paginaVictima->nroPagina, paginaVictima->nroFrame );
 			cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
+			break;
 		}
 	}
 
