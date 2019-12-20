@@ -565,7 +565,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		int ok = pageFault(socket, segmento,nroPaginaInicial,porcionMemoria,0,desplazamiento,true,offsetContenido);
+		int ok = pageFault(socket, segmento,i,porcionMemoria,0,desplazamiento,true,offsetContenido);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
