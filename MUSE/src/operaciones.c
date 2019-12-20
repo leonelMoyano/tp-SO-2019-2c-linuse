@@ -518,7 +518,6 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 		int ok = pageFault(segmento,nroPaginaInicial,contenidoDestino,offsetInicial,desplazamiento,false);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
-		// tamanio = tamanio - desplazamiento;
 		nroPaginaInicial++;
 		cantPaginasAObtener = framesNecesariosPorCantidadMemoria(tamanio);
 	}
@@ -530,6 +529,8 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
+
+	return 0;
 
 }
 
@@ -557,11 +558,12 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		int ok = pageFault(segmento,0,porcionMemoria,offsetInicial,desplazamiento,true);
+		int ok = pageFault(segmento,nroPaginaInicial,porcionMemoria,offsetInicial,desplazamiento,true);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
+	return 0;
 
 }
 
@@ -585,7 +587,7 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 			log_info( g_logger, "Cargo nuevo frame al segmento");
 			void* contenidoFrame = malloc(lengthPagina);
 			memcpy(contenidoFrame, contenidoDestinoOsrc + desplazamiento,desplazamiento);
-			// agregarContenido(pagina->nroFrame,contenidoFrame);
+			//agregarContenido(pagina->nroFrame,contenidoFrame);
 		}
 		else{
 			log_info( g_logger, "Copio %d bytes del segmento %d - pagina %d - frame %d , desde el offset %d",desplazamiento,segmento->idSegmento,i,pagina->nroFrame,offsetInicial);
