@@ -533,6 +533,7 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
 		int ok = pageFault(socket, segmento,i,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
 		if(ok == -1) return ok;
+		offsetContenido += desplazamiento;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
@@ -569,6 +570,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
 		int ok = pageFault(socket, segmento,i,porcionMemoria,0,desplazamiento,true,offsetContenido);
 		if(ok == -1) return ok;
+		offsetContenido += desplazamiento;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
@@ -600,6 +602,7 @@ int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenido
 			//agregarContenido(pagina->nroFrame,contenidoFrame);
 		}
 		else{
+
 			log_info( g_logger, "Copio %d bytes del segmento %d - pagina %d - frame %d , desde el offset %d",desplazamiento,segmento->idSegmento,i,pagina->nroFrame,offsetInicial);
 			memcpy(frame->contenido + offsetInicial, contenidoDestinoOsrc + offsetContenido,desplazamiento);
 		}
@@ -632,6 +635,10 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 	sem_post(&g_mutexSwap);
 
 	paginaAdmin->nroFrame = indiceFrame; // guardo el indice donde esta la pagina en SWAP
+
+	sem_wait(&g_mutexSwap);
+	borrarPaginaAdministrativaPorFrame(tablasDePaginas,paginaAdmin->nroFrame);
+	sem_post(&g_mutexSwap);
 
 	sem_wait(&g_mutexPaginasEnSwap);
 	list_add(paginasEnSwap,paginaAdmin);

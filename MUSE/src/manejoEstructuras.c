@@ -389,6 +389,7 @@ int ClockModificado() {
 			paginaVictima = aux;
 			paginaVictima->flagPresencia = false;
 			cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
+			break;
 		}
 	}
 
