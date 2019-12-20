@@ -49,7 +49,7 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
 	segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	segmentoNuevo->baseLogica = direccionBase;
-	segmentoNuevo->limiteLogico = tamanio;
+	segmentoNuevo->limiteLogico = tamanio; // TODO se settea el lim logico aca y depsues cuando se creo la pagina se suma tam pagina
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 1;
 	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
