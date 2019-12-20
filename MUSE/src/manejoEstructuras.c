@@ -357,6 +357,8 @@ int buscarFrameLibreSwap(){
 
 int ClockModificado() {
 
+	//TODO: falta testear a este picaron, ojo, ojota, ojete!
+
 	// Libera y devuelve el numero de frame liberado
 	int indiceDeMarco = -1;
 	t_pagina* aux = NULL;
@@ -388,6 +390,7 @@ int ClockModificado() {
 
 		indiceDeMarco = paginaVictima->nroFrame;
 
+		//sincronizar o ya fue todo?
 		bitarray_clean_bit( g_bitarray_marcos, indiceDeMarco);
 
 		return indiceDeMarco;

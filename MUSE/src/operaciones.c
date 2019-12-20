@@ -126,7 +126,9 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 
 		log_info( g_logger, "Programa %d: Copio %d bytes a direcion virtual %lu",programa->programaId,n,dst);
 
+		//TODO en que caso cambio la pagina a modificada?
 		auxHeap->isFree = false;
+
 		if(auxHeap->t_size > n){
 			t_heapSegmento* heapHueco = crearHeap(auxHeap->t_size - n,true);
 			list_add(segmento->heapsSegmento,heapHueco);
@@ -214,9 +216,11 @@ int procesarSync(uint32_t addr, size_t len, int socket){
 	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,addr);
 
 	if(segmento->tipoSegmento == 2){
-		void* archivoActualizado;
-		copiarContenidoDeFrames(socket,segmento,addr,len,archivoActualizado);
-		memcpy(segmento->mmap->contenido,archivoActualizado,len);
+		void* porcionMemoriaActualizada = malloc(len);
+		//obtengo la info de los frames de la/las paginas en cuestion y copio eso a puntero auxiliar
+		copiarContenidoDeFrames(socket,segmento,addr,len,porcionMemoriaActualizada);
+		//TODO: aca falta calcular el desplazamiento del contenido a actualizar?? no se probo por eso
+		memcpy(segmento->mmap->contenido,porcionMemoriaActualizada,len);
 		msync(segmento->mmap->contenido,len,MS_SYNC);
 	}
 
@@ -235,7 +239,10 @@ uint32_t procesarUnMap(uint32_t dir, int socket){
 
 	if(segmento->mmap->cantProcesosUsando == 1){
 		borrarMapeoAbierto(segmento->mmap->path); //ver de usar id de segmento
+
 		destruirSegmentoMap(segmento,1);
+		//TODO: sacar de la lista o agregar flag de libre y usarlo allocar futura memoria
+
 		munmap(segmento->mmap->contenido,largoArchivo);
 	}
 	else{
@@ -348,7 +355,7 @@ void RegistrarMetricasPrograma(t_programa* programa){
 }
 
 void ActualizarLogMetricas(){
-
+	//TODO terminar metricas?? o que la chupen??
 	list_iterate(programas, RegistrarMetricasPrograma);
 	int cantidadBytes = SistemaMemoriaDisponible();
 	log_info( g_logger, "La cantidad de memoria del sistema es de n bytes" );
