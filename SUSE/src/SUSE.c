@@ -603,7 +603,7 @@ void get_global_statistics( void ) {
 }
 
 void actualizar_metricas( void ) {
-	int intervalo = g_config_server->metrics_timer / 35 ;
+	int intervalo = g_config_server->metrics_timer ;
 	log_info(g_logger, "Intervalo para la toma de métricas: %d segundos. \n", intervalo);
 	while (1) {
 		sleep(intervalo);
