@@ -46,6 +46,7 @@ uint32_t procesarAlloc(uint32_t tam, int socket){
 	}
 
 	//ActualizarLogMetricas();
+	log_info( g_logger, "Alloqueo en direccion virtual %lu",direccionLogica);
 	return direccionLogica;
 
 }
@@ -59,6 +60,7 @@ void procesarFree(uint32_t dir, int socket){
 
 		if(indiceHeap != -1){
 			t_heapSegmento * heapLiberar = list_get(segmento->heapsSegmento, indiceHeap);
+			log_info( g_logger, "Programa %d: Libero %d bytes de un heap",programa->programaId,heapLiberar->t_size);
 			if(heapLiberar->isFree == false){
 				int sizeFreeAgregar = verificarCompactacionFree(segmento->heapsSegmento, indiceHeap);
 				//verificar liberacion frames;
@@ -117,8 +119,10 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 
 	if(segmento->tipoSegmento == 1){
 		int indiceHeap = esDireccionLogicaValida(dst,segmento);
+		if(indiceHeap == -1) return indiceHeap;
 		t_heapSegmento * auxHeap = list_get(segmento->heapsSegmento, indiceHeap);
 
+		log_info( g_logger, "Programa %d: Copio %d bytes a direcion virtual %lu",programa->programaId,n,dst);
 
 		auxHeap->isFree = false;
 		if(auxHeap->t_size > n){
@@ -502,7 +506,7 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
 		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
-		int ok = pageFault(segmento,0,contenidoDestino,offsetInicial,desplazamiento,false);
+		int ok = pageFault(segmento,nroPaginaInicial,contenidoDestino,offsetInicial,desplazamiento,false);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
@@ -532,7 +536,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
 		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
-		int ok = pageFault(segmento,0,porcionMemoria,offsetInicial,desplazamiento,true);
+		int ok = pageFault(segmento,nroPaginaInicial,porcionMemoria,offsetInicial,desplazamiento,true);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
@@ -572,10 +576,12 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 			agregarContenido(pagina->nroFrame,contenidoFrame);
 		}
 		else{
+			log_info( g_logger, "Copio %d bytes del segmento %d - pagina %d - frame %d , desde el offset %d",desplazamiento,segmento->idSegmento,i,pagina->nroFrame,offsetInicial);
 			memcpy(frame->contenido, contenidoDestinoOsrc + desplazamiento,desplazamiento);
 		}
 	}
 	else {
+		log_info( g_logger, "Obtengo %d bytes del segmento %d - pagina %d - frame %d , desde el offset %d",desplazamiento,segmento->idSegmento,i,pagina->nroFrame,offsetInicial);
 		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
 		if(frame == NULL) return -1;
 		memcpy(contenidoDestinoOsrc,frame->contenido + offsetInicial,desplazamiento);
