@@ -406,10 +406,13 @@ void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, i
 }
 
 void TraerPaginaDeSwap(int socketPrograma, t_pagina* pagina, int idSegmento){
+	pagina->flagPresencia = true;
+	pagina->flagUso = true;
 	t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socketPrograma,idSegmento,pagina->nroPagina);
 	void* dataPagina = traerContenidoSwap(paginaAdmin->nroFrame);
 	int nroFrameMemoria = buscarFrameLibre();
-	if(nroFrameMemoria == -1) nroFrameMemoria = ClockModificado();
+	if(nroFrameMemoria == -1)
+		nroFrameMemoria = ClockModificado();
 	agregarContenido(nroFrameMemoria,dataPagina);	
 	pagina->nroFrame = nroFrameMemoria;
 	modificarPresencia(pagina,true,false);
@@ -587,7 +590,7 @@ int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenido
 		}
 		else TraerPaginaDeSwap(socket_programa,pagina,segmento->idSegmento);
 	}
-	//sem_wait(&g_mutexgContenidoFrames);
+	// sem_wait( &g_mutexgContenidoFrames );
 	if(operacionInversa) {
 		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
 		if(frame == NULL){
@@ -624,11 +627,11 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 	sem_post(&g_mutexgBitarray_marcos);
 
 	sem_wait(&g_mutexSwap);
-	memcpy(g_archivo_swap + indiceFrame, contenido, lengthPagina); //copio a swap mapeado
+	memcpy(g_archivo_swap + indiceFrame, contenido, lengthPagina); // copio a swap mapeado
 	msync(g_archivo_swap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
 	sem_post(&g_mutexSwap);
 
-	paginaAdmin->nroFrame = indiceFrame; //guardo el indice donde esta la pagina en SWAP
+	paginaAdmin->nroFrame = indiceFrame; // guardo el indice donde esta la pagina en SWAP
 
 	sem_wait(&g_mutexPaginasEnSwap);
 	list_add(paginasEnSwap,paginaAdmin);

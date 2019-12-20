@@ -363,8 +363,7 @@ int buscarFrameLibreSwap(){
 }
 
 int ClockModificado() {
-
-	//TODO: falta testear a este picaron, ojo, ojota, ojete!
+	// TODO: tocar flags de paginas
 
 	// Libera y devuelve el numero de frame liberado
 	int indiceDeMarco = -1;
@@ -382,14 +381,13 @@ int ClockModificado() {
 		sem_post(&g_mutextablasDePaginas);
 
 		aux = buscarFrameEnTablasDePaginas(paginaGlobal);
-		if ( aux->flagPresencia == true && aux->flagModificado == true) {
-			 aux->flagModificado = false;
-		}
-		else if (aux->flagPresencia == true && aux->flagModificado == false ) {
-			 aux->flagPresencia = false;
-		}
-		else{
+		if ( aux->flagPresencia == true && aux->flagUso == true) {
+			 aux->flagUso = false;
+		//} else if (aux->flagPresencia == true && aux->flagModificado == false ) {
+		//	 aux->flagPresencia = false;
+		} else if (aux->flagPresencia == true && aux->flagUso == false ) {
 			paginaVictima = aux;
+			paginaVictima->flagPresencia = false;
 			cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
 		}
 	}
