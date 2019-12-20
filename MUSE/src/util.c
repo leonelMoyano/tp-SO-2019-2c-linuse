@@ -61,10 +61,8 @@ t_registromcopy* deserializarCopy(t_stream * buffer){
 	memcpy(&registro->dst,buffer->data + desplazamiento,sizeof(uint32_t));
 	desplazamiento += sizeof(uint32_t);
 
-	void * porcionMemoria = malloc(registro->n);
-	memcpy(porcionMemoria ,buffer->data + desplazamiento, registro->n);
-	desplazamiento += registro->n;
-
+	registro->src = malloc(registro->n);
+	memcpy( registro->src ,buffer->data + desplazamiento, registro->n );
 
 	return registro;
 }
