@@ -120,7 +120,7 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 	bool esExtendible = esSegmentoExtendible(programa->segmentos_programa, segmento);
 	if(dst + n > segmento->limiteLogico){ return -1;}
 
-	if(segmento->tipoSegmento == 1){
+	/*if(segmento->tipoSegmento == 1){
 		int indiceHeap = esDireccionLogicaValida(dst,segmento);
 		if(indiceHeap == -1) return indiceHeap;
 		t_heapSegmento * auxHeap = list_get(segmento->heapsSegmento, indiceHeap);
@@ -157,9 +157,9 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 
 	}
 	else{
-		return copiarContenidoAFrames(socket,segmento,dst,n,src);
-	}
+	}*/
 
+		return copiarContenidoAFrames(socket,segmento,dst,n,src);
 	return 0;
 }
 
@@ -295,17 +295,18 @@ uint32_t allocarEnHeapLibre(uint32_t cantidadBytesNecesarios, t_segmentos_progra
 }
 
 int allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias ){
-	int indiceNuevaPagina = list_size(segmentoAExtender->tablaPaginas) - 1;
+	int indiceNuevaPagina = list_size(segmentoAExtender->tablaPaginas);
 	for (int i = 0; cantPaginasNecesarias > i ; ++i){
 		int indiceFrame = buscarFrameLibre();
-		if(indiceFrame == -1) indiceFrame = ClockModificado();
+		if(indiceFrame == -1)
+			indiceFrame = ClockModificado();
 		else
-		agregarPaginaEnSegmento(programa->socket, segmentoAExtender,indiceFrame);
+			agregarPaginaEnSegmento(programa->socket, segmentoAExtender,indiceFrame);
 	}
 
 	segmentoAExtender->limiteLogico += cantPaginasNecesarias * lengthPagina;
 	programa->segmentos_programa->limiteLogico += segmentoAExtender->limiteLogico;	
-	return indiceNuevaPagina + 1;
+	return indiceNuevaPagina;
 }
 
 int allocarHeapNuevo(t_programa* programa, t_segmento* segmento, int cantBytesNecesarios){
@@ -517,7 +518,7 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
 		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
-		int ok = pageFault(segmento,nroPaginaInicial,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
+		int ok = pageFault(socket, segmento,nroPaginaInicial,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
 		if(ok == -1) return ok;
 		offsetContenido += desplazamiento;
 		offsetInicial = 0;
@@ -528,7 +529,7 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		int ok = pageFault(segmento,i,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
+		int ok = pageFault(socket, segmento,i,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
@@ -553,7 +554,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 		tamanio = tamanio - desplazamiento;
 		//esto no deberia ir
 		//porcionMemoria = malloc(lengthPagina);
-		int ok = pageFault(segmento,nroPaginaInicial,porcionMemoria,offsetInicial,desplazamiento,true,offsetContenido);
+		int ok = pageFault(socket, segmento,nroPaginaInicial,porcionMemoria,offsetInicial,desplazamiento,true,offsetContenido);
 		if(ok == -1) return ok;
 		offsetContenido += desplazamiento;
 		offsetInicial = 0;
@@ -564,7 +565,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		int ok = pageFault(segmento,nroPaginaInicial,porcionMemoria,0,desplazamiento,true,offsetContenido);
+		int ok = pageFault(socket, segmento,nroPaginaInicial,porcionMemoria,0,desplazamiento,true,offsetContenido);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
@@ -573,7 +574,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 }
 
-int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa, int offsetContenido){
+int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa, int offsetContenido){
 
 	t_pagina* pagina = list_get(segmento->tablaPaginas,i);
 	if(pagina == NULL) return -1;
@@ -581,10 +582,10 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 	if(!pagina->flagPresencia){
 		if(segmento->esCompartido){
 			sem_wait(&segmento->mmap->semaforoPaginas);
-			TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
+			TraerPaginaDeSwap(socket_programa,pagina,segmento->idSegmento);
 			sem_post(&segmento->mmap->semaforoPaginas);
 		}
-		else TraerPaginaDeSwap(socket,pagina,segmento->idSegmento);
+		else TraerPaginaDeSwap(socket_programa,pagina,segmento->idSegmento);
 	}
 	//sem_wait(&g_mutexgContenidoFrames);
 	if(operacionInversa) {
