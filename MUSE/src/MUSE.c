@@ -59,6 +59,7 @@ void attendConnection( int socketCliente) {
 
 			while (1) {
 				package = recibirArmarPaquete(socketCliente);
+				//TODO: me rompe aca en el free, tira error rancio, pero free ejecuto bien
 				log_debug( g_loggerDebug, "Recibo paquete" );
 
 				if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ){

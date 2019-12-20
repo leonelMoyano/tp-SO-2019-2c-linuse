@@ -60,7 +60,7 @@ void procesarFree(uint32_t dir, int socket){
 
 		if(indiceHeap != -1){
 			t_heapSegmento * heapLiberar = list_get(segmento->heapsSegmento, indiceHeap);
-			log_info( g_logger, "Programa %d: Libero %d bytes de un heap",programa->programaId,heapLiberar->t_size);
+			log_info( g_logger, "Programa %d: Libero %d bytes del heap correspondiente a la direccion virtual %lu",programa->programaId,heapLiberar->t_size,dir);
 			if(heapLiberar->isFree == false){
 				int sizeFreeAgregar = verificarCompactacionFree(segmento->heapsSegmento, indiceHeap);
 				//verificar liberacion frames;
@@ -82,13 +82,15 @@ int verificarCompactacionFree(t_list* heaps, int indiceHeap){
 	int tamanioAgregar = 0;
 
 	if(auxHeapAnterior->isFree){
-		tamanioAgregar += auxHeapAnterior->t_size;
+		tamanioAgregar += auxHeapAnterior->t_size + tamanio_heap;
+		log_info( g_logger, "Compacto %lu bytes del heap anterior más los 5 bytes de la metadata",auxHeapAnterior->t_size);
 		list_remove_and_destroy_element(heaps,indiceHeap - 1, (void*) destruirHeap);
 	}
 
 	if(auxHeapPosterior->isFree){
-			tamanioAgregar += auxHeapPosterior->t_size;
+			tamanioAgregar += auxHeapPosterior->t_size + tamanio_heap;
 			//cambia el indice porque destrui una posicion
+			log_info( g_logger, "Compacto %lu bytes del heap posterior más los 5 bytes de la metadata",auxHeapAnterior->t_size);
 			list_remove_and_destroy_element(heaps,indiceHeap, (void*) destruirHeap);
 	}
 
@@ -146,9 +148,9 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 			}
 
 
-		}
 		cambiarFramesPorHeap(segmento,dst,n,true);
 		copiarContenidoAFrames(socket,segmento,dst,n,src);
+		}
 
 	}
 	else{
@@ -571,6 +573,7 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 	if(operacionInversa) {
 		t_contenidoFrame* frame = buscarContenidoFrameMemoria(pagina->nroFrame);
 		if(frame == NULL){
+			log_info( g_logger, "Cargo nuevo frame al segmento");
 			void* contenidoFrame = malloc(lengthPagina);
 			memcpy(contenidoFrame, contenidoDestinoOsrc + desplazamiento,desplazamiento);
 			agregarContenido(pagina->nroFrame,contenidoFrame);
