@@ -31,21 +31,28 @@ t_client_thread_suse* 	find_thread_by_tid_in_parent		( int tid, t_client_suse* p
  *  @DESC: Retorna el semaforo con nombre sem_name, NULL en caso de no existir
  */
 t_semaforo_suse* 		find_sem_by_name 					( char* sem_name );
+int 					cant_hilos_proceso_padre			( t_list* lista_threads, t_client_suse* proceso_padre );
+void 					get_runnning_procs_stats			( void );
 double 					indice_sjf							( t_client_thread_suse* thread_to_compare);
-void 					snd_schd_nxt_blockd_process	( t_client_thread_suse* thread_t );
+void 					snd_schd_nxt_blockd_process			( t_client_thread_suse* thread_t );
 /*----------------------------------------------------------------------------*/
 
 int main(void) {
+
 	iniciar_logger();
 	iniciar_config("/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/SUSE/suseServer.cfg");
+	iniciar_g_metrics();
+	update_metrics_continue();
 	inicializar_estructuras();
 	inicializar_semaforos();
 
 	iniciarServidor(g_config_server->puerto, g_logger, (void*)atenderConexion);
 
-	log_destroy(g_logger);
+	log_destroy( g_logger );
+	log_destroy( g_metrics );
 	config_destroy( g_config );
 	return EXIT_SUCCESS;
+
 }
 
 void atenderConexion(int socketCliente) {
@@ -72,6 +79,11 @@ void atenderConexion(int socketCliente) {
 
 			if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ) {
 				log_warning(g_logger, "Cierro esta conexion del cliente_suse %d", socketCliente);
+				bool socket_buscado(void* proceso){
+					t_client_suse* proceso_t = (t_client_suse*) proceso;
+					return proceso_t->self_socket == socketCliente;
+				}
+				list_remove_by_condition(g_running_procs,socket_buscado);
 				break;
 			};
 
@@ -138,6 +150,7 @@ t_paquete* procesarThreadCreate(t_paquete* paquete, t_client_suse* cliente_suse,
 		cliente_suse->self_socket = socket_cliente;
 		cliente_suse->ready = list_create();
 		pthread_mutex_init(&( cliente_suse->being_externally_scheduled ), NULL);
+		list_add(g_running_procs, cliente_suse);
 		log_info( g_logger, "Operacion suse_create Ok, hilo_principal %d en ejecucion para el socket %d", cliente_suse->running_thread->tid, socket_cliente );
 	}
 	else if( g_multiprog_max > 0 ) {
@@ -482,6 +495,44 @@ void enviarMultiProg( int socket_dst ){
 	enviarPaquetes(socket_dst, unPaquete);
 }
 
+int cant_hilos_proceso_padre( t_list* lista_threads, t_client_suse* proceso_padre ) {
+	int socket_proceso_padre = proceso_padre->self_socket;
+	bool compare_thread( void* otro_thread ){
+		t_client_thread_suse* otro_thread_t = (t_client_thread_suse*) otro_thread;
+		return otro_thread_t->proceso_padre->self_socket == socket_proceso_padre;
+	}
+	t_list* hilos_del_proceso_padre = list_filter( lista_threads, compare_thread);
+	return list_size(hilos_del_proceso_padre);
+}
+
+void get_runnning_procs_stats( void ) {
+	int qty = list_size(g_running_procs);
+
+	if (qty == 0){
+		log_info(g_metrics,"SUSE esperando clientes, sin procesos en ejecución");
+		return;
+	}
+	for (int i = 0; i < qty; i++) {
+		void* proceso = list_get(g_running_procs, i);
+		t_client_suse* proceso_t = (t_client_suse*) proceso;
+		int blockd_qty  = cant_hilos_proceso_padre(g_blocked_threads, proceso_t);
+		int exit_qty  = cant_hilos_proceso_padre(g_exit_threads, proceso_t);
+		int new_qty  = cant_hilos_proceso_padre(g_new_threads->elements, proceso_t);
+
+		if (!list_is_empty(proceso_t->ready)) {
+			int ready_qty = list_size(proceso_t->ready);
+			log_info(g_metrics, "Process_Socket=%d - Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.\n", proceso_t->self_socket, 1, ready_qty, new_qty, blockd_qty, exit_qty);
+		}
+
+		else if (proceso_t->running_thread != NULL) {
+			log_info(g_metrics, "Process_Socket=%d - Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.\n", proceso_t->self_socket, 1, 0, new_qty, blockd_qty, exit_qty);
+		}
+
+		log_info(g_metrics, "Process_Socket=%d - Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.\n", proceso_t->self_socket, 1, 0, new_qty, blockd_qty, exit_qty);
+	}
+
+}
+
 void iniciar_config(char* path){
 	g_config = config_create(path);
 	g_config_server = malloc( sizeof( t_config_suse ) );
@@ -530,6 +581,7 @@ void inicializar_estructuras(){
 	g_semaforos 		= list_create();
 	g_blocked_threads 	= list_create();
 	g_exit_threads		= list_create();
+	g_running_procs		= list_create();
 	g_new_threads		= queue_create();
 	g_multiprog_max 	= g_config_server->max_multiprog;
 }
@@ -537,6 +589,42 @@ void inicializar_estructuras(){
 void iniciar_logger(void) {
 	g_logger = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/logFiles/suseServer.log", "SUSE-Server", 1, LOG_LEVEL_TRACE);
 	log_info(g_logger, "Iniciando SuseServer");
+}
+
+
+
+void iniciar_g_metrics(void) {
+	g_metrics = log_create("/home/utnso/workspace/tp-2019-2c-No-C-Nada/SUSE/logFiles/suseMetric.log", "Metricas - SUSE", 0, LOG_LEVEL_TRACE);
+	log_info(g_metrics, "Iniciando Métricas de SuseServer:");
+}
+
+void get_global_statistics( void ) {
+	get_runnning_procs_stats();
+}
+
+void actualizar_metricas( void ) {
+	int intervalo = g_config_server->metrics_timer ;
+	log_info(g_logger, "Intervalo para la toma de métricas: %d segundos. \n", intervalo);
+	while (1) {
+		sleep(intervalo);
+		get_global_statistics();
+    }
+}
+
+void update_metrics_continue( void ) {
+
+	pthread_mutex_init( &g_mutex_scheduler_metrics, NULL );
+
+    int thread_status = pthread_create( &g_thread_scheduler_metrics, NULL, (void*) actualizar_metricas, NULL );
+
+    if ( thread_status != 0 ) {
+        log_error(g_logger, "Error al crear el thread para actualizar metricas");
+        exit(EXIT_FAILURE);
+    }
+    else {
+    	pthread_detach( g_thread_scheduler_metrics );
+    }
+
 }
 
 double indice_sjf(t_client_thread_suse* thread_to_compare) {
