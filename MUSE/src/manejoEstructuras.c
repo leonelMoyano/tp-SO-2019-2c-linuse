@@ -55,6 +55,7 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
 	segmentoNuevo->esCompartido = false;
 	segmentoNuevo->estaLibre = false;
+
 	idSegmento++;
 	return segmentoNuevo;
 }
