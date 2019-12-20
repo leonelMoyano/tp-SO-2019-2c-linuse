@@ -54,6 +54,7 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 	segmentoNuevo->tipoSegmento = 1;
 	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
 	segmentoNuevo->esCompartido = false;
+	segmentoNuevo->estaLibre = false;
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -66,6 +67,7 @@ t_segmento* crearSegmentoMmap(int direccionBase, int tamanio, t_mapAbierto* mape
 	segmentoNuevo->tipoSegmento = 2;
 	segmentoNuevo->mmap = mapeo;
 	segmentoNuevo->esCompartido = false;
+	segmentoNuevo->estaLibre = false;
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -79,6 +81,7 @@ t_segmento* crearSegmentoMmapCompartido(int direccionBase, int tamanio, bool tab
 	segmentoNuevo->tipoSegmento = 2;
 	segmentoNuevo->mmap = mapeo;
 	segmentoNuevo->esCompartido = true;
+	segmentoNuevo->estaLibre = false;
 	idSegmento++;
 	return segmentoNuevo;
 }
@@ -236,11 +239,11 @@ t_contenidoFrame* buscarContenidoFrameMemoria(int nroFrame) {
 	return contenidoBuscado;
 }
 
-int traerFrameDePaginaEnSwap(int socketPrograma,int idSegmento, int nroPagina) {
+int traerFrameDePaginaEnSwap(int socketPrograma,int idSegmento, int idPagina) {
 
 	bool existeFrame(void* frame){
 		t_paginaAdministrativa* paginaBuscar = (t_paginaAdministrativa*) frame;
-		if (nroPagina != NULL) return paginaBuscar->nroPagina == nroPagina && paginaBuscar->socketPrograma == socketPrograma && paginaBuscar->idSegmento == idSegmento;
+		if (idPagina != NULL) return paginaBuscar->nroPagina == idPagina && paginaBuscar->socketPrograma == socketPrograma && paginaBuscar->idSegmento == idSegmento;
 		return false;
 	}
 
@@ -268,8 +271,9 @@ t_paginaAdministrativa* buscarPaginaAdministrativaPorFrame(t_list* SwapOPrincipa
 	bool existeFrame(void* frame){
 		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
 
-		if (nroFrameSwapOPrincipal != NULL) return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
-		return false;
+		//if (nroFrameSwapOPrincipal != NULL)
+			return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
+		//return false;
 	}
 	t_paginaAdministrativa* paginaAdministrativa = list_find(SwapOPrincipal,existeFrame);
 
@@ -281,9 +285,9 @@ t_paginaAdministrativa* buscarPaginaAdministrativaPorPagina(t_list* SwapOPrincip
 	bool existeFrame(void* frame){
 		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
 
-		if (socketPrograma != NULL && idSegmento != NULL && nroPagina != NULL)
+		if (socketPrograma != NULL && idSegmento != NULL &&  nroPagina != NULL)
 			return frameBuscar->idSegmento == idSegmento && frameBuscar->socketPrograma == socketPrograma && frameBuscar->nroPagina == nroPagina ;
-		return false;
+		//return false;
 	}
 	t_paginaAdministrativa* paginaAdministrativa = list_find(SwapOPrincipal,existeFrame);
 

@@ -2,7 +2,7 @@
 
 int main(void) {
 
-	idSegmento = 0;
+	idSegmento = 1;
 	punteroClock = 0;
 	nroPrograma = 1;
 	tamanio_heap = 5;
@@ -60,7 +60,7 @@ void attendConnection( int socketCliente) {
 			while (1) {
 				package = recibirArmarPaquete(socketCliente);
 				//TODO: me rompe aca en el free, tira error rancio, pero free ejecuto bien
-				log_debug( g_loggerDebug, "Recibo paquete" );
+				//log_debug( g_loggerDebug, "Recibo paquete" );
 
 				if ( package == NULL || package->codigoOperacion == ENVIAR_AVISO_DESCONEXION ){
 					log_warning( g_loggerDebug, "Cierro esta conexion del LibMuse %d", socketCliente );
