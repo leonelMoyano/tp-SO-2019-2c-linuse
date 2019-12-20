@@ -64,7 +64,7 @@ void procesarFree(uint32_t dir, int socket){
 			if(heapLiberar->isFree == false){
 				int sizeFreeAgregar = verificarCompactacionFree(segmento->heapsSegmento, indiceHeap);
 				//verificar liberacion frames;
-				heapLiberar-> isFree = true;
+				heapLiberar-> isFree = 1;
 				heapLiberar-> t_size = heapLiberar->t_size + sizeFreeAgregar;
 				cambiarFramesPorHeap(segmento,dir,0,0); //TODO: ver si no modifica aca? creo que no
 			}
@@ -81,17 +81,17 @@ int verificarCompactacionFree(t_list* heaps, int indiceHeap){
 
 	int tamanioAgregar = 0;
 
-	if(auxHeapAnterior->isFree){
+	if(auxHeapAnterior != NULL && auxHeapAnterior->isFree){
 		tamanioAgregar += auxHeapAnterior->t_size + tamanio_heap;
 		log_info( g_logger, "Compacto %lu bytes del heap anterior más los 5 bytes de la metadata",auxHeapAnterior->t_size);
 		list_remove_and_destroy_element(heaps,indiceHeap - 1, (void*) destruirHeap);
 	}
 
-	if(auxHeapPosterior->isFree){
-			tamanioAgregar += auxHeapPosterior->t_size + tamanio_heap;
-			//cambia el indice porque destrui una posicion
-			log_info( g_logger, "Compacto %lu bytes del heap posterior más los 5 bytes de la metadata",auxHeapAnterior->t_size);
-			list_remove_and_destroy_element(heaps,indiceHeap, (void*) destruirHeap);
+	if(auxHeapPosterior != NULL &&  auxHeapPosterior->isFree){
+		tamanioAgregar += auxHeapPosterior->t_size + tamanio_heap;
+		//TODO: revisar que no rompa en caso que el anterior y el posterior esten libres
+		log_info( g_logger, "Compacto %lu bytes del heap posterior más los 5 bytes de la metadata",auxHeapPosterior->t_size);
+		list_remove_and_destroy_element(heaps,indiceHeap + 1, (void*) destruirHeap);
 	}
 
 	return tamanioAgregar;
@@ -545,6 +545,8 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 		int restoPagina = (g_configuracion->tamanioPagina - offsetInicial);
 		desplazamiento = tamanio > restoPagina ? restoPagina : tamanio;
 		tamanio = tamanio - desplazamiento;
+		//esto no deberia ir
+		//porcionMemoria = malloc(lengthPagina);
 		int ok = pageFault(segmento,nroPaginaInicial,porcionMemoria,offsetInicial,desplazamiento,true);
 		if(ok == -1) return ok;
 		offsetInicial += desplazamiento;
@@ -567,7 +569,7 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 
 	t_pagina* pagina = list_get(segmento->tablaPaginas,i);
 	if(pagina == NULL) return -1;
-	if(!operacionInversa && pagina->nroFrame == NULL) return -1; //verificar esto, pagina sin data y que no esta en swap
+	//if(!operacionInversa && pagina->nroFrame == 0 ) return -1; //verificar esto, pagina sin data y que no esta en swap
 	if(!pagina->flagPresencia){
 		if(segmento->esCompartido){
 			sem_wait(&segmento->mmap->semaforoPaginas);
@@ -587,7 +589,8 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 		}
 		else{
 			log_info( g_logger, "Copio %d bytes del segmento %d - pagina %d - frame %d , desde el offset %d",desplazamiento,segmento->idSegmento,i,pagina->nroFrame,offsetInicial);
-			memcpy(frame->contenido, contenidoDestinoOsrc + desplazamiento,desplazamiento);
+			memcpy(frame->contenido + offsetInicial, contenidoDestinoOsrc,desplazamiento);
+
 		}
 	}
 	else {
@@ -596,6 +599,7 @@ int pageFault(t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offs
 		if(frame == NULL) return -1;
 		memcpy(contenidoDestinoOsrc,frame->contenido + offsetInicial,desplazamiento);
 	}
+	return 0;
 	//sem_post(&g_mutexgContenidoFrames);
 }
 
