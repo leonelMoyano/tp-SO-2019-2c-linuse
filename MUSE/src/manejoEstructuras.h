@@ -61,6 +61,7 @@ t_contenidoFrame* buscarContenidoFrameMemoria	(int nroFrame);
 void            agregarContenido                (int nroFrame, void* contenido);
 
 /**** Destuir estructuras ****/
+void		borrarPrograma				(int socket);
 void       destruirSegmento             (t_segmento* segmento);
 void       destruirPagina               (t_pagina* pagina);
 void	   destruirPrograma				( t_programa* programa );

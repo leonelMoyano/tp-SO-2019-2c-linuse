@@ -416,11 +416,26 @@ int bytesNecesariosUltimoFrame(int cantidadBytes){
 	return sinResto ? 0 : cantidadBytes - (frames * g_configuracion->tamanioPagina);
 }
 
+
+void borrarPrograma(int socket){
+
+	bool existePrograma(void* programa){
+		t_programa* frameBuscar = (t_programa*) programa;
+
+		if (socket != NULL) return frameBuscar->socket == socket;
+		return false;
+	}
+	list_remove_by_condition(programas,existePrograma);
+
+}
+
 void destruirPrograma( t_programa* programa ){
-	//free( segmento->nombreTabla ); free resto de campos?
+	borrarPrograma(programa->socket);
 	destruirSegmentosPrograma( programa->segmentos_programa);
 	free( programa );
 }
+
+
 
 void destruirSegmentosPrograma( t_segmentos_programa* segmentos ){
 	//free( segmento->nombreTabla ); free resto de campos?
