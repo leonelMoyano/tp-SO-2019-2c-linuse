@@ -38,4 +38,6 @@ void enviarRespuestaMsync(int server_socket, int operacionSatisfactoria);
 
 void enviarRespuestaUnmap(int server_socket,int operacionSatisfactoria);
 
+void destruirRequestCopy( t_registromcopy* registroCopy );
+
 #endif

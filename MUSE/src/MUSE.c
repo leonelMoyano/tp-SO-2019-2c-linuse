@@ -53,7 +53,10 @@ void attendConnection( int socketCliente) {
 
 	log_debug( g_loggerDebug, "Checkeo que el paquete sea handshake" );
 	// Espero recibir el handshake y trato segun quien se conecte
-	switch(recibirHandshake(package)){
+	int handshake_code = recibirHandshake(package);
+	destruirPaquete( package );
+
+	switch(handshake_code){
 		case LIBMUSE: ;
 			log_debug( g_loggerDebug, "Recibi el handshake del cliente" );
 
@@ -128,6 +131,8 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 		t_registromcopy* registroCopy = deserializarCopy(paquete->buffer);
 
 		uint32_t operacionSatisfactoriaCopy = procesarCopy( registroCopy->dst,registroCopy->src,registroCopy->n,socket);
+
+		destruirRequestCopy( registroCopy );
 
 		enviarRespuestaCopy(cliente_fd, operacionSatisfactoriaCopy);
 		break;
@@ -229,11 +234,13 @@ void* crearArchivoSwap( char* path, int size ){
 	int truncate_result = ftruncate( fd, size );
 
 	if( truncate_result != 0 ){
-		perror( truncate_result );
+		printf( "No truncar archivo de swap: %d", truncate_result );
 		perror( strerror( errno ) );
 	}
 
 	void * dataArchivo = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	memset( dataArchivo, 0, size );
+	msync( dataArchivo, size, MS_SYNC);
 
 	return dataArchivo;
 }

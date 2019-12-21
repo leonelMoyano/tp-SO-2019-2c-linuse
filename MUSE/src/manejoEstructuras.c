@@ -162,7 +162,7 @@ void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarc
 	//TODO:sincronizar todx esto
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
-	void* contenidoFrame = malloc(lengthPagina);
+	void* contenidoFrame = calloc( lengthPagina, 1 );
 	agregarContenido(numeroDeMarco, contenidoFrame);
 	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas) - 1,numeroDeMarco));
 }

@@ -166,3 +166,8 @@ void enviarRespuestaUnmap(int server_socket,int operacionSatisfactoria){
 
 	enviarPaquetes(server_socket,unPaquete);
 }
+
+void destruirRequestCopy( t_registromcopy* registroCopy ){
+	free( registroCopy->src );
+	free( registroCopy );
+}
