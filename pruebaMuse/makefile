@@ -25,8 +25,4 @@ recursiva:
 	
 supermasivo:
 	$(CC) -I/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/libMUSE -I/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF$(BUILD)/supermasivo.d -MT"src/supermasivo.o" -o "$(BUILD)/supermasivo.o" "src/archivo_de_swap_supermasivo.c"
-	$(CC) -L/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug -o "$(BUILD)/recursiva"  $(BUILD)/recursiva.o -llibMUSE
-
-	
-	
-
+	$(CC) -L/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug -o "$(BUILD)/supermasivo"  $(BUILD)/supermasivo.o -llibMUSE

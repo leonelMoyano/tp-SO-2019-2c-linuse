@@ -50,8 +50,7 @@ void recursiva(int num)
 
 int main(void)
 {
-	muse_init(getpid(), "127.0.0.1", 3306);
+	muse_init(getpid(), "127.0.0.1", 60503);
 	recursiva(15);
 	muse_close();
 }
-

@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
+echo "welcome"
+ll
 cd /home/utnso/workspace
 git clone https://github.com/sisoputnfrba/linuse-tests-programs.git
 cd linuse-tests-programs/
