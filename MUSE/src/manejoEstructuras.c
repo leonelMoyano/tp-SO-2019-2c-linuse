@@ -447,7 +447,14 @@ void destruirSegmentoMap( t_segmento* segmento, bool borrarTodo ){
 
 
 void destruirPagina( t_pagina* pagina ){
-	bitarray_clean_bit(g_bitarray_marcos,pagina->nroFrame);
+	if(pagina->flagPresencia){
+		bitarray_clean_bit(g_bitarray_marcos,pagina->nroFrame);
+		borrarPaginaAdministrativaPorFrame(tablasDePaginas,pagina->nroFrame);
+	}
+	else{
+		borrarPaginaAdministrativaPorFrame(paginasEnSwap,pagina->nroFrame);
+		bitarray_clean_bit(g_bitarray_swap,pagina->nroFrame);
+	}
 	free( pagina );
 }
 
@@ -472,7 +479,7 @@ int huecoUltimaPagina(t_segmento * segmento){
 
 int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
-	if(segmento->tipoSegmento == 2) return -1;
+	if(segmento->tipoSegmento == 2 && direccionLogica != segmento->baseLogica) return -1;
 
 	int direccionLogicaAux = segmento->baseLogica + tamanio_heap ;
 	bool encontrado = false;
