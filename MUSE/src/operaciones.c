@@ -412,7 +412,11 @@ void TraerPaginaDeSwap(int socketPrograma, t_pagina* pagina, int idSegmento){
 	int nroFrameMemoria = buscarFrameLibre();
 	if(nroFrameMemoria == -1)
 		nroFrameMemoria = ClockModificado();
-	agregarContenido(nroFrameMemoria,dataPagina);	
+
+	t_contenidoFrame* cont_frame = buscarContenidoFrameMemoria( nroFrameMemoria );
+	memcpy( cont_frame->contenido, dataPagina, lengthPagina );
+	free( dataPagina );
+	// agregarContenido(nroFrameMemoria,dataPagina);
 	pagina->nroFrame = nroFrameMemoria;
 	modificarPresencia(pagina,true,false);
 
@@ -479,6 +483,7 @@ void* traerContenidoSwap(int indiceBuscado){
 	int indiceSwap = indiceBuscado * g_configuracion->tamanioPagina;
 	memcpy(memoriaDestino, g_archivo_swap + indiceSwap ,lengthPagina);
 
+	return memoriaDestino;
 }
 
 
@@ -531,10 +536,10 @@ int copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direccionL
 
 	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
-		int ok = pageFault(socket, segmento,i,contenidoDestino,offsetInicial,desplazamiento,false,offsetContenido);
-		if(ok == -1) return ok;
+		int ok = pageFault(socket, segmento,i,contenidoDestino, 0,desplazamiento,false,offsetContenido);
+		if(ok == -1)
+			return ok;
 		offsetContenido += desplazamiento;
-		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
 
@@ -569,9 +574,9 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 	for(int i= nroPaginaInicial; cantPaginasAObtener + nroPaginaInicial > i; i++){
 		desplazamiento = tamanio > lengthPagina ? lengthPagina: tamanio;
 		int ok = pageFault(socket, segmento,i,porcionMemoria,0,desplazamiento,true,offsetContenido);
-		if(ok == -1) return ok;
+		if(ok == -1)
+			return ok;
 		offsetContenido += desplazamiento;
-		offsetInicial += desplazamiento;
 		tamanio = tamanio - desplazamiento;
 	}
 	return 0;
@@ -623,14 +628,15 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 
 	void * contenido = miFrame->contenido;
 
-	int indiceFrame = buscarFrameLibreSwap() * g_configuracion->tamanioPagina;
+	int indiceFrame = buscarFrameLibreSwap();
+	int offset_swap = indiceFrame * g_configuracion->tamanioPagina;
 
 	sem_wait(&g_mutexgBitarray_marcos);
 	bitarray_clean_bit(g_bitarray_marcos,nroFrame);
 	sem_post(&g_mutexgBitarray_marcos);
 
 	sem_wait(&g_mutexSwap);
-	memcpy(g_archivo_swap + indiceFrame, contenido, lengthPagina); // copio a swap mapeado
+	memcpy(g_archivo_swap + offset_swap, contenido, lengthPagina); // copio a swap mapeado
 	msync(g_archivo_swap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
 	sem_post(&g_mutexSwap);
 
