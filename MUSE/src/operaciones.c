@@ -402,7 +402,7 @@ void * mapearArchivoMUSE(char * rutaArchivo, size_t size, int flags) {
 		return NULL;
 	}
 
-	void * dataArchivo = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	void * dataArchivo = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANON, fd, 0);
 
 	return dataArchivo;
 }
@@ -449,6 +449,8 @@ void paginasDeMapAPrincipal(size_t tamanioMap,t_segmento* unSegmento,int socket)
 	int cantPaginasAMover = framesNecesariosPorCantidadMemoria(tamanioMap);
 
 	allocarEnPaginasNuevasMap(programa,unSegmento,cantPaginasAMover);
+
+
 }
 
 void escribirContenidoEnSwap(int indiceLibre,void* contenido,int desplazamiento){
