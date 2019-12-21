@@ -38,7 +38,7 @@ void 			 paginasDeMapAPrincipal(size_t tamanioMap,t_segmento* unSegmento,int soc
 //Funciones de mapeo
 void*			 leerArchivoCompartido();
 void*			 escribirEnArchivoCompartido();
-void*			 mapearArchivoMUSE	(char * rutaArchivo, size_t * tamArc, FILE ** archivo,int flags);
+void*			 mapearArchivoMUSE(char * rutaArchivo, size_t size, int flags);
 
 //METRICAS
 void			 ActualizarLogMetricas();
