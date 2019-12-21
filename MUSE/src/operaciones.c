@@ -311,7 +311,8 @@ int allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, 
 int allocarEnPaginasNuevasMap(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias ){
 	int indiceNuevaPagina = list_size(segmentoAExtender->tablaPaginas);
 	for (int i = 0; cantPaginasNecesarias > i ; ++i){
-		t_pagina * paginaNuevo = crearPaginaMap(list_size( segmentoAExtender->tablaPaginas), list_size( segmentoAExtender->tablaPaginas) );
+		t_pagina * paginaNuevo = crearPaginaMap(list_size( segmentoAExtender->mmap->tablaPaginas ), list_size( segmentoAExtender->mmap->tablaPaginas ) );
+		list_add( segmentoAExtender->mmap->tablaPaginas, paginaNuevo );
 	}
 	segmentoAExtender->limiteLogico += cantPaginasNecesarias * lengthPagina;
 	programa->segmentos_programa->limiteLogico += segmentoAExtender->limiteLogico;
@@ -664,10 +665,11 @@ void TraerPaginaDeMap(int socketPrograma,t_segmento* segmento, t_pagina* pagina)
 	t_contenidoFrame* cont_frame = buscarContenidoFrameMemoria( nroFrameMemoria );
 	if(cont_frame == NULL){
 		agregarContenido(nroFrameMemoria,dataPagina);
+	} else {
+		memcpy( cont_frame->contenido, dataPagina, lengthPagina );
+		free( dataPagina );
 	}
-	else memcpy( cont_frame->contenido, dataPagina, lengthPagina );
 
-	free( dataPagina );
 	pagina->nroFrame = nroFrameMemoria;
 	modificarPresencia(pagina,true,false);
 
