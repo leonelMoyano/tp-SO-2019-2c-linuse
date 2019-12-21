@@ -312,7 +312,7 @@ static struct fuse_opt fuse_options[] = {
 // debe estar el path al directorio donde vamos a montar nuestro FS
 int main(int argc, char *argv[]) {
 	g_logger = log_create( "/home/utnso/logs/FUSE/cli.log", "SACCLI", 1, LOG_LEVEL_TRACE );
-	armar_config( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/FUSE/sacServer.cfg" );
+	armar_config( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/FUSE/sacCli.cfg" );
 	// TODO levantar config, crear struct y var global
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
@@ -348,9 +348,10 @@ t_paquete* send_request( t_paquete* request, char* ip, char* puerto ){
 
 void armar_config( char* path ){
 	t_config* config = config_create( path );
+	g_fuse_config = malloc( sizeof( t_fuse_config ) );
 
-	g_fuse_config->ip = strdup( config_get_string_value( config, "IP" ) );
-	g_fuse_config->puerto = strdup( config_get_string_value( config, "PUERTO" ) );
+	g_fuse_config->ip = strdup( (char*) config_get_string_value( config, "IP" ) );
+	g_fuse_config->puerto = strdup( (char*) config_get_string_value( config, "PUERTO" ) );
 
 	config_destroy( config );
 }
