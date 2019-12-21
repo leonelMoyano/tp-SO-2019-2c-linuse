@@ -311,8 +311,8 @@ static struct fuse_opt fuse_options[] = {
 // Dentro de los argumentos que recibe nuestro programa obligatoriamente
 // debe estar el path al directorio donde vamos a montar nuestro FS
 int main(int argc, char *argv[]) {
-	g_logger = log_create( "/home/utnso/logs/FUSE/cli.log", "SACCLI", 1, LOG_LEVEL_TRACE );
-	armar_config( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/FUSE/sacServer.cfg" );
+	g_logger = log_create( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/FUSE/logFiles/cli.log", "SACCLI", 1, LOG_LEVEL_TRACE );
+	armar_config( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/FUSE/sacCli.cfg" );
 	// TODO levantar config, crear struct y var global
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
