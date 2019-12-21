@@ -30,12 +30,11 @@ make clean
 make all
 
 
-cd tp-2019-2c-No-C-Nada/
-rm hilolay -r
-git clone https://github.com/sisoputnfrba/hilolay.git
-cd hilolay
-make all
-sudo make install
+#cd tp-2019-2c-No-C-Nada/
+#rm hilolay -r
+#cd hilolay
+#make all
+#sudo make install
 
 echo "Realizado - Fin de script"
 
