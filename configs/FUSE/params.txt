@@ -1,0 +1,1 @@
+-f -o direct_io  -d /home/utnso/pruebaFS/tmp/
