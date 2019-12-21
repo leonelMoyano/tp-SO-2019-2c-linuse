@@ -640,11 +640,11 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 	msync(g_archivo_swap,g_configuracion->tamanioSwap,MS_SYNC); // update de mapeo a archivo
 	sem_post(&g_mutexSwap);
 
-	paginaAdmin->nroFrame = indiceFrame; // guardo el indice donde esta la pagina en SWAP
-
 	sem_wait(&g_mutexSwap);
 	borrarPaginaAdministrativaPorFrame(tablasDePaginas,paginaAdmin->nroFrame);
 	sem_post(&g_mutexSwap);
+
+	paginaAdmin->nroFrame = indiceFrame; // guardo el indice donde esta la pagina en SWAP
 
 	sem_wait(&g_mutexPaginasEnSwap);
 	list_add(paginasEnSwap,paginaAdmin);

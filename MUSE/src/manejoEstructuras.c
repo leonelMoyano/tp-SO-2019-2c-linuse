@@ -262,8 +262,7 @@ void borrarPaginaAdministrativaPorFrame(t_list* SwapOPrincipal, int nroFrameSwap
 	bool existeFrame(void* frame){
 		t_paginaAdministrativa* frameBuscar = (t_paginaAdministrativa*) frame;
 
-		if (nroFrameSwapOPrincipal != NULL) return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
-		return false;
+		return frameBuscar->nroFrame == nroFrameSwapOPrincipal;
 	}
 	list_remove_by_condition(SwapOPrincipal,existeFrame);
 
@@ -279,6 +278,9 @@ t_paginaAdministrativa* buscarPaginaAdministrativaPorFrame(t_list* SwapOPrincipa
 		//return false;
 	}
 	t_paginaAdministrativa* paginaAdministrativa = list_find(SwapOPrincipal,existeFrame);
+
+	if( paginaAdministrativa == NULL )
+		perror( "pagin no encontrrad " );
 
 	return paginaAdministrativa;
 }
@@ -300,7 +302,7 @@ t_paginaAdministrativa* buscarPaginaAdministrativaPorPagina(t_list* SwapOPrincip
 t_pagina* buscarFrameEnTablasDePaginas(t_paginaAdministrativa* paginaABuscar) {
 
 	t_programa * programa= buscarPrograma(paginaABuscar->socketPrograma);
-	t_segmento* segmento = buscarSegmento(programa->segmentos_programa->lista_segmentos,paginaABuscar->idSegmento);
+	t_segmento* segmento = buscarSegmentoId(programa->segmentos_programa->lista_segmentos,paginaABuscar->idSegmento);
 	t_pagina* paginaBuscada = list_get(segmento->tablaPaginas,paginaABuscar->nroPagina);
 	return paginaBuscada;
 }
@@ -525,8 +527,14 @@ void modificarContenidoPagina(t_pagina* pagina ,void* nuevoContenido, bool prese
 void modificarPresencia(t_pagina* pagina , bool presencia, bool modifica){  //cambiar aca tambien contenido nuevo?
 	pagina->flagPresencia = presencia;
 	pagina->flagModificado = modifica;
-	if(presencia) bitarray_set_bit( g_bitarray_marcos, pagina->nroFrame);
-	else bitarray_clean_bit( g_bitarray_marcos, pagina->nroFrame );
+	if(presencia) {
+		bitarray_set_bit( g_bitarray_marcos, pagina->nroFrame);
+		borrarPaginaAdministrativaPorFrame(tablasDePaginas,pagina->nroFrame);
+	}
+	else{
+		bitarray_clean_bit( g_bitarray_marcos, pagina->nroFrame );
+		borrarPaginaAdministrativaPorFrame(paginasEnSwap,pagina->nroFrame);
+	}
 }
 
 
