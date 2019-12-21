@@ -172,9 +172,9 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 		break;
 
 	case MUSE_UNMAP: ;
-		t_registrounmap* registroUnmap = deserealizarUnmap(paquete->buffer);
+		uint32_t direccionLogicaUnmap = deserializarUINT32(paquete->buffer);
 
-		uint32_t resultadoUnMap =  procesarUnMap(registroUnmap->dir,socket);
+		uint32_t resultadoUnMap =  procesarUnMap(direccionLogicaUnmap,socket);
 
 		enviarRespuestaUnmap(cliente_fd,resultadoUnMap);
 

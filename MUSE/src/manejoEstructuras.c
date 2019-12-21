@@ -142,13 +142,14 @@ void agregarContenido(int nroFrame, void* contenido){
 
 //TODO:agregar map, no compartido, no lo va a agregar a la lista de archivos compartido
 
-t_mapAbierto* crearMapeo(char* path, void* contenido){
+t_mapAbierto* crearMapeo(char* path, void* contenido, size_t size){
 	t_mapAbierto* map = malloc(sizeof(t_mapAbierto));
 	map->path = path;
 	map->tablaPaginas = crearTablaPaginas();
 	map->contenido = contenido;
 	sem_init(&map->semaforoPaginas, 0, 1);
 	map->cantProcesosUsando = 1;
+	map->length = size;
 	return map;
 }
 

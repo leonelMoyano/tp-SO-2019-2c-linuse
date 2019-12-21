@@ -185,7 +185,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 		}
 		else{
 			//Mmap compartido nuevo
-			mapAbierto = crearMapeo(path,contenidoMap);
+			mapAbierto = crearMapeo(path,contenidoMap, length);
 			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,tamanioLogico,0,mapAbierto);
 			paginasDeMapAPrincipal(length,nuevoSegmento,socket);
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
@@ -194,7 +194,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 
 	}
 	else{ //mapeo privado
-		mapAbierto = crearMapeo(path,contenidoMap);
+		mapAbierto = crearMapeo(path,contenidoMap, length);
 		nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,tamanioLogico,mapAbierto);
 		paginasDeMapAPrincipal(length,nuevoSegmento,socket);
 		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
@@ -236,7 +236,7 @@ uint32_t procesarUnMap(uint32_t dir, int socket){
 	if(segmento == NULL || segmento->tipoSegmento == 1 || dir != segmento->baseLogica ) return -1;
 
 	//me parece que asi no contempla el verdadero largo del void*
-	int largoArchivo = segmento->limiteLogico - segmento->baseLogica;
+	int largoArchivo = segmento->mmap->length;
 
 	if(segmento->mmap->cantProcesosUsando == 1){
 		borrarMapeoAbierto(segmento->mmap->path); //ver de usar id de segmento
