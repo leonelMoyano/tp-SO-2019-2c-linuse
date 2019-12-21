@@ -27,11 +27,13 @@ int 			 copiarContenidoDeFrames(int socket,t_segmento* segmento, uint32_t direcc
 int 			 copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLogica, int tamanio,void* porcionMemoria);
 void*			 sacarFrameSwap		(int nroMarco, FILE** archivo);
 void			 escribirFrameSwap	(int nroMarco, void* contenido,FILE** archivo);
+void* 			 traerContenidoMap		(int indiceBuscado, void* mapeo);
 void* 			 traerContenidoSwap(int indiceBuscado);
 void 			 TraerPaginaDeSwap	(int socketPrograma, t_pagina* pagina, int idSegmento);
+void 			 TraerPaginaDeMap	(int socketPrograma,t_segmento* segmento, t_pagina* pagina);
 void			 cargarPaginaEnSwap	(void* bytes,int nroPagina, int socketPrograma, int idSegmento);
 void 			 escribirContenidoEnSwap(int indiceLibre,void* contenido,int desplazamiento);
-void 			 paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * contenidoMap,t_segmento* unSegmento,int socket);
+void 			 paginasDeMapAPrincipal(size_t tamanioMap,t_segmento* unSegmento,int socket);
 
 //Funciones de mapeo
 void*			 leerArchivoCompartido();
