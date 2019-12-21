@@ -101,6 +101,7 @@ t_pagina* crearPagina(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
 	pagina->flagPresencia  = true; //TODO si es mmap deberia ir en false, agregar flag
 	pagina->flagModificado = false;
+	pagina->flagUso = true;
 	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
 	return pagina;
@@ -109,6 +110,7 @@ t_pagina* crearPagina(int nroFrame, int nroPagina){
 t_pagina* crearPaginaMap(int nroFrame, int nroPagina){
 	t_pagina* pagina = malloc( sizeof( t_pagina ) );
 	pagina->flagPresencia  = false;
+	pagina->flagUso = true;
 	pagina->flagModificado = false;
 	pagina->nroFrame  = nroFrame;
 	pagina->nroPagina = nroPagina;
@@ -157,7 +159,7 @@ t_heapSegmento* crearHeap(uint32_t tamanio, bool isFree){
 
 void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarco) {
 	t_pagina * paginaNuevo = crearPagina( numeroDeMarco, list_size( segmento->tablaPaginas) );
-	//TODO:sincronizar todo esto
+	//TODO:sincronizar todx esto
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
 	void* contenidoFrame = malloc(lengthPagina);
@@ -361,8 +363,7 @@ int buscarFrameLibreSwap(){
 }
 
 int ClockModificado() {
-
-	//TODO: falta testear a este picaron, ojo, ojota, ojete!
+	// TODO: tocar flags de paginas
 
 	// Libera y devuelve el numero de frame liberado
 	int indiceDeMarco = -1;
@@ -380,15 +381,15 @@ int ClockModificado() {
 		sem_post(&g_mutextablasDePaginas);
 
 		aux = buscarFrameEnTablasDePaginas(paginaGlobal);
-		if ( aux->flagPresencia == true && aux->flagModificado == true) {
-			 aux->flagModificado = false;
-		}
-		else if (aux->flagPresencia == true && aux->flagModificado == false ) {
-			 aux->flagPresencia = false;
-		}
-		else{
+		if ( aux->flagPresencia == true && aux->flagUso == true) {
+			 aux->flagUso = false;
+		//} else if (aux->flagPresencia == true && aux->flagModificado == false ) {
+		//	 aux->flagPresencia = false;
+		} else if (aux->flagPresencia == true && aux->flagUso == false ) {
 			paginaVictima = aux;
+			paginaVictima->flagPresencia = false;
 			cargarFrameASwap(paginaGlobal->nroFrame, paginaGlobal);
+			break;
 		}
 	}
 
