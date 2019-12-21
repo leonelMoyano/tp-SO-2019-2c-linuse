@@ -41,6 +41,10 @@ cd "$MYPATH/FUSE/Debug"
 make clean
 make all
 
+cd "$MYPAT/SACServer/Debug"
+make clean
+make all
+
 echo "prueba"
 
 cd "/home/utnso/workspace"
