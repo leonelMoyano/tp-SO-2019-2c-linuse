@@ -172,7 +172,7 @@ t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 	bool existeDireccionSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
 
-		if (direccionVirtual != NULL) return segmentoBuscar->baseLogica < direccionVirtual   && direccionVirtual  < (  (segmentoBuscar->baseLogica + segmentoBuscar->limiteLogico) );
+		if (direccionVirtual != NULL) return segmentoBuscar->baseLogica < direccionVirtual   && direccionVirtual  <   (segmentoBuscar->baseLogica + segmentoBuscar->limiteLogico);
 		return false;
 
 	}
