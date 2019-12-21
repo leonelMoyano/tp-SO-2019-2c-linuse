@@ -486,11 +486,12 @@ t_segmento* ultimoSegmentoPrograma(t_programa* programa){
 }
 
 int huecoUltimaPagina(t_segmento * segmento){
-	int espacioVacio = 0;
+	// int espacioVacio = 0;
 	int espacioOcupado = 0;
 	for (int i = 0; i < list_size(segmento->heapsSegmento); i++) {
 		t_heapSegmento* auxHeap = list_get(segmento->heapsSegmento,i);
-		espacioOcupado +=  auxHeap->t_size + tamanio_heap;
+		if( !auxHeap->isFree )
+			espacioOcupado +=  auxHeap->t_size + tamanio_heap;
 	}
 	int cantPaginas = list_size(segmento->tablaPaginas);
 	return (cantPaginas * lengthPagina) - espacioOcupado;
