@@ -36,7 +36,7 @@
 								<option id="gnu.c.link.option.libs.1570901239" name="Libraries (-l)" superClass="gnu.c.link.option.libs" useByScannerDiscovery="false" valueType="libs">
 									<listOptionValue builtIn="false" value="libMUSE"/>
 								</option>
-								<option id="gnu.c.link.option.paths.70255822" superClass="gnu.c.link.option.paths" useByScannerDiscovery="false" valueType="libPaths">
+								<option id="gnu.c.link.option.paths.70255822" name="Library search path (-L)" superClass="gnu.c.link.option.paths" useByScannerDiscovery="false" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.1598733707" superClass="cdt.managedbuild.tool.gnu.c.linker.input">
