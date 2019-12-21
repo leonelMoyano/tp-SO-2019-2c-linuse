@@ -582,6 +582,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 }
 
+//TraerPaginaDeMap(socket_programa,segmento,pagina);
 int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa, int offsetContenido){
 
 	t_pagina* pagina = list_get(segmento->tablaPaginas,i);
@@ -589,11 +590,13 @@ int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenido
 		return -1;
 	//if(!operacionInversa && pagina->nroFrame == 0 ) return -1; //verificar esto, pagina sin data y que no esta en swap
 	if(!pagina->flagPresencia){
-		if(segmento->esCompartido){
+		if(segmento->tipoSegmento == 2 && segmento->esCompartido){
 			sem_wait(&segmento->mmap->semaforoPaginas);
-			TraerPaginaDeSwap(socket_programa,pagina,segmento->idSegmento);
+			TraerPaginaDeMap(socket_programa,segmento,pagina);
 			sem_post(&segmento->mmap->semaforoPaginas);
 		}
+		else if(segmento->tipoSegmento == 2 && !segmento->esCompartido)
+			TraerPaginaDeMap(socket_programa,segmento,pagina);
 		else TraerPaginaDeSwap(socket_programa,pagina,segmento->idSegmento);
 	}
 	// sem_wait( &g_mutexgContenidoFrames );
