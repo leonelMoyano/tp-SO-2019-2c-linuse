@@ -190,7 +190,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 			//Mmap compartido nuevo
 			mapAbierto = crearMapeo(path,contenidoMap);
 			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,tamanioLogico,0,mapAbierto);
-			// paginasDeMapASwap(mapAbierto,length,contenidoMap,nuevoSegmento,socket);
+			paginasDeMapAPrincipal(length,nuevoSegmento,socket);
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 			list_add(mapeosAbiertosCompartidos,mapAbierto);
 		}
@@ -199,7 +199,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	else{ //mapeo privado
 		mapAbierto = crearMapeo(path,contenidoMap);
 		nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,tamanioLogico,mapAbierto);
-		// paginasDeMapASwap(mapAbierto,length,contenidoMap,nuevoSegmento,socket);
+		paginasDeMapAPrincipal(length,nuevoSegmento,socket);
 		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 	}
 
@@ -305,6 +305,16 @@ int allocarEnPaginasNuevas(t_programa* programa, t_segmento* segmentoAExtender, 
 
 	segmentoAExtender->limiteLogico += cantPaginasNecesarias * lengthPagina;
 	programa->segmentos_programa->limiteLogico += segmentoAExtender->limiteLogico;	
+	return indiceNuevaPagina;
+}
+
+int allocarEnPaginasNuevasMap(t_programa* programa, t_segmento* segmentoAExtender, int cantPaginasNecesarias ){
+	int indiceNuevaPagina = list_size(segmentoAExtender->tablaPaginas);
+	for (int i = 0; cantPaginasNecesarias > i ; ++i){
+		t_pagina * paginaNuevo = crearPaginaMap(list_size( segmentoAExtender->tablaPaginas), list_size( segmentoAExtender->tablaPaginas) );
+	}
+	segmentoAExtender->limiteLogico += cantPaginasNecesarias * lengthPagina;
+	programa->segmentos_programa->limiteLogico += segmentoAExtender->limiteLogico;
 	return indiceNuevaPagina;
 }
 
@@ -439,32 +449,13 @@ void cargarPaginaEnSwap(void* bytes,int nroPagina, int socketPrograma, int idSeg
 
 }
 
-void paginasDeMapASwap(t_mapAbierto * mapAbierto, size_t tamanioMap, void * contenidoMap,t_segmento* unSegmento,int socket){
+void paginasDeMapAPrincipal(size_t tamanioMap,t_segmento* unSegmento,int socket){
 	//En el momento de hacer un mapeo dejo la tabla de paginas en swap con el contenido
-
+	t_programa* programa = buscarPrograma(socket);
 	int desplazamiento = 0;
 	int cantPaginasAMover = framesNecesariosPorCantidadMemoria(tamanioMap);
 
-	for(int i=0;i < cantPaginasAMover;i++){
-
-			int frameSwapElegido = buscarFrameLibreSwap(); //modifico bitaray de swap
-
-			t_pagina * paginaNuevo = crearPaginaMap(frameSwapElegido, i);
-
-			if(frameSwapElegido == -1) perror("Memoria Swap completa"); //es correcto? si pero en teoria nunca va a pasar
-
-			escribirContenidoEnSwap(frameSwapElegido,contenidoMap,desplazamiento);
-
-			desplazamiento += g_configuracion->tamanioPagina;
-
-			list_add( paginasEnSwap, crearPaginaAdministrativa( socket, unSegmento->idSegmento, paginaNuevo->nroPagina, frameSwapElegido ) );
-
-			t_paginaAdministrativa* paginaAdmin = buscarPaginaAdministrativaPorPagina(paginasEnSwap,socket,unSegmento->idSegmento,paginaNuevo->nroPagina);
-
-			paginaAdmin->nroFrame = frameSwapElegido; //Asigno el indice de FrameSwap a la paginaAdminist de la pagina
-
-			list_add(mapAbierto->tablaPaginas, paginaNuevo);
-		}
+	allocarEnPaginasNuevasMap(programa,unSegmento,cantPaginasAMover);
 }
 
 void escribirContenidoEnSwap(int indiceLibre,void* contenido,int desplazamiento){
@@ -482,6 +473,14 @@ void* traerContenidoSwap(int indiceBuscado){
 	void* memoriaDestino = malloc(lengthPagina);
 	int indiceSwap = indiceBuscado * g_configuracion->tamanioPagina;
 	memcpy(memoriaDestino, g_archivo_swap + indiceSwap ,lengthPagina);
+
+	return memoriaDestino;
+}
+
+void* traerContenidoMap(int indiceBuscado, void* mapeo){
+	void* memoriaDestino = malloc(lengthPagina);
+	int indiceSwap = indiceBuscado * g_configuracion->tamanioPagina;
+	memcpy(memoriaDestino, mapeo + indiceSwap ,lengthPagina);
 
 	return memoriaDestino;
 }
@@ -583,6 +582,7 @@ int copiarContenidoAFrames(int socket,t_segmento* segmento, uint32_t direccionLo
 
 }
 
+//TraerPaginaDeMap(socket_programa,segmento,pagina);
 int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenidoDestinoOsrc, int offsetInicial, int desplazamiento, bool operacionInversa, int offsetContenido){
 
 	t_pagina* pagina = list_get(segmento->tablaPaginas,i);
@@ -590,11 +590,13 @@ int pageFault(int socket_programa, t_segmento* segmento, int i , void* contenido
 		return -1;
 	//if(!operacionInversa && pagina->nroFrame == 0 ) return -1; //verificar esto, pagina sin data y que no esta en swap
 	if(!pagina->flagPresencia){
-		if(segmento->esCompartido){
+		if(segmento->tipoSegmento == 2 && segmento->esCompartido){
 			sem_wait(&segmento->mmap->semaforoPaginas);
-			TraerPaginaDeSwap(socket_programa,pagina,segmento->idSegmento);
+			TraerPaginaDeMap(socket_programa,segmento,pagina);
 			sem_post(&segmento->mmap->semaforoPaginas);
 		}
+		else if(segmento->tipoSegmento == 2 && !segmento->esCompartido)
+			TraerPaginaDeMap(socket_programa,segmento,pagina);
 		else TraerPaginaDeSwap(socket_programa,pagina,segmento->idSegmento);
 	}
 	// sem_wait( &g_mutexgContenidoFrames );
@@ -650,6 +652,27 @@ void cargarFrameASwap(int nroFrame, t_paginaAdministrativa * paginaAdmin){
 	list_add(paginasEnSwap,paginaAdmin);
 	sem_post(&g_mutexPaginasEnSwap);
 
+}
+
+void TraerPaginaDeMap(int socketPrograma,t_segmento* segmento, t_pagina* pagina){
+
+	void* dataPagina = traerContenidoMap(pagina->nroFrame, segmento->mmap->contenido);
+	int nroFrameMemoria = buscarFrameLibre();
+	if(nroFrameMemoria == -1)
+		nroFrameMemoria = ClockModificado();
+
+	t_contenidoFrame* cont_frame = buscarContenidoFrameMemoria( nroFrameMemoria );
+	if(cont_frame == NULL){
+		agregarContenido(nroFrameMemoria,dataPagina);
+	}
+	else memcpy( cont_frame->contenido, dataPagina, lengthPagina );
+
+	free( dataPagina );
+	pagina->nroFrame = nroFrameMemoria;
+	modificarPresencia(pagina,true,false);
+
+	t_paginaAdministrativa * paginaAdmin = crearPaginaAdministrativa(socketPrograma,segmento->idSegmento,pagina->nroPagina,nroFrameMemoria);
+	list_add(tablasDePaginas,paginaAdmin);
 }
 
 
