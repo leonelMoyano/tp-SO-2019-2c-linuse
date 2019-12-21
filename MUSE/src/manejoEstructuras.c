@@ -62,10 +62,12 @@ t_segmento* crearSegmento(int direccionBase, int tamanio){
 
 t_segmento* crearSegmentoMmap(int direccionBase, int tamanio, t_mapAbierto* mapeo ){
 	t_segmento* segmentoNuevo = malloc( sizeof( t_segmento ) );
+	segmentoNuevo->tablaPaginas = crearTablaPaginas();
 	segmentoNuevo->baseLogica = direccionBase;
 	segmentoNuevo->limiteLogico = tamanio;
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 2;
+	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
 	segmentoNuevo->mmap = mapeo;
 	segmentoNuevo->esCompartido = false;
 	segmentoNuevo->estaLibre = false;
@@ -80,6 +82,7 @@ t_segmento* crearSegmentoMmapCompartido(int direccionBase, int tamanio, bool tab
 	segmentoNuevo->limiteLogico = tamanio;
 	segmentoNuevo->idSegmento = idSegmento;
 	segmentoNuevo->tipoSegmento = 2;
+	segmentoNuevo->heapsSegmento = crearListaHeapsMetadata();
 	segmentoNuevo->mmap = mapeo;
 	segmentoNuevo->esCompartido = true;
 	segmentoNuevo->estaLibre = false;
@@ -172,10 +175,9 @@ t_segmento* buscarSegmento(t_list* segmentos,uint32_t direccionVirtual) {
 	bool existeDireccionSegmento(void* segmento){
 		t_segmento* segmentoBuscar = (t_segmento*) segmento;
 
-		if (direccionVirtual != NULL) return segmentoBuscar->baseLogica < direccionVirtual   && direccionVirtual  <   (segmentoBuscar->baseLogica + segmentoBuscar->limiteLogico);
-		return false;
-
+		return segmentoBuscar->baseLogica <= direccionVirtual && direccionVirtual < (segmentoBuscar->baseLogica + segmentoBuscar->limiteLogico);
 	}
+
 	t_segmento* segmentoBuscado = list_find(segmentos,existeDireccionSegmento);
 	return segmentoBuscado;
 }
