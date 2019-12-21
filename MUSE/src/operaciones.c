@@ -190,7 +190,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 			//Mmap compartido nuevo
 			mapAbierto = crearMapeo(path,contenidoMap);
 			nuevoSegmento = crearSegmentoMmapCompartido(programa->segmentos_programa->limiteLogico,tamanioLogico,0,mapAbierto);
-			paginasDeMapASwap(mapAbierto,length,contenidoMap,nuevoSegmento,socket);
+			// paginasDeMapASwap(mapAbierto,length,contenidoMap,nuevoSegmento,socket);
 			nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 			list_add(mapeosAbiertosCompartidos,mapAbierto);
 		}
@@ -199,7 +199,7 @@ uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	else{ //mapeo privado
 		mapAbierto = crearMapeo(path,contenidoMap);
 		nuevoSegmento = crearSegmentoMmap(programa->segmentos_programa->limiteLogico,tamanioLogico,mapAbierto);
-		paginasDeMapASwap(mapAbierto,length,contenidoMap,nuevoSegmento,socket);
+		// paginasDeMapASwap(mapAbierto,length,contenidoMap,nuevoSegmento,socket);
 		nuevoSegmento->tablaPaginas = mapAbierto->tablaPaginas;
 	}
 
