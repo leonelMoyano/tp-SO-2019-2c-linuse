@@ -521,16 +521,23 @@ void get_runnning_procs_stats( void ) {
 
 		if (!list_is_empty(proceso_t->ready)) {
 			int ready_qty = list_size(proceso_t->ready);
-			log_info(g_metrics, "Process_Socket=%d - Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.\n", proceso_t->self_socket, 1, ready_qty, new_qty, blockd_qty, exit_qty);
+			log_info(g_metrics, "Process_Socket=%d -> Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.", proceso_t->self_socket, 1, ready_qty, new_qty, blockd_qty, exit_qty);
+			int grado_multiprog_proceso = ready_qty + new_qty + blockd_qty + exit_qty + 1;
+			log_info(g_metrics, "Process_Socket=  %d - Grado de multiprogramacion: %d \n", proceso_t-> self_socket, grado_multiprog_proceso);
 		}
 
 		else if (proceso_t->running_thread != NULL) {
-			log_info(g_metrics, "Process_Socket=%d - Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.\n", proceso_t->self_socket, 1, 0, new_qty, blockd_qty, exit_qty);
+			log_info(g_metrics, "Process_Socket=%d --> Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.", proceso_t->self_socket, 1, 0, new_qty, blockd_qty, exit_qty);
+			int grado_multiprog_proceso = new_qty + blockd_qty + exit_qty + 1;
+			log_info(g_metrics, "Process_Socket=  %d - Grado de multiprogramacion: %d \n", proceso_t-> self_socket, grado_multiprog_proceso);
+		}
+		else {
+		log_info(g_metrics, "Process_Socket=%d ->> Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.", proceso_t->self_socket, 1, 0, new_qty, blockd_qty, exit_qty);
+		int grado_multiprog_proceso = new_qty + blockd_qty + exit_qty;
+		log_info(g_metrics, "Process_Socket=  %d - Grado de multiprogramacion: %d \n", proceso_t-> self_socket, grado_multiprog_proceso);
 		}
 
-		log_info(g_metrics, "Process_Socket=%d - Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.\n", proceso_t->self_socket, 1, 0, new_qty, blockd_qty, exit_qty);
 	}
-
 }
 
 void iniciar_config(char* path){
