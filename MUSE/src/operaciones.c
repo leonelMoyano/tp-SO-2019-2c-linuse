@@ -166,10 +166,7 @@ int procesarCopy(uint32_t dst, void* src, int n, int socket){
 uint32_t procesarMap(char *path, size_t length, int flags, int socket){
 	t_programa * programa= buscarPrograma(socket);
 
-	FILE * archivoMap;
-
-	//TODO: revisar este map y el pasaje de los flags
-	void* contenidoMap = mapearArchivoMUSE(path,&length,&archivoMap,flags);
+	void* contenidoMap = mapearArchivoMUSE( path, length, flags );
 
 	//TODO: optimizar funcion, evitar repeticion codigo
 
@@ -222,7 +219,10 @@ int procesarSync(uint32_t addr, size_t len, int socket){
 		copiarContenidoDeFrames(socket,segmento,addr,len,porcionMemoriaActualizada);
 		//TODO: aca falta calcular el desplazamiento del contenido a actualizar?? no se probo por eso
 		memcpy(segmento->mmap->contenido,porcionMemoriaActualizada,len);
-		msync(segmento->mmap->contenido,len,MS_SYNC);
+		int sync_res = msync( segmento->mmap->contenido, len, MS_SYNC );
+		if( sync_res != 0 ){
+			perror( "msycn fallo" );
+		}
 	}
 
 	return 0;
@@ -391,26 +391,18 @@ int PorcentajeAsignacionMemoria(t_programa* programa){}
 int SistemaMemoriaDisponible(){}
 
 
-void * mapearArchivoMUSE(char * rutaArchivo, size_t * tamArc, FILE ** archivo, int flags) {
-	//Abro el archivo
-	*archivo = fopen(rutaArchivo, "r");
+void * mapearArchivoMUSE(char * rutaArchivo, size_t size, int flags) {
 
-	if (*archivo == NULL) {
-		printf("%s: No existe el archivo o el directorio", rutaArchivo);
+	// Abro el archivo
+	int fd = open( rutaArchivo, O_RDWR );
+
+	if ( fd == -1 ) {
+		perror( strerror( errno ) );
+		printf("%s: No existe el archivo o el directorio", rutaArchivo );
 		return NULL;
 	}
 
-	//Copio informacion del archivo
-	struct stat statArch;
-
-	stat(rutaArchivo, &statArch);
-
-	//Tamaño del archivo que voy a leer
-	*tamArc = statArch.st_size;
-
-	//Leo el total del archivo y lo asigno al buffer
-	int fd = fileno(*archivo);
-	void * dataArchivo = mmap(0, *tamArc, PROT_READ, flags, fd, 0);
+	void * dataArchivo = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
 	return dataArchivo;
 }

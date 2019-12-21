@@ -88,11 +88,8 @@ t_registrosync* deserealizarMsync(t_stream * buffer){
 	t_registrosync* registro = malloc(sizeof(t_registrosync));
 	int desplazamiento = 0;
 
-	memcpy(registro->addr, buffer->data + desplazamiento,sizeof(uint32_t));
-	desplazamiento += sizeof(uint32_t);
-
-	memcpy(registro->len, buffer->data + desplazamiento, sizeof(size_t));
-	desplazamiento += sizeof(size_t);
+	registro->addr = *(uint32_t*) buffer->data;
+	registro->len = *(size_t*) ( buffer->data + sizeof( uint32_t ) );
 
 	return registro;
 }

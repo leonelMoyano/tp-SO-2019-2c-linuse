@@ -96,10 +96,10 @@ void serializarMap(t_paquete * unPaquete, char * path, size_t length, int flags)
 }
 
 void serializarMsync(t_paquete * unPaquete,uint32_t addr, size_t len){
-	unPaquete->buffer = malloc(sizeof(t_stream));
 	int tamanioDatos = sizeof(uint32_t) + sizeof(size_t);
-	unPaquete->buffer->size = tamanioDatos;
 
+	unPaquete->buffer = malloc(sizeof(t_stream));
+	unPaquete->buffer->size = tamanioDatos;
 	unPaquete->buffer->data = malloc(tamanioDatos);
 
 	int desplazamiento = 0;
