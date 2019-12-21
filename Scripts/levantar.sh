@@ -9,7 +9,7 @@ MYPATH="/home/utnso/workspace/tp-2019-2c-No-C-Nada"
 
  
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug"
+export LD_LIBRARY_PATH=/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug:/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug:/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug
 
 echo "Ready - Variable de Entorno"
 
@@ -29,12 +29,10 @@ cd "$MYPATH/biblioSuse/Debug"
 make clean
 make all
 
+cd "$MYPATH/MUSE/Debug"
+make clean
+make all
 
-#cd tp-2019-2c-No-C-Nada/
-#rm hilolay -r
-#cd hilolay
-#make all
-#sudo make install
 
 echo "Realizado - Fin de script"
 
