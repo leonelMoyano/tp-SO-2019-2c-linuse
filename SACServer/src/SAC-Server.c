@@ -24,7 +24,7 @@ t_paquete* procesarPaqueteFuseOps( t_paquete* request );
 void       iniciarConfig( char* path );
 
 int main(void) {
-	g_logger = log_create( "/home/utnso/logs/FUSE/server.log", "SACSRVR", 1, LOG_LEVEL_TRACE );
+	g_logger = log_create( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/SACServer/logFiles/server.log", "SACSRVR", 1, LOG_LEVEL_TRACE );
 	iniciarConfig( "/home/utnso/workspace/tp-2019-2c-No-C-Nada/configs/FUSE/sacServer.cfg" );
 	init_fs( g_fuse_config->disc_file_path );
 	iniciarServidor( g_fuse_config->puerto, g_logger, (void*)atenderConexion);
