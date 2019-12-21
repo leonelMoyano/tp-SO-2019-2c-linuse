@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "libmuse.h"
+#include <libMUSE.h>
 
 char* pasa_palabra(int cod)
 {

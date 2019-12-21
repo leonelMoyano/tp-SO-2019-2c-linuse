@@ -1,15 +1,16 @@
 #! /bin/bash -e
 #Flag error -> cierre del script
 
-#Repo tp-2019-2c-No-C-Nada: git clone https://github.com/sisoputnfrba/tp-2019-2c-No-C-Nada.git
-#Repo Hilolay: git clone https://github.com/sisoputnfrba/hilolay.git
+#Repo tp-2019-2c-No-C-Nada:		git clone https://github.com/sisoputnfrba/tp-2019-2c-No-C-Nada.git
+#Repo hilolay: 					git clone https://github.com/sisoputnfrba/hilolay.git
+#Repo linuse-tests-programs		git clone https://github.com/sisoputnfrba/linuse-tests-programs.git
 
 
 MYPATH ="/home/utnso/workspace/tp-2019-2c-No-C-Nada"
+# Editar archivo ".profile" del perfil de usuario utnso
+# sudo nano /home/utnso/.profile 
 
-sudo nano /home/utnso/.profile 
-
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug"
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug:/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug:/home/utnso/workspace/tp-2019-2c-No-C-Nada/FUSE/Debug:/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug
 
 echo "Ready - Variable de Entorno"
 
