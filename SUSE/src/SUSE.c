@@ -532,7 +532,7 @@ void get_runnning_procs_stats( void ) {
 			log_info(g_metrics, "Process_Socket=  %d - Grado de multiprogramacion: %d \n", proceso_t-> self_socket, grado_multiprog_proceso);
 		}
 		else {
-		log_info(g_metrics, "Process_Socket=%d ->> Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.", proceso_t->self_socket, 1, 0, new_qty, blockd_qty, exit_qty);
+		log_info(g_metrics, "Process_Socket=%d ->> Cantidad de Hilos: RUNNING= %d; READY=%d; NEW= %d, BLOCKED= %d; EXIT= %d.", proceso_t->self_socket, 0, 0, new_qty, blockd_qty, exit_qty);
 		int grado_multiprog_proceso = new_qty + blockd_qty + exit_qty;
 		log_info(g_metrics, "Process_Socket=  %d - Grado de multiprogramacion: %d \n", proceso_t-> self_socket, grado_multiprog_proceso);
 		}
