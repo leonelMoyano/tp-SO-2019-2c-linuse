@@ -63,6 +63,7 @@ typedef struct{
 	void* contenido;
 	sem_t semaforoPaginas;
 	int cantProcesosUsando;
+	size_t length;
 }t_mapAbierto;
 
 typedef struct{

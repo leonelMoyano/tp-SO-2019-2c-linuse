@@ -20,7 +20,7 @@ t_list* 		crearListaMapeos				();
 t_segmento*     crearSegmento                   (int direccionBase, int tamanio);
 t_segmento*		crearSegmentoMmap				(int direccionBase, int tamanio, t_mapAbierto* mapeo );
 t_segmento*		crearSegmentoMmapCompartido		(int direccionBase, int tamanio, bool tablaDePaginasCompartida, t_mapAbierto* mapeo);
-t_mapAbierto*	crearMapeo						(char* path, void* contenido);
+t_mapAbierto* crearMapeo(char* path, void* contenido, size_t size);
 t_segmento*	    buscarSegmento					(t_list* segmentos,uint32_t direccionVirtual);
 t_segmento*		buscarSegmentoId				(t_list* segmentos,int idSemgneto);
 t_segmento* 	ultimoSegmentoPrograma			(t_programa* programa);

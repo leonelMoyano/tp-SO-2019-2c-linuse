@@ -21,7 +21,7 @@ void recursiva(int num)
 
 int main(void)
 {
-	muse_init(getpid(), "127.0.0.1", 60503);
+	muse_init(getpid(), "192.168.0.221", 60503);
 	recursiva(10);
 	muse_close();
 }
