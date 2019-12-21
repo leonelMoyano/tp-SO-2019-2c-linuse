@@ -5,15 +5,15 @@
 #Repo Hilolay: git clone https://github.com/sisoputnfrba/hilolay.git
 
 
-MYPATH ="/home/utnso/workspace/tp-2019-2c-No-C-Nada"
+MYPATH="/home/utnso/workspace/tp-2019-2c-No-C-Nada"
 
-sudo nano /home/utnso/.profile 
+ 
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug":"/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug"
 
 echo "Ready - Variable de Entorno"
 
-env | grep LD
+
 
 #Levanto  .so
 
