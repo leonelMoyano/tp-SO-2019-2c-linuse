@@ -17,6 +17,8 @@ int main(void) {
 	tablasDePaginas = crearTablaPaginas();
 	contenidoFrames = crearTablaPaginas();
 
+	sem_init(&g_mutexPaginas, 0, 1); // el salvador
+
 	sem_init(&g_mutexTablaProgramas, 0, 1);
 	sem_init(&g_mutextablasDePaginas, 0, 1);
 	sem_init(&g_mutexMapeosAbiertosCompartidos, 0, 1);
@@ -53,7 +55,10 @@ void attendConnection( int socketCliente) {
 
 	log_debug( g_loggerDebug, "Checkeo que el paquete sea handshake" );
 	// Espero recibir el handshake y trato segun quien se conecte
-	switch(recibirHandshake(package)){
+	int handshake_code = recibirHandshake(package);
+	destruirPaquete( package );
+
+	switch(handshake_code){
 		case LIBMUSE: ;
 			log_debug( g_loggerDebug, "Recibi el handshake del cliente" );
 
@@ -103,22 +108,34 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 		break;
 
 	case MUSE_ALLOC: ;
+
+		sem_wait(&g_mutexPaginas);
+
 		uint32_t tamanio  = deserializarUINT32(paquete->buffer);
 		uint32_t direccionLogica = procesarAlloc(tamanio, socket);
+
+		sem_post(&g_mutexPaginas);
 		enviarRespuestaAlloc(cliente_fd,direccionLogica);
 		break;
 
 	case MUSE_FREE: ;
+
+		sem_wait(&g_mutexPaginas);
+
 		uint32_t direccionLogicaFree = deserializarUINT32(paquete->buffer);
 		procesarFree(direccionLogicaFree,socket); //Libera una porcion de memoria reservada
+
+		sem_post(&g_mutexPaginas);
 		break;
 
 	case MUSE_GET: ;
 		t_registromget* registroGet = deserializarGet(paquete->buffer);
 
 		void* buffer = malloc( registroGet->n );
+		sem_wait(&g_mutexPaginas);
 		uint32_t operacionSatisfactoriaGet = procesarGet( buffer, registroGet->src, registroGet->n, socket );
 
+		sem_post(&g_mutexPaginas);
 		enviarRespuestaGet( cliente_fd, operacionSatisfactoriaGet, registroGet->n, buffer );
 		free( buffer );
 		free( registroGet );
@@ -127,9 +144,13 @@ t_paquete* procesarPaqueteLibMuse(t_paquete* paquete, int cliente_fd) {
 	case MUSE_COPY: ;
 		t_registromcopy* registroCopy = deserializarCopy(paquete->buffer);
 
+		sem_wait(&g_mutexPaginas);
 		uint32_t operacionSatisfactoriaCopy = procesarCopy( registroCopy->dst,registroCopy->src,registroCopy->n,socket);
 
+		sem_post(&g_mutexPaginas);
+
 		enviarRespuestaCopy(cliente_fd, operacionSatisfactoriaCopy);
+		destruirRequestCopy( registroCopy );
 		break;
 
 	case MUSE_MAP: ;
@@ -229,11 +250,13 @@ void* crearArchivoSwap( char* path, int size ){
 	int truncate_result = ftruncate( fd, size );
 
 	if( truncate_result != 0 ){
-		perror( truncate_result );
+		printf( "No truncar archivo de swap: %d", truncate_result );
 		perror( strerror( errno ) );
 	}
 
 	void * dataArchivo = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+	memset( dataArchivo, 0, size );
+	msync( dataArchivo, size, MS_SYNC);
 
 	return dataArchivo;
 }

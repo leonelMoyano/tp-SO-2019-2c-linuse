@@ -40,5 +40,18 @@ make all
 echo "Realizado - Fin de script"
 
 
+MYPATH="/home/utnso/workspace/tp-2019-2c-No-C-Nada"
 
+ 
+
+export LD_LIBRARY_PATH=/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioNOC/Debug:/home/utnso/workspace/tp-2019-2c-No-C-Nada/biblioSuse/Debug:/home/utnso/workspace/tp-2019-2c-No-C-Nada/libMUSE/Debug
+
+echo "Ready - Variable de Entorno"
+
+
+
+#Levanto  .so
+
+
+echo "Realizado - Fin de script"
 

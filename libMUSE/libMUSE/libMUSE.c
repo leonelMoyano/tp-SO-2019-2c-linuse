@@ -37,6 +37,8 @@ uint32_t muse_alloc(uint32_t tam){
 
 	uint32_t direccionLogica = deserializarUINT32(paquete->buffer);
 
+	destruirPaquete( paquete );
+
 	return direccionLogica;
 
 }
@@ -57,7 +59,9 @@ int muse_get(void* dst, uint32_t src, size_t n){
 	memcpy( dst, read_resultado->data, n );
 
 	int errno_value =  read_resultado->errno_value;
+
 	destruirGetResponse( read_resultado );
+	destruirPaquete( paquete );
 
 	VerificoOperacion( errno_value );
 
@@ -71,6 +75,8 @@ int muse_cpy(uint32_t dst, void* src, int n){
 	t_paquete * paquete  = recibirArmarPaquete(socketConexion);
 
 	int operacionSatisfactoria = deserializarNumero(paquete->buffer);
+
+	destruirPaquete( paquete );
 
 	VerificoOperacion(operacionSatisfactoria);
 

@@ -162,7 +162,7 @@ void agregarPaginaEnSegmento(int socket, t_segmento * segmento, int numeroDeMarc
 	//TODO:sincronizar todx esto
 	bitarray_set_bit( g_bitarray_marcos, numeroDeMarco );
 	list_add( segmento->tablaPaginas, paginaNuevo );
-	void* contenidoFrame = malloc(lengthPagina);
+	void* contenidoFrame = calloc( lengthPagina, 1 );
 	agregarContenido(numeroDeMarco, contenidoFrame);
 	list_add(tablasDePaginas, crearPaginaAdministrativa(socket,segmento->idSegmento,list_size(segmento->tablaPaginas) - 1,numeroDeMarco));
 }
@@ -416,11 +416,26 @@ int bytesNecesariosUltimoFrame(int cantidadBytes){
 	return sinResto ? 0 : cantidadBytes - (frames * g_configuracion->tamanioPagina);
 }
 
+
+void borrarPrograma(int socket){
+
+	bool existePrograma(void* programa){
+		t_programa* frameBuscar = (t_programa*) programa;
+
+		if (socket != NULL) return frameBuscar->socket == socket;
+		return false;
+	}
+	list_remove_by_condition(programas,existePrograma);
+
+}
+
 void destruirPrograma( t_programa* programa ){
-	//free( segmento->nombreTabla ); free resto de campos?
+	borrarPrograma(programa->socket);
 	destruirSegmentosPrograma( programa->segmentos_programa);
 	free( programa );
 }
+
+
 
 void destruirSegmentosPrograma( t_segmentos_programa* segmentos ){
 	//free( segmento->nombreTabla ); free resto de campos?
@@ -447,7 +462,14 @@ void destruirSegmentoMap( t_segmento* segmento, bool borrarTodo ){
 
 
 void destruirPagina( t_pagina* pagina ){
-	bitarray_clean_bit(g_bitarray_marcos,pagina->nroFrame);
+	if(pagina->flagPresencia){
+		bitarray_clean_bit(g_bitarray_marcos,pagina->nroFrame);
+		borrarPaginaAdministrativaPorFrame(tablasDePaginas,pagina->nroFrame);
+	}
+	else{
+		borrarPaginaAdministrativaPorFrame(paginasEnSwap,pagina->nroFrame);
+		bitarray_clean_bit(g_bitarray_swap,pagina->nroFrame);
+	}
 	free( pagina );
 }
 
@@ -472,7 +494,7 @@ int huecoUltimaPagina(t_segmento * segmento){
 
 int esDireccionLogicaValida(uint32_t direccionLogica, t_segmento* segmento){
 
-	if(segmento->tipoSegmento == 2) return -1;
+	if(segmento->tipoSegmento == 2 && direccionLogica != segmento->baseLogica) return -1;
 
 	int direccionLogicaAux = segmento->baseLogica + tamanio_heap ;
 	bool encontrado = false;

@@ -34,6 +34,8 @@ size_t lengthPagina;
 
 //Semafotos
 
+sem_t g_mutexPaginas;
+
 sem_t g_mutexSwap;
 sem_t g_mutexPaginasEnSwap;
 sem_t g_mutexgBitarray_swap;
