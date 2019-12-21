@@ -29,10 +29,10 @@ t_get_response* deserealizarMuseGet( t_stream* buffer ){
 
 	int desplazamiento = 0;
 
-	get_response->errno_value = *(int*) buffer->data;
+	get_response->errno_value = *(int*) ( buffer->data );
 	desplazamiento += sizeof( int );
 
-	get_response->size = *(size_t*) buffer->data + desplazamiento;
+	get_response->size = *(size_t*) ( buffer->data + desplazamiento );
 	desplazamiento += sizeof( size_t );
 
 	get_response->data = malloc( get_response->size );
